@@ -14,7 +14,7 @@ public interface IAmmo {
         if (stack == null) {
             return null;
         }
-        if (stack.getItem() instanceof IAmmo iAmmo) {
+        if (ItemBehavior.of(stack) instanceof IAmmo iAmmo) {
             return iAmmo;
         }
         return null;

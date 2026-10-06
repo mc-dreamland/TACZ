@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gui.overlay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -35,7 +37,7 @@ public class KillAmountOverlay implements IGuiOverlay {
             return;
         }
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof IGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun)) {
             return;
         }
 

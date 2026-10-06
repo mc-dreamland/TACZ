@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.builder;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.IAttachment;
 import com.tacz.guns.init.ModItems;
@@ -34,7 +36,7 @@ public class AttachmentItemBuilder {
 
     public ItemStack build() {
         ItemStack attachment = new ItemStack(ModItems.ATTACHMENT.get(), this.count);
-        if (attachment.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(attachment) instanceof IAttachment iAttachment) {
             iAttachment.setAttachmentId(attachment, this.attachmentId);
         }
         return attachment;

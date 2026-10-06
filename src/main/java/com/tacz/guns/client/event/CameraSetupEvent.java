@@ -1,5 +1,7 @@
 package com.tacz.guns.client.event;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.github.exopandora.shouldersurfing.api.client.IShoulderSurfingCamera;
 import com.github.exopandora.shouldersurfing.api.client.ShoulderSurfing;
 import com.tacz.guns.GunMod;
@@ -69,7 +71,7 @@ public class CameraSetupEvent {
         }
         ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
         // 尝试调用物品的自定义相机动画
-        if (IClientItemExtensions.of(stack.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(stack)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.applyLevelCameraAnimation(event, stack, player);
         }
 
@@ -86,7 +88,7 @@ public class CameraSetupEvent {
         }
         ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
         // 尝试调用物品的自定义相机动画
-        if (IClientItemExtensions.of(stack.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(stack)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.applyItemInHandCameraAnimation(event, stack, player);
         }
     }
@@ -99,7 +101,7 @@ public class CameraSetupEvent {
         Entity entity = event.getCamera().getEntity();
         if (entity instanceof LivingEntity livingEntity) {
             ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
-            if (!(stack.getItem() instanceof IGun iGun)) {
+            if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
                 float fov = WORLD_FOV_DYNAMICS.update((float) event.getFOV());
                 event.setFOV(fov);
                 return;
@@ -127,7 +129,7 @@ public class CameraSetupEvent {
         Entity entity = event.getCamera().getEntity();
         if (entity instanceof LivingEntity livingEntity) {
             ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
-            if (!(stack.getItem() instanceof IGun iGun)) {
+            if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
                 float fov = ITEM_MODEL_FOV_DYNAMICS.update((float) event.getFOV());
                 event.setFOV(fov);
                 return;
@@ -172,7 +174,7 @@ public class CameraSetupEvent {
                 return;
             }
             ItemStack mainHandItem = player.getMainHandItem();
-            if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+            if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
                 return;
             }
             AttachmentCacheProperty cacheProperty = IGunOperator.fromLivingEntity(player).getCacheProperty();
@@ -242,7 +244,7 @@ public class CameraSetupEvent {
             return;
         }
         float f = 1.0f;
-        if (player.getMainHandItem().getItem() instanceof AbstractGunItem) {
+        if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun) {
             if (player.getAbilities().flying) {
                 f *= 1.1F;
             }

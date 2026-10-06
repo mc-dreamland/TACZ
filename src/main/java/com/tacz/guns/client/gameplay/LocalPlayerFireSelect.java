@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.event.common.GunFireSelectEvent;
@@ -31,7 +33,7 @@ public class LocalPlayerFireSelect {
         }
         // 暂定为主手
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
         if (MinecraftForge.EVENT_BUS.post(new GunFireSelectEvent(player, player.getMainHandItem(), LogicalSide.CLIENT))) {

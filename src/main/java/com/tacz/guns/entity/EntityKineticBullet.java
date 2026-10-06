@@ -136,6 +136,7 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     private Vec3 startPos;
     // 曳光弹
     private boolean isTracerAmmo;
+    private boolean clientVisual;
     // 以下几个是只对客户端有用的曳光弹数据
     private float cameraXRot;
     private float cameraYRot;
@@ -156,6 +157,42 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         this(type, worldIn);
         this.setPos(x, y, z);
     }
+
+    /**
+     * Creates a visual replica without evaluating shooter properties or constructing damage data.
+     * The Paper bridge owns its lifetime; it is never registered in the client's network entity map.
+     */
+    @ApiStatus.Internal
+    public static EntityKineticBullet createClientVisual(Level level, @Nullable Entity owner,
+                                                         ResourceLocation ammoId, ResourceLocation gunId, ResourceLocation displayId,
+                                                         Vec3 position, Vec3 velocity, float gravity, float friction,
+                                                         int life, int age, boolean tracer) {
+        if (!level.isClientSide()) throw new IllegalArgumentException("Visual bullets require a client level");
+        EntityKineticBullet bullet = new EntityKineticBullet(TYPE, level);
+        bullet.setOwner(owner);
+        bullet.ammoId = ammoId;
+        bullet.gunId = gunId;
+        bullet.gunDisplayId = displayId;
+        bullet.gravity = Math.max(0, gravity);
+        bullet.friction = Mth.clamp(friction, 0, 1);
+        bullet.life = Mth.clamp(life, 1, 1200);
+        bullet.tickCount = Math.max(0, age);
+        bullet.isTracerAmmo = tracer;
+        bullet.clientVisual = true;
+        bullet.startPos = position;
+        bullet.setPos(position);
+        bullet.setDeltaMovement(velocity);
+        bullet.setYRot((float) Math.toDegrees(Mth.atan2(velocity.x, velocity.z)));
+        bullet.setXRot((float) Math.toDegrees(Mth.atan2(velocity.y, velocity.horizontalDistance())));
+        bullet.xo = position.x; bullet.yo = position.y; bullet.zo = position.z;
+        bullet.xOld = position.x; bullet.yOld = position.y; bullet.zOld = position.z;
+        bullet.yRotO = bullet.getYRot(); bullet.xRotO = bullet.getXRot();
+        bullet.noPhysics = true;
+        return bullet;
+    }
+
+    /** True only for bridge replicas that do not participate in network entity tracking. */
+    public boolean isClientVisual() { return clientVisual; }
 
     public EntityKineticBullet(Level worldIn, LivingEntity throwerIn, ItemStack gunItem, ResourceLocation ammoId, ResourceLocation gunId,
                                ResourceLocation gunDisplayId, boolean isTracerAmmo, GunData gunData, BulletData bulletData) {
@@ -284,7 +321,7 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         this.setDeltaMovement(this.getDeltaMovement().scale(1 - friction));
         this.setDeltaMovement(this.getDeltaMovement().add(0, -gravity, 0));
         // 子弹生命结束
-        if (this.tickCount >= this.life - 1) {
+        if (!this.clientVisual && this.tickCount >= this.life - 1) {
             this.discard();
         }
     }

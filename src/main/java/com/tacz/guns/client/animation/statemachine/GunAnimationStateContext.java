@@ -1,5 +1,7 @@
 package com.tacz.guns.client.animation.statemachine;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -178,10 +180,10 @@ public class GunAnimationStateContext extends ItemAnimationStateContext {
                             // 背包检查
                             for (int i = 0; i < cap.getSlots(); i++) {
                                 ItemStack checkAmmoStack = cap.getStackInSlot(i);
-                                if (checkAmmoStack.getItem() instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(currentGunItem, checkAmmoStack)) {
+                                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(currentGunItem, checkAmmoStack)) {
                                     return true;
                                 }
-                                if (checkAmmoStack.getItem() instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(currentGunItem, checkAmmoStack)) {
+                                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(currentGunItem, checkAmmoStack)) {
                                     return true;
                                 }
                             }

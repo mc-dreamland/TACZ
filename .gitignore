@@ -21,6 +21,8 @@ build
 eclipse
 run
 test
+!paper/src/test/
+!shared/src/test/
 logs
 .luarc.json
 
@@ -51,3 +53,5 @@ forge*changelog.txt
 /.narrafork/project.db
 /.narrafork/project.db-shm
 /.narrafork/project.db-wal
+/paper/gradle/wrapper/gradle-wrapper.jar
+/paper/gradle/wrapper/gradle-wrapper.properties

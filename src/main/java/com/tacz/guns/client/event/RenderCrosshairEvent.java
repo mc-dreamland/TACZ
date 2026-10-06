@@ -1,5 +1,7 @@
 package com.tacz.guns.client.event;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -68,7 +70,7 @@ public class RenderCrosshairEvent {
             }
             // 播放的动画需要隐藏准心时，取消准心渲染
             ItemStack stack = player.getMainHandItem();
-            if (!(stack.getItem() instanceof IGun)) {
+            if (!(ItemBehavior.of(stack) instanceof IGun)) {
                 return;
             }
 

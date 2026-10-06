@@ -1,5 +1,7 @@
 package com.tacz.guns.resource.modifier;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.google.common.collect.Maps;
 import com.tacz.guns.api.GunProperties;
 import com.tacz.guns.api.TimelessAPI;
@@ -48,7 +50,7 @@ public class AttachmentPropertyManager {
     }
 
     public static void postChangeEvent(LivingEntity shooter, ItemStack gunItem) {
-        if (!(gunItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(gunItem) instanceof IGun iGun)) {
             return;
         }
         ResourceLocation gunId = iGun.getGunId(gunItem);

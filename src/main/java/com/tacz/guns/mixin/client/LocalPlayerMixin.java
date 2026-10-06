@@ -5,6 +5,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.client.gameplay.*;
+import com.tacz.guns.client.paper.PaperClientBridge;
+import com.tacz.guns.client.paper.PaperClientGameplay;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,6 +34,7 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
     @Unique
     @Override
     public ShootResult shoot() {
+        if (PaperClientBridge.active()) return PaperClientGameplay.shoot();
         tac$reload.cancelReload();
         return tac$shoot.shoot();
     }
@@ -39,44 +42,52 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
     @Unique
     @Override
     public void draw(ItemStack lastItem) {
+        if (PaperClientBridge.active()) { PaperClientGameplay.draw(lastItem); return; }
         tac$draw.draw(lastItem);
     }
 
     @Unique
     @Override
     public void bolt() {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("bolt"); return; }
         tac$bolt.bolt();
     }
 
     @Unique
     @Override
     public void reload() {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("reload"); return; }
         tac$reload.reload();
     }
 
     @Unique
     @Override
     public void inspect() {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("inspect"); return; }
         tac$inspect.inspect();
     }
 
     @Override
     public void fireSelect() {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("fire_select"); return; }
         tac$fireSelect.fireSelect();
     }
 
     @Override
     public void melee() {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("melee"); return; }
         tac$melee.melee();
     }
 
     @Override
     public void aim(boolean isAim) {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("aim", isAim); return; }
         tac$aim.aim(isAim);
     }
 
     @Override
     public boolean isCrawl() {
+        if (PaperClientBridge.active()) return PaperClientGameplay.crawling();
         return tac$crawl.isCrawling();
     }
 
@@ -87,6 +98,7 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
 
     @Override
     public void crawl(boolean isCrawl) {
+        if (PaperClientBridge.active()) { PaperClientGameplay.action("crawl", isCrawl); return; }
         tac$crawl.crawl(isCrawl);
     }
 
@@ -99,11 +111,19 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
     @Unique
     @Override
     public long getClientShootCoolDown() {
+        if (PaperClientBridge.active()) return PaperClientGameplay.cooldown();
         return tac$shoot.getClientShootCoolDown();
     }
 
     @Inject(method = "tick", at = @At("HEAD"))
     public void onTickClientSide(CallbackInfo ci) {
+        if (PaperClientBridge.active()) {
+            PaperClientGameplay.tickPlayer(tac$player, tac$data);
+            // Starting a reload while already sprinting must apply the same restriction as
+            // a new sprint input: feeding blocks sprint, while reload finishing allows it.
+            tac$player.setSprinting(tac$sprint.getProcessedSprintStatus(tac$player.isSprinting()));
+            return;
+        }
         LocalPlayer player = (LocalPlayer) (Object) this;
         if (player.level().isClientSide()) {
             tac$aim.tickAimingProgress();
@@ -116,6 +136,11 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
 
     @WrapOperation(method = "aiStep", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;setSprinting(Z)V"))
     public void swapSprintStatus(LocalPlayer player, boolean sprinting, Operation<Void> original) {
+        if (PaperClientBridge.active()) {
+            if (sprinting) PaperClientGameplay.action("cancel_reload");
+            original.call(player, tac$sprint.getProcessedSprintStatus(sprinting));
+            return;
+        }
         if (sprinting) { // 用原始的输入尝试打断换弹
             tac$reload.cancelReload();
         }
@@ -145,6 +170,7 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
 
     @Override
     public boolean chargeShoot(boolean isCharge) {
+        if (PaperClientBridge.active()) return PaperClientGameplay.charge(isCharge, tac$data);
         return tac$shoot.chargeShoot(isCharge);
     }
 

@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
@@ -25,8 +27,8 @@ public class LocalPlayerInspect {
         // 暂定只有主手可以检视
         ItemStack mainHandItem = player.getMainHandItem();
 
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
-            if (IClientItemExtensions.of(mainHandItem).getCustomRenderer() instanceof AnimateGeoItemRenderer<?,?> renderer) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
+            if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(mainHandItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?,?> renderer) {
                 renderer.triggerAnimation(mainHandItem, GunAnimationConstant.INPUT_INSPECT);
             }
             return;

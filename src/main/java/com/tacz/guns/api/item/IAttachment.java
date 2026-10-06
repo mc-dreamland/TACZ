@@ -16,7 +16,7 @@ public interface IAttachment {
         if (stack == null) {
             return null;
         }
-        if (stack.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(stack) instanceof IAttachment iAttachment) {
             return iAttachment;
         }
         return null;

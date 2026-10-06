@@ -1,5 +1,7 @@
 package com.tacz.guns.client.input;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.api.item.IGun;
@@ -42,7 +44,7 @@ public class CrawlKey {
             if (!(player instanceof IClientPlayerGunOperator operator)) {
                 return;
             }
-            if (player.getMainHandItem().getItem() instanceof IGun iGun) {
+            if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun iGun) {
                 // 如果不允许下蹲，则禁止进行下蹲
                 if (!iGun.isCanCrawl(player.getMainHandItem())) {
                     IClientPlayerGunOperator.fromLocalPlayer(player).crawl(false);

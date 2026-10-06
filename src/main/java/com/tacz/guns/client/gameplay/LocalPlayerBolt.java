@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.entity.IGunOperator;
@@ -32,7 +34,7 @@ public class LocalPlayerBolt {
             return;
         }
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
         GunData gunData = TimelessAPI.getClientGunIndex(iGun.getGunId(mainHandItem)).map(ClientGunIndex::getGunData).orElse(null);
@@ -80,7 +82,7 @@ public class LocalPlayerBolt {
 
     public void tickAutoBolt() {
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             data.isBolting = false;
             return;
         }

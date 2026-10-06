@@ -31,6 +31,10 @@ public class LocalPlayerReload {
     }
 
     public void cancelReload() {
+        if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
+            com.tacz.guns.client.paper.PaperClientGameplay.action("cancel_reload");
+            return;
+        }
         ItemStack mainHandItem = player.getMainHandItem();
         if (!(mainHandItem.getItem() instanceof AbstractGunItem)) {
             return;

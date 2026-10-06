@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.network.NetworkHandler;
@@ -25,7 +27,7 @@ public class LocalPlayerCrawl {
     public void crawl(boolean isCrawl) {
         // 持枪才能按键趴下
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
         // 不允许趴下的武器
@@ -53,7 +55,7 @@ public class LocalPlayerCrawl {
         }
         // 持枪才能按键趴下
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             isCrawling = false;
             this.setCrawlPose();
             return;

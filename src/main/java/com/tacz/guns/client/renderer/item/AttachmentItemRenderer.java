@@ -1,5 +1,7 @@
 package com.tacz.guns.client.renderer.item;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -32,7 +34,7 @@ public class AttachmentItemRenderer extends BlockEntityWithoutLevelRenderer {
 
     @Override
     public void renderByItem(@Nonnull ItemStack stack, @Nonnull ItemDisplayContext transformType, @Nonnull PoseStack poseStack, @Nonnull MultiBufferSource pBuffer, int pPackedLight, int pPackedOverlay) {
-        if (stack.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(stack) instanceof IAttachment iAttachment) {
             ResourceLocation attachmentId = iAttachment.getAttachmentId(stack);
             poseStack.pushPose();
             TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresentOrElse(attachmentIndex -> {

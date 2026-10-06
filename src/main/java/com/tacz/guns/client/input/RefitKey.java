@@ -40,8 +40,14 @@ public class RefitKey {
                     if (iGun != null && iGun.hasAttachmentLock(player.getMainHandItem())) {
                         return;
                     }
-                    Minecraft.getInstance().setScreen(new GunRefitScreen());
+                    if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
+                        com.tacz.guns.client.paper.PaperClientGameplay.openMenu("refit");
+                    } else {
+                        Minecraft.getInstance().setScreen(new GunRefitScreen());
+                    }
                 }
+            } else if (Minecraft.getInstance().screen instanceof com.tacz.guns.client.paper.PaperMenuScreen paperScreen) {
+                paperScreen.onClose();
             } else if (Minecraft.getInstance().screen instanceof GunRefitScreen refitScreen) {
                 refitScreen.onClose();
             }

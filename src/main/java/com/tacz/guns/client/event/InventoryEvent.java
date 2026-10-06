@@ -31,6 +31,10 @@ public class InventoryEvent {
         if (player == null) {
             return;
         }
+        if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
+            if (event.phase == TickEvent.Phase.END) com.tacz.guns.client.paper.PaperClientGameplay.inventoryTick(player);
+            return;
+        }
         Inventory inventory = player.getInventory();
         // 玩家切换选中框的情况
         if (oldHotbarSelected != inventory.selected) {

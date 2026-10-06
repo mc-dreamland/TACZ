@@ -50,7 +50,11 @@ public class ZoomKey {
             }
             IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(player);
             if (operator.isAim()) {
-                NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerZoom());
+                if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
+                    com.tacz.guns.client.paper.PaperClientGameplay.action("zoom");
+                } else {
+                    NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerZoom());
+                }
                 return true;
             }
         }
@@ -64,7 +68,11 @@ public class ZoomKey {
         }
         IClientPlayerGunOperator operator = IClientPlayerGunOperator.fromLocalPlayer(player);
         if (operator.isAim()) {
-            NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerZoom());
+            if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
+                    com.tacz.guns.client.paper.PaperClientGameplay.action("zoom");
+                } else {
+                    NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerZoom());
+                }
         }
     }
 }

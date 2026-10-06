@@ -1,5 +1,7 @@
 package com.tacz.guns.client.renderer.item;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -58,7 +60,7 @@ public class AmmoItemRenderer extends BlockEntityWithoutLevelRenderer {
 
     @Override
     public void renderByItem(@Nonnull ItemStack stack, @Nonnull ItemDisplayContext transformType, @Nonnull PoseStack poseStack, @Nonnull MultiBufferSource pBuffer, int pPackedLight, int pPackedOverlay) {
-        if (!(stack.getItem() instanceof IAmmo iAmmo)) {
+        if (!(ItemBehavior.of(stack) instanceof IAmmo iAmmo)) {
             return;
         }
         ResourceLocation ammoId = iAmmo.getAmmoId(stack);

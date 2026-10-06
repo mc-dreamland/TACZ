@@ -1,5 +1,7 @@
 package com.tacz.guns.compat.playeranimator.animation;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.event.common.GunDrawEvent;
@@ -329,7 +331,7 @@ public class AnimationManager {
         ItemStack currentGunItem = event.getCurrentGunItem();
         ItemStack previousGunItem = event.getPreviousGunItem();
         // 在切枪时，重置上半身动画
-        if (currentGunItem.getItem() instanceof IGun && previousGunItem.getItem() instanceof IGun) {
+        if (ItemBehavior.of(currentGunItem) instanceof IGun && ItemBehavior.of(previousGunItem) instanceof IGun) {
             stopAnimation(player, PlayerAnimatorCompat.LOOP_UPPER_ANIMATION, 8);
             stopAnimation(player, PlayerAnimatorCompat.ONCE_UPPER_ANIMATION, 8);
             stopAnimation(player, PlayerAnimatorCompat.LOWER_ANIMATION, 8);

@@ -57,7 +57,7 @@ public class TickAnimationEvent {
         }
         ItemStack mainHandItem = player.getMainHandItem();
         // 渲染相关内容整理到物品的IClientItemExtensions了，这个接口有待进一步抽象
-        if (IClientItemExtensions.of(mainHandItem.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(mainHandItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             // 如果物品不一样了，先尝试初始化状态机
             if (renderer.needReInit(mainHandItem)) {
                 renderer.tryInit(mainHandItem, player, event.renderTickTime);

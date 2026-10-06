@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.item.IGun;
@@ -24,7 +26,7 @@ public class LocalPlayerAim {
     public void aim(boolean isAim) {
         // 暂定为主手
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
         ResourceLocation gunId = iGun.getGunId(mainHandItem);
@@ -46,7 +48,7 @@ public class LocalPlayerAim {
     public void tickAimingProgress() {
         ItemStack mainHandItem = player.getMainHandItem();
         // 如果主手物品不是枪械，则取消瞄准状态并将 aimingProgress 归零，返回。
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             data.clientAimingProgress = 0;
             LocalPlayerDataHolder.oldAimingProgress = 0;
             return;

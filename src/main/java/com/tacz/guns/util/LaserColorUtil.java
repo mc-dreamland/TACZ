@@ -1,5 +1,7 @@
 package com.tacz.guns.util;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAttachment;
 import com.tacz.guns.api.item.IGun;
@@ -15,7 +17,7 @@ public class LaserColorUtil {
             return defaultConfig.getDefaultColor();
         }
 
-        if (stack.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(stack) instanceof IAttachment iAttachment) {
             if (iAttachment.hasCustomLaserColor(stack)) {
                 return iAttachment.getLaserColor(stack);
             } else {
@@ -23,7 +25,7 @@ public class LaserColorUtil {
             }
         }
 
-        if (stack.getItem() instanceof IGun gun) {
+        if (ItemBehavior.of(stack) instanceof IGun gun) {
             if (gun.hasCustomLaserColor(stack)) {
                 return gun.getLaserColor(stack);
             } else {
@@ -39,7 +41,7 @@ public class LaserColorUtil {
             return 0xFF0000;
         }
 
-        if (stack.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(stack) instanceof IAttachment iAttachment) {
             if (iAttachment.hasCustomLaserColor(stack)) {
                 return iAttachment.getLaserColor(stack);
             } else {
@@ -50,7 +52,7 @@ public class LaserColorUtil {
             }
         }
 
-        if (stack.getItem() instanceof IGun gun) {
+        if (ItemBehavior.of(stack) instanceof IGun gun) {
             if (gun.hasCustomLaserColor(stack)) {
                 return gun.getLaserColor(stack);
             } else {

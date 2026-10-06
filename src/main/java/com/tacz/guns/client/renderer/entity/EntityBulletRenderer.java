@@ -76,7 +76,7 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet> {
     public void renderTracerAmmo(EntityKineticBullet bullet, float[] tracerColor, float partialTicks, PoseStack poseStack, int packedLight) {
         getModel().ifPresent(model -> {
             Entity shooter = bullet.getOwner();
-            if (shooter == null) {
+            if (shooter == null && !bullet.isClientVisual()) {
                 return;
             }
             boolean isFirstPerson = this.entityRenderDispatcher.options.getCameraType().isFirstPerson() && shooter instanceof LocalPlayer;
@@ -88,7 +88,9 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet> {
                 float width = 0.005f;
                 Vec3 bulletPosition = bullet.getPosition(partialTicks);
                 double trailLength = 0.85 * bullet.getDeltaMovement().length();
-                double disToEye = bulletPosition.distanceTo(shooter.getEyePosition(partialTicks));
+                // A Paper observer can see a projectile before its distant owner is tracked.
+                Vec3 source = shooter == null ? this.entityRenderDispatcher.camera.getPosition() : shooter.getEyePosition(partialTicks);
+                double disToEye = bulletPosition.distanceTo(source);
                 trailLength = Math.min(trailLength, disToEye * 0.8);
 
                 if (isFirstPerson) {
@@ -121,7 +123,7 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet> {
                 poseStack.translate(0, isFirstPerson ? 0 : -0.2, trailLength / 2.0);
                 poseStack.scale(width, width, (float) trailLength);
                 // 距离两格外才渲染，只在前 5 tick 判定
-                double bulletDistance = bulletPosition.distanceTo(shooter.getEyePosition());
+                double bulletDistance = bulletPosition.distanceTo(source);
                 if (bullet.tickCount >= 5 || bulletDistance > 2) {
                     RenderType type = RenderType.energySwirl(InternalAssetLoader.DEFAULT_BULLET_TEXTURE, 15, 15);
                     model.render(poseStack, ItemDisplayContext.NONE, type, packedLight, OverlayTexture.NO_OVERLAY,

@@ -1,5 +1,7 @@
 package com.tacz.guns.api;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.client.other.IThirdPersonAnimation;
 import com.tacz.guns.api.client.other.ThirdPersonManager;
 import com.tacz.guns.api.item.IGun;
@@ -28,7 +30,7 @@ import java.util.Set;
 public final class TimelessAPI {
     @OnlyIn(Dist.CLIENT)
     public static Optional<GunDisplayInstance> getGunDisplay(ItemStack stack) {
-        if (stack.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(stack) instanceof IGun iGun) {
             ResourceLocation gunId = iGun.getGunId(stack);
             if (getCommonGunIndex(gunId).isEmpty()) {
                 return Optional.empty();

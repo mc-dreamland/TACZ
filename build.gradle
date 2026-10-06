@@ -111,6 +111,7 @@ minecraft {
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
+sourceSets.main.java.srcDir 'shared/src/main/java'
 
 repositories {
     maven {

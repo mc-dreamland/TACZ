@@ -1,5 +1,7 @@
 package com.tacz.guns.compat.jei.entry;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.google.common.collect.Lists;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.GunTabType;
@@ -69,7 +71,7 @@ public class AttachmentQueryEntry {
             String gunType = entry.getValue().getType();
             if (tabType.equals(gunType)) {
                 ItemStack gun = GunItemBuilder.create().setId(entry.getKey()).build();
-                if (!(gun.getItem() instanceof IGun iGun)) {
+                if (!(ItemBehavior.of(gun) instanceof IGun iGun)) {
                     return;
                 }
                 if (iGun.allowAttachment(gun, this.attachmentStack)) {

@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.gun;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.ReloadState;
@@ -148,10 +150,10 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
             // 背包检查
             for (int i = 0; i < cap.getSlots(); i++) {
                 ItemStack checkAmmoStack = cap.getStackInSlot(i);
-                if (checkAmmoStack.getItem() instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gunItem, checkAmmoStack)) {
+                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gunItem, checkAmmoStack)) {
                     return true;
                 }
-                if (checkAmmoStack.getItem() instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gunItem, checkAmmoStack)) {
+                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gunItem, checkAmmoStack)) {
                     return true;
                 }
             }
@@ -240,14 +242,14 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
         // 背包检查
         for (int i = 0; i < itemHandler.getSlots(); i++) {
             ItemStack checkAmmoStack = itemHandler.getStackInSlot(i);
-            if (checkAmmoStack.getItem() instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gunItem, checkAmmoStack)) {
+            if (ItemBehavior.of(checkAmmoStack) instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gunItem, checkAmmoStack)) {
                 ItemStack extractItem = itemHandler.extractItem(i, cnt, false);
                 cnt = cnt - extractItem.getCount();
                 if (cnt <= 0) {
                     break;
                 }
             }
-            if (checkAmmoStack.getItem() instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gunItem, checkAmmoStack)) {
+            if (ItemBehavior.of(checkAmmoStack) instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gunItem, checkAmmoStack)) {
                 int boxAmmoCount = iAmmoBox.getAmmoCount(checkAmmoStack);
                 int extractCount = Math.min(boxAmmoCount, cnt);
                 int remainCount = boxAmmoCount - extractCount;
@@ -379,7 +381,7 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
     @Override
     @Nonnull
     public Optional<TooltipComponent> getTooltipImage(ItemStack stack) {
-        if (stack.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(stack) instanceof IGun iGun) {
             Optional<CommonGunIndex> optional = TimelessAPI.getCommonGunIndex(this.getGunId(stack));
             if (optional.isPresent()) {
                 CommonGunIndex gunIndex = optional.get();
@@ -397,7 +399,7 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
      */
     @Override
     public boolean useInventoryAmmo(ItemStack gun) {
-        if (gun.getItem() instanceof IGun) {
+        if (ItemBehavior.of(gun) instanceof IGun) {
             Optional<CommonGunIndex> gunIndexOptional = TimelessAPI.getCommonGunIndex(this.getGunId(gun));
             if (gunIndexOptional.isEmpty()) {
                 return false;
@@ -433,10 +435,10 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
             // 背包检查
             for (int i = 0; i < cap.getSlots(); i++) {
                 ItemStack checkAmmoStack = cap.getStackInSlot(i);
-                if (checkAmmoStack.getItem() instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gun, checkAmmoStack)) {
+                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(gun, checkAmmoStack)) {
                     return true;
                 }
-                if (checkAmmoStack.getItem() instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gun, checkAmmoStack)) {
+                if (ItemBehavior.of(checkAmmoStack) instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(gun, checkAmmoStack)) {
                     return true;
                 }
             }
@@ -450,7 +452,7 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
      * @return RPM 数值
      */
     public int getRPM(ItemStack gun) {
-        if (gun.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(gun) instanceof IGun iGun) {
             return TimelessAPI.getCommonGunIndex(this.getGunId(gun))
                     .map(CommonGunIndex::getGunData)
                     .map(gunData -> {
@@ -471,7 +473,7 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
      * @return 是否可以趴下射击
      */
     public boolean isCanCrawl(ItemStack gun) {
-        if (gun.getItem() instanceof IGun) {
+        if (ItemBehavior.of(gun) instanceof IGun) {
             return TimelessAPI.getCommonGunIndex(this.getGunId(gun))
                     .map(CommonGunIndex::getGunData)
                     .map(GunData::isCanCrawl)

@@ -126,6 +126,14 @@ public class SoundPlayManager {
         playClientSound(entity, gunIndex.getSounds(SoundManager.SILENCE_SOUND), 0.6f, 0.9f + entity.getRandom().nextFloat() * 0.125f, (int) (GunConfig.DEFAULT_GUN_SILENCE_SOUND_DISTANCE.get() * gunData.getFireSound().getSilenceMultiplier()), false, SoundConfig.HIGH_FREQUENCY_SOUND_CONCURRENCY_LIMIT.get(), false, false);
     }
 
+    /** Spatial third-person firing sound with the server's effective suppressor distance. */
+    public static void playRemoteShootSound(LivingEntity entity, GunDisplayInstance display, boolean silenced, int distance) {
+        String sound = silenced ? SoundManager.SILENCE_3P_SOUND : SoundManager.SHOOT_3P_SOUND;
+        playClientSound(entity, display.getSounds(sound), silenced ? .6f : .8f,
+                .9f + entity.getRandom().nextFloat() * .125f, Math.max(1, distance), true,
+                SoundConfig.HIGH_FREQUENCY_SOUND_CONCURRENCY_LIMIT.get(), true, false);
+    }
+
     public static void playDryFireSound(LivingEntity entity, GunDisplayInstance gunIndex) {
         if (DRY_SOUND_TRACK) {
             playClientSound(entity, gunIndex.getSounds(SoundManager.DRY_FIRE_SOUND), 1.0f, 0.9f + entity.getRandom().nextFloat() * 0.125f, GunConfig.DEFAULT_GUN_OTHER_SOUND_DISTANCE.get());

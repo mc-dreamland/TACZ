@@ -1,5 +1,7 @@
 package com.tacz.guns.client.event;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.client.other.KeepingItemRenderer;
@@ -28,7 +30,7 @@ public class FirstPersonRenderEvent {
         }
         if (event.getHand() == InteractionHand.OFF_HAND) {
             ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
-            if (stack.getItem() instanceof IGun) {
+            if (ItemBehavior.of(stack) instanceof IGun) {
                 event.setCanceled(true);
             }
             return;
@@ -45,7 +47,7 @@ public class FirstPersonRenderEvent {
         }
 
         // 渲染相关内容整理到物品的IClientItemExtensions了，这个接口有待进一步抽象
-        if (IClientItemExtensions.of(stack.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(stack)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             // 如果旧的状态机已经不再使用且未正常退出，使其静默退出
             AnimationStateMachine<?> machine = renderer.getStateMachine(stack);
             if (machine != lastStateMachine) {

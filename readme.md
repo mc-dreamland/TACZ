@@ -24,6 +24,9 @@
 
 Timeless and Classics Guns Zero is a gun mod for Minecraft Forge 1.20.1.
 
+Paper 1.21.11 server support is in the independent [paper module](paper/README.md).
+It uses this repository's Forge 1.20.1 client bridge with ViaForge and supports the bundled default gun pack.
+
 ## Notice
 
 - If you have any bugs, you can visit [Issues](https://github.com/MCModderAnchor/TACZ/issues) to

@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gui;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -199,23 +201,23 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
 
             Minecraft minecraft = Minecraft.getInstance();
             ItemStack stack = minecraft.player != null ? minecraft.player.getMainHandItem() : ItemStack.EMPTY;
-            if (stack.getItem() instanceof IGun igun) {
-                if (result.getItem() instanceof IAmmo iAmmo) {
+            if (ItemBehavior.of(stack) instanceof IGun igun) {
+                if (ItemBehavior.of(result) instanceof IAmmo iAmmo) {
                     return iAmmo.isAmmoOfGun(stack, result);
                 }
-                if (result.getItem() instanceof IAttachment) {
+                if (ItemBehavior.of(result) instanceof IAttachment) {
                     return igun.allowAttachment(stack, result);
                 }
                 return false;
             }
-            if (stack.getItem() instanceof IAttachment) {
-                if (result.getItem() instanceof IGun iGun) {
+            if (ItemBehavior.of(stack) instanceof IAttachment) {
+                if (ItemBehavior.of(result) instanceof IGun iGun) {
                     return iGun.allowAttachment(result, stack);
                 }
                 return false;
             }
-            if (stack.getItem() instanceof IAmmo iAmmo) {
-                if (result.getItem() instanceof IGun) {
+            if (ItemBehavior.of(stack) instanceof IAmmo iAmmo) {
+                if (ItemBehavior.of(result) instanceof IGun) {
                     return iAmmo.isAmmoOfGun(result, stack);
                 }
                 return false;

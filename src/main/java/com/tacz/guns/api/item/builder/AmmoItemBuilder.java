@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.builder;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.IAmmo;
 import com.tacz.guns.init.ModItems;
@@ -29,7 +31,7 @@ public final class AmmoItemBuilder {
 
     public ItemStack build() {
         ItemStack ammo = new ItemStack(ModItems.AMMO.get(), this.count);
-        if (ammo.getItem() instanceof IAmmo iAmmo) {
+        if (ItemBehavior.of(ammo) instanceof IAmmo iAmmo) {
             iAmmo.setAmmoId(ammo, this.ammoId);
         }
         return ammo;

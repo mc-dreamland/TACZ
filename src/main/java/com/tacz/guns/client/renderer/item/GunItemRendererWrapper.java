@@ -1,5 +1,7 @@
 package com.tacz.guns.client.renderer.item;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -96,7 +98,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
 
     @Override
     public long getPutAwayTime(ItemStack stack) {
-        if (stack.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(stack) instanceof IGun iGun) {
             return TimelessAPI.getCommonGunIndex(iGun.getGunId(stack))
                     .map(index -> (long) (index.getGunData().getPutAwayTime() * 1000L))
                     .orElse(0L);
@@ -122,7 +124,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
 
     @Override
     public void applyLevelCameraAnimation(ViewportEvent.ComputeCameraAngles event, ItemStack stack, LocalPlayer player) {
-        if (!(stack.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
         Optional.ofNullable(getModel(stack)).ifPresent(model -> {
@@ -142,7 +144,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
 
     @Override
     public void applyItemInHandCameraAnimation(BeforeRenderHandEvent event, ItemStack stack, LocalPlayer player) {
-        if (!(stack.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
         Optional.ofNullable(getModel(stack)).ifPresent(model -> {
@@ -162,7 +164,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
     @Override
     public void renderFirstPerson(LocalPlayer player, ItemStack stack, ItemDisplayContext ctx, PoseStack poseStack, MultiBufferSource bufferSource,
                                   int light, float partialTick) {
-        if (!(stack.getItem() instanceof IGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun)) {
             return;
         }
 
@@ -255,7 +257,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
     @Override
     public void renderByItem(@Nonnull ItemStack stack, @Nonnull ItemDisplayContext transformType, @Nonnull PoseStack poseStack, @Nonnull MultiBufferSource pBuffer,
                              int pPackedLight, int pPackedOverlay) {
-        if (!(stack.getItem() instanceof IGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun)) {
             return;
         }
         poseStack.pushPose();

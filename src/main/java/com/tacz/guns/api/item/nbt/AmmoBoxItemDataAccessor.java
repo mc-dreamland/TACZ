@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.nbt;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAmmoBox;
@@ -55,7 +57,7 @@ public interface AmmoBoxItemDataAccessor extends IAmmoBox {
 
     @Override
     default boolean isAmmoBoxOfGun(ItemStack gun, ItemStack ammoBox) {
-        if (gun.getItem() instanceof IGun iGun && ammoBox.getItem() instanceof IAmmoBox iAmmoBox) {
+        if (ItemBehavior.of(gun) instanceof IGun iGun && ItemBehavior.of(ammoBox) instanceof IAmmoBox iAmmoBox) {
             if (isAllTypeCreative(ammoBox)) {
                 return true;
             }

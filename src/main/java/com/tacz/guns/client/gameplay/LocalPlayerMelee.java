@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
@@ -38,7 +40,7 @@ public class LocalPlayerMelee {
         }
         // 暂定为主手
         ItemStack mainHandItem = player.getMainHandItem();
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
         GunDisplayInstance display = TimelessAPI.getGunDisplay(mainHandItem).orElse(null);

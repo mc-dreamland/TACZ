@@ -1,5 +1,7 @@
 package com.tacz.guns.client.model.functional;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tacz.guns.api.TimelessAPI;
@@ -34,7 +36,7 @@ public class AttachmentRender implements IFunctionalRenderer {
 
     public static void renderAttachment(ItemStack attachmentItem, ItemStack gunItem, PoseStack poseStack, ItemDisplayContext transformType, int light, int overlay) {
         poseStack.translate(0, -1.5, 0);
-        if (attachmentItem.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(attachmentItem) instanceof IAttachment iAttachment) {
             ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
             TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresentOrElse(attachmentIndex -> {
                 BedrockAttachmentModel model = attachmentIndex.getAttachmentModel();

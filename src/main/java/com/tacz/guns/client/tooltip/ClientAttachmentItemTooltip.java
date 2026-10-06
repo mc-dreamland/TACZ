@@ -1,5 +1,7 @@
 package com.tacz.guns.client.tooltip;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
@@ -64,7 +66,7 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
         TimelessAPI.getAllCommonGunIndex().forEach(entry -> {
             ResourceLocation gunId = entry.getKey();
             ItemStack gun = GunItemBuilder.create().setId(gunId).build();
-            if (!(gun.getItem() instanceof IGun iGun)) {
+            if (!(ItemBehavior.of(gun) instanceof IGun iGun)) {
                 return;
             }
             if (iGun.allowAttachment(gun, attachment)) {
@@ -163,7 +165,7 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
                 Arrays.stream(split).forEach(s -> components.add(Component.literal(s).withStyle(ChatFormatting.GRAY)));
             }
 
-            if (attachment.getItem() instanceof IAttachment iAttachment) {
+            if (ItemBehavior.of(attachment) instanceof IAttachment iAttachment) {
                 TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresent(attachmentIndex -> {
                     if (iAttachment.hasCustomLaserColor(attachment)) {
                         int color = iAttachment.getLaserColor(attachment);

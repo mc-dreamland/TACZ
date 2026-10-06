@@ -39,6 +39,7 @@ public class EntityHurtByGunEvent extends Event implements KubeJSGunEventPoster<
         this.hurtEntity = hurtEntity;
         this.attacker = attacker;
         this.gunId = gunId;
+        this.gunDisplayId = gunDisplayId;
         this.baseAmount = baseAmount;
         this.nonApPartDamageSource = Optional.ofNullable(sources).map(Pair::getLeft).orElse(null);
         this.apPartDamageSource = Optional.ofNullable(sources).map(Pair::getRight).orElse(null);

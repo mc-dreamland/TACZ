@@ -1,5 +1,7 @@
 package com.tacz.guns.client.model.functional;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
@@ -111,13 +113,13 @@ public class BeamRenderer  {
             return DEFAULT_LASER_CONFIG;
         }
 
-        if (stack.getItem() instanceof IAttachment iAttachment) {
+        if (ItemBehavior.of(stack) instanceof IAttachment iAttachment) {
             return TimelessAPI.getClientAttachmentIndex(iAttachment.getAttachmentId(stack))
                     .map(ClientAttachmentIndex::getLaserConfig)
                     .orElse(DEFAULT_LASER_CONFIG);
         }
 
-        if (stack.getItem() instanceof IGun) {
+        if (ItemBehavior.of(stack) instanceof IGun) {
             return TimelessAPI.getGunDisplay(stack)
                     .map(GunDisplayInstance::getLaserConfig)
                     .orElse(DEFAULT_LASER_CONFIG);

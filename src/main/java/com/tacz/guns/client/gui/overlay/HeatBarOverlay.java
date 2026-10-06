@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gui.overlay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.TimelessAPI;
@@ -38,7 +40,7 @@ public class HeatBarOverlay implements IGuiOverlay {
             return;
         }
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
         ResourceLocation gunId = iGun.getGunId(stack);

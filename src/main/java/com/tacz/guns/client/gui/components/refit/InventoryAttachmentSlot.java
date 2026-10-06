@@ -14,17 +14,27 @@ import java.util.function.Consumer;
 public class InventoryAttachmentSlot extends Button implements IStackTooltip {
     private final int slotIndex;
     private final Inventory inventory;
+    private final ItemStack serverItem;
 
     public InventoryAttachmentSlot(int pX, int pY, int slotIndex, Inventory inventory, Button.OnPress onPress) {
         super(pX, pY, 18, 18, Component.empty(), onPress, DEFAULT_NARRATION);
         this.slotIndex = slotIndex;
         this.inventory = inventory;
+        this.serverItem = ItemStack.EMPTY;
+    }
+
+    /** A server menu can arrive before vanilla inventory synchronization. Render its entry. */
+    public InventoryAttachmentSlot(int pX, int pY, int slotIndex, ItemStack serverItem, Button.OnPress onPress) {
+        super(pX, pY, 18, 18, Component.empty(), onPress, DEFAULT_NARRATION);
+        this.slotIndex = slotIndex;
+        this.inventory = null;
+        this.serverItem = serverItem.copy();
     }
 
     @Override
     public void renderTooltip(Consumer<ItemStack> consumer) {
-        if (this.isHoveredOrFocused() && 0 <= this.slotIndex && this.slotIndex < this.inventory.getContainerSize()) {
-            ItemStack item = this.inventory.getItem(slotIndex);
+        if (this.isHoveredOrFocused() && (inventory == null || 0 <= this.slotIndex && this.slotIndex < this.inventory.getContainerSize())) {
+            ItemStack item = inventory == null ? serverItem : this.inventory.getItem(slotIndex);
             consumer.accept(item);
         }
     }
@@ -40,7 +50,7 @@ public class InventoryAttachmentSlot extends Button implements IStackTooltip {
         } else {
             graphics.blit(GunRefitScreen.SLOT_TEXTURE, x + 1, y + 1, 1, 1, width - 2, height - 2, 18, 18);
         }
-        graphics.renderItem(inventory.getItem(slotIndex), x + 1, y + 1);
+        graphics.renderItem(inventory == null ? serverItem : inventory.getItem(slotIndex), x + 1, y + 1);
 
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();

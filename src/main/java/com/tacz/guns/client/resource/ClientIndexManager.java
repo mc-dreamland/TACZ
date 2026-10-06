@@ -1,5 +1,7 @@
 package com.tacz.guns.client.resource;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.github.mcmodderanchor.simplebedrockmodel.v1.client.handler.FirstPersonRenderHandler;
 import com.google.common.collect.Maps;
 import com.tacz.guns.GunMod;
@@ -201,7 +203,7 @@ public class ClientIndexManager {
         if (stack.isEmpty()) {
             return;
         }
-        if (stack.getItem() instanceof IGun) {
+        if (ItemBehavior.of(stack) instanceof IGun) {
             TimelessAPI.getGunDisplay(stack).ifPresent(display -> {
                 display.warmUpLod();
                 display.warmUpModel();
@@ -224,7 +226,7 @@ public class ClientIndexManager {
         if (stack.isEmpty()) {
             return;
         }
-        if (stack.getItem() instanceof IGun) {
+        if (ItemBehavior.of(stack) instanceof IGun) {
             TimelessAPI.getGunDisplay(stack).ifPresent(display -> {
                 display.warmUpLod();
                 display.warmUpModel();

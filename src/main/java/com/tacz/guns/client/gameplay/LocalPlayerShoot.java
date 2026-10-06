@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -53,7 +55,7 @@ public class LocalPlayerShoot {
         IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
         ItemStack mainHandItem = player.getMainHandItem();
         // 暂定为只有主手能开枪
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             data.chargeProgress = 0f;
             return false;
         }
@@ -115,7 +117,7 @@ public class LocalPlayerShoot {
         IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
         ItemStack mainHandItem = player.getMainHandItem();
         // 暂定为只有主手能开枪
-        if (!(mainHandItem.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return ShootResult.NOT_GUN;
         }
         ResourceLocation gunId = iGun.getGunId(mainHandItem);

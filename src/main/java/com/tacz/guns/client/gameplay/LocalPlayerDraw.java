@@ -78,7 +78,7 @@ public class LocalPlayerDraw {
     }
 
     private void doPutAway(ItemStack lastItem, long putAwayTime) {
-        if (IClientItemExtensions.of(lastItem.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.tryExit(lastItem, putAwayTime);
             TimelessAPI.getGunDisplay(lastItem).ifPresent(display -> {
                 SoundPlayManager.stopPlayGunSound();
@@ -88,7 +88,7 @@ public class LocalPlayerDraw {
     }
 
     private long getDrawTime(ItemStack lastItem, IGun lastGun, long drawTime) {
-        if (IClientItemExtensions.of(lastItem.getItem()).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             long putAwayTime = renderer.getPutAwayTime(lastItem);
             if (drawTime > putAwayTime) {
                 drawTime = putAwayTime;

@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.builder;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.google.common.collect.Maps;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
@@ -76,7 +78,7 @@ public final class GunItemBuilder {
      */
     public ItemStack forceBuild() {
         ItemStack gun = new ItemStack(ModItems.MODERN_KINETIC_GUN.get(), this.count);
-        if (gun.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(gun) instanceof IGun iGun) {
             iGun.setGunId(gun, this.gunId);
             iGun.setFireMode(gun, this.fireMode);
             iGun.setCurrentAmmoCount(gun, this.ammoCount);
@@ -102,7 +104,7 @@ public final class GunItemBuilder {
         }
 
         ItemStack gun = new ItemStack(gunItemRegistryObject.get(), this.count);
-        if (gun.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(gun) instanceof IGun iGun) {
             iGun.setGunId(gun, this.gunId);
             iGun.setFireMode(gun, this.fireMode);
             iGun.setCurrentAmmoCount(gun, this.ammoCount);

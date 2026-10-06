@@ -1,5 +1,7 @@
 package com.tacz.guns.api.item.nbt;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAmmo;
@@ -39,7 +41,7 @@ public interface AmmoItemDataAccessor extends IAmmo {
 
     @Override
     default boolean isAmmoOfGun(ItemStack gun, ItemStack ammo) {
-        if (gun.getItem() instanceof IGun iGun && ammo.getItem() instanceof IAmmo iAmmo) {
+        if (ItemBehavior.of(gun) instanceof IGun iGun && ItemBehavior.of(ammo) instanceof IAmmo iAmmo) {
             ResourceLocation gunId = iGun.getGunId(gun);
             ResourceLocation ammoId = iAmmo.getAmmoId(ammo);
             return TimelessAPI.getCommonGunIndex(gunId).map(gunIndex -> gunIndex.getGunData().getAmmoId().equals(ammoId)).orElse(false);

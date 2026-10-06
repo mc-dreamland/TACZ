@@ -1,5 +1,7 @@
 package com.tacz.guns.compat.kubejs.events;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.tacz.guns.api.client.event.BeforeRenderHandEvent;
 import com.tacz.guns.api.client.event.RenderItemInHandBobEvent;
 import com.tacz.guns.api.client.event.RenderLevelBobEvent;
@@ -43,7 +45,7 @@ public class GunKubeJSEvents {
         @Nullable
         public ResourceLocation getEventSubId() {
             ItemStack itemStack = getEventItemStack();
-            return itemStack.getItem() instanceof IGun iGun ? iGun.getGunId(itemStack) : null;
+            return ItemBehavior.of(itemStack) instanceof IGun iGun ? iGun.getGunId(itemStack) : null;
         }
 
         @HideFromJS

@@ -29,7 +29,7 @@ public interface IGun {
         if (stack == null) {
             return null;
         }
-        if (stack.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(stack) instanceof IGun iGun) {
             return iGun;
         }
         return null;
@@ -40,14 +40,14 @@ public interface IGun {
      */
     @Deprecated
     static boolean mainhandHoldGun(LivingEntity livingEntity) {
-        return livingEntity.getMainHandItem().getItem() instanceof IGun;
+        return ItemBehavior.of(livingEntity.getMainHandItem()) instanceof IGun;
     }
 
     /**
      * 是否主手持枪
      */
     static boolean mainHandHoldGun(LivingEntity livingEntity) {
-        return livingEntity.getMainHandItem().getItem() instanceof IGun;
+        return ItemBehavior.of(livingEntity.getMainHandItem()) instanceof IGun;
     }
 
     /**
@@ -56,7 +56,7 @@ public interface IGun {
     @Deprecated
     static FireMode getMainhandFireMode(LivingEntity livingEntity) {
         ItemStack mainHandItem = livingEntity.getMainHandItem();
-        if (mainHandItem.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(mainHandItem) instanceof IGun iGun) {
             return iGun.getFireMode(mainHandItem);
         }
         return FireMode.UNKNOWN;
@@ -67,7 +67,7 @@ public interface IGun {
      */
     static FireMode getMainHandFireMode(LivingEntity livingEntity) {
         ItemStack mainHandItem = livingEntity.getMainHandItem();
-        if (mainHandItem.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(mainHandItem) instanceof IGun iGun) {
             return iGun.getFireMode(mainHandItem);
         }
         return FireMode.UNKNOWN;

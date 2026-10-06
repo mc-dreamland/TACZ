@@ -20,6 +20,8 @@
     "client.LocalPlayerMixin",
     "client.MouseHandlerMixin",
     "client.PlayerModelMixin",
+    "client.PaperPayloadMixin",
+    "client.PaperItemRendererMixin",
     "client.SoundManagerPreparationsMixin",
     "client.StairBlockAccessor"
   ],

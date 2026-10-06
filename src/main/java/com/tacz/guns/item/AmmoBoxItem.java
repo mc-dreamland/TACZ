@@ -197,6 +197,10 @@ public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItem
 
     @Override
     public int getBarWidth(ItemStack stack) {
+        if (stack.hasTag() && stack.getTag().contains("PaperBoxCapacity")) {
+            int capacity = stack.getTag().getInt("PaperBoxCapacity");
+            return capacity <= 0 ? 0 : Math.min(13, Math.max(0, (int) Math.round(13d * this.getAmmoCount(stack) / capacity)));
+        }
         ResourceLocation ammoId = this.getAmmoId(stack);
         int ammoCount = this.getAmmoCount(stack);
         int boxLevelMultiplier = this.getAmmoLevel(stack) + 1;

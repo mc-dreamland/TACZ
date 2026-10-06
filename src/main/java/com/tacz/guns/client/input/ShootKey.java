@@ -1,5 +1,7 @@
 package com.tacz.guns.client.input;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -49,7 +51,7 @@ public class ShootKey {
             return;
         }
         ItemStack mainHandItem = player.getMainHandItem();
-        if (mainHandItem.getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(mainHandItem) instanceof IGun iGun) {
             FireMode fireMode = iGun.getFireMode(mainHandItem);
             boolean isBurstAuto = fireMode == FireMode.BURST && TimelessAPI.getCommonGunIndex(iGun.getGunId(mainHandItem))
                     .map(index -> index.getGunData().getBurstData().isContinuousShoot())

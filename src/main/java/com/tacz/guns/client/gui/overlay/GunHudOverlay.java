@@ -1,5 +1,7 @@
 package com.tacz.guns.client.gui.overlay;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.GunMod;
@@ -60,7 +62,7 @@ public class GunHudOverlay implements IGuiOverlay {
             return;
         }
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof IGun iGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
         ResourceLocation gunId = iGun.getGunId(stack);
@@ -204,10 +206,10 @@ public class GunHudOverlay implements IGuiOverlay {
         cacheInventoryAmmoCount = 0;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack inventoryItem = inventory.getItem(i);
-            if (inventoryItem.getItem() instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(stack, inventoryItem)) {
+            if (ItemBehavior.of(inventoryItem) instanceof IAmmo iAmmo && iAmmo.isAmmoOfGun(stack, inventoryItem)) {
                 cacheInventoryAmmoCount += inventoryItem.getCount();
             }
-            if (inventoryItem.getItem() instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(stack, inventoryItem)) {
+            if (ItemBehavior.of(inventoryItem) instanceof IAmmoBox iAmmoBox && iAmmoBox.isAmmoBoxOfGun(stack, inventoryItem)) {
                 // 创造模式弹药箱？直接返回 9999
                 if (iAmmoBox.isAllTypeCreative(inventoryItem) || iAmmoBox.isCreative(inventoryItem)) {
                     cacheInventoryAmmoCount = 9999;

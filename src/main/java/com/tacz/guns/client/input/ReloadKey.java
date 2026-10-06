@@ -1,5 +1,7 @@
 package com.tacz.guns.client.input;
 
+import com.tacz.guns.api.item.ItemBehavior;
+
 import com.mojang.blaze3d.platform.InputConstants;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -40,7 +42,7 @@ public class ReloadKey {
             if (player == null || player.isSpectator()) {
                 return;
             }
-            if (player.getMainHandItem().getItem() instanceof IGun iGun) {
+            if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun iGun) {
                 // 如果使用背包直读，且没有换弹冷却机制，则在输入时就屏蔽换弹
                 if (iGun.useInventoryAmmo(player.getMainHandItem())) {
                     return;
@@ -80,7 +82,7 @@ public class ReloadKey {
             return;
         }
         ItemStack currentGunItem = player.getMainHandItem();
-        if (player.getMainHandItem().getItem() instanceof IGun iGun) {
+        if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun iGun) {
             // 如果使用背包直读，且没有换弹冷却机制，则在输入时就屏蔽换弹
             if (iGun.useInventoryAmmo(player.getMainHandItem())) {
                 return;
