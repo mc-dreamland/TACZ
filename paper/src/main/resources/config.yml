@@ -1,0 +1,38 @@
+# Gun catalogs live in guns/, ammos/, attachments/, recipes/ and attachment_tags/.
+# JSON files are scanned recursively; /tacz reload validates and synchronizes them.
+# CMD identifies the model/skin. Gameplay states are sent over tacz:paper.
+ammo-box:
+  capacity:
+    0: 192
+    1: 384
+    2: 768
+gameplay:
+  max-active-bullets: 8192
+  ignite-blocks: false
+  ignite-entities: true
+  explosion-block-damage: false
+  explosion-knockback: true
+
+# Simplified server hit regions, independent of client limb animations.
+# Missing entries use built-in defaults; /tacz reload applies validated changes.
+hitboxes:
+  default-profile: generic
+  profiles:
+    humanoid:
+      head-width: 0.85
+      head-height: 0.25
+      legs-height: 0.45
+    generic:
+      head-width: 0.85
+      head-height: 0.25
+  entities:
+    minecraft:player:
+      profile: humanoid
+    minecraft:zombie:
+      profile: humanoid
+    minecraft:skeleton:
+      profile: humanoid
+    minecraft:slime:
+      profile: body
+    minecraft:spider:
+      profile: body

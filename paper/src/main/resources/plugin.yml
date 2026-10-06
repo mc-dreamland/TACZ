@@ -1,0 +1,43 @@
+name: TACZ
+version: '${version}'
+main: com.tacz.guns.paper.TaczPaperPlugin
+api-version: '1.21.11'
+description: TACZ default gun pack server with a Forge client bridge
+authors: [TACZ]
+website: https://github.com/MCModderAnchor/TACZ
+commands:
+  tacz:
+    description: TACZ gun, ammunition, attachment, supply menu and workbench commands
+    usage: /tacz help
+permissions:
+  tacz.help:
+    default: true
+  tacz.status:
+    default: true
+  tacz.list:
+    default: true
+  tacz.use:
+    description: Use TACZ guns with a compatible client
+    default: true
+  tacz.workbench:
+    default: true
+  tacz.refit:
+    default: true
+  tacz.ammobox:
+    default: true
+  tacz.give:
+    default: op
+  tacz.reload:
+    default: op
+  tacz.admin:
+    default: op
+    children:
+      tacz.help: true
+      tacz.status: true
+      tacz.list: true
+      tacz.give: true
+      tacz.reload: true
+      tacz.use: true
+      tacz.workbench: true
+      tacz.refit: true
+      tacz.ammobox: true
