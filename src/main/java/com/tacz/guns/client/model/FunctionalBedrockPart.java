@@ -3,7 +3,6 @@ package com.tacz.guns.client.model;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tacz.guns.client.model.bedrock.BedrockPart;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.world.item.ItemDisplayContext;
 
 import javax.annotation.Nonnull;
@@ -48,7 +47,7 @@ public class FunctionalBedrockPart extends BedrockPart {
         int cubePackedLight = light;
         if (illuminated) {
             // 最大亮度
-            cubePackedLight = LightTexture.pack(15, 15);
+            cubePackedLight = 15728880;
         }
 
         poseStack.pushPose();

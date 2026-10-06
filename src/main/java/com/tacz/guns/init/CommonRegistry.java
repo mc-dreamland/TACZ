@@ -1,26 +1,28 @@
 package com.tacz.guns.init;
 
+import com.tacz.guns.GunMod;
 import com.tacz.guns.entity.sync.ModSyncedEntityData;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.resource.GunPackLoader;
-import net.minecraftforge.event.AddPackFindersEvent;
-import net.minecraftforge.event.entity.EntityAttributeModificationEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
+import net.minecraft.server.packs.PackType;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
+import net.neoforged.neoforge.event.entity.EntityAttributeModificationEvent;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+/**
+ * Mod-bus listeners are registered from {@link com.tacz.guns.GunMod} via {@code addListener}.
+ * Evidence: AddPackFindersEvent implements IModBusEvent ②; EntityAttributeModificationEvent implements IModBusEvent ②.
+ */
 public final class CommonRegistry {
     private static boolean LOAD_COMPLETE = false;
 
-    @SubscribeEvent
+    private CommonRegistry() {
+    }
+
     public static void onSetupEvent(FMLCommonSetupEvent event) {
-        event.enqueueWork(NetworkHandler::init);
         event.enqueueWork(ModSyncedEntityData::init);
     }
 
-    @SubscribeEvent
     public static void onLoadComplete(FMLLoadCompleteEvent event) {
         LOAD_COMPLETE = true;
     }
@@ -29,15 +31,21 @@ public final class CommonRegistry {
         return LOAD_COMPLETE;
     }
 
-    @SubscribeEvent
     public static void registerAttributes(EntityAttributeModificationEvent event) {
-        event.getTypes().forEach(type -> {
-            event.add(type, ModAttributes.BULLET_RESISTANCE.get());
-        });
+        event.getTypes().forEach(type -> event.add(type, ModAttributes.BULLET_RESISTANCE));
     }
 
-    @SubscribeEvent
     public static void onAddPackFinders(AddPackFindersEvent event) {
-        event.addRepositorySource(GunPackLoader.INSTANCE);
+        // Capture the pack type at event-handling time (when we know the
+        // correct type from the event) rather than setting a mutable field
+        // on the singleton that can be overwritten by a later event firing
+        // for the opposite PackType.  The lambda closes over the local
+        // variable, so each repository gets the correct type.
+        PackType type = event.getPackType();
+        GunMod.LOGGER.info("onAddPackFinders called with packType={}", type);
+        event.addRepositorySource(pOnLoad -> {
+            GunMod.LOGGER.info("RepositorySource.loadPacks invoked for packType={}", type);
+            GunPackLoader.INSTANCE.loadPacksForType(pOnLoad, type);
+        });
     }
 }

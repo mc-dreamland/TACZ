@@ -2,23 +2,24 @@ package com.tacz.guns.client.resource.manager;
 
 import com.google.common.collect.Maps;
 import com.google.gson.JsonParseException;
+import com.google.gson.Strictness;
+import com.google.gson.stream.JsonReader;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.client.resource.pojo.PackInfo;
 import com.tacz.guns.resource.CommonAssetsManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
-import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Map;
 
 public class PackInfoManager extends SimplePreparableReloadListener<Map<String, PackInfo>> {
-    private static final Marker MARKER = MarkerManager.getMarker("PackInfoLoader");
+    private static final Marker MARKER = MarkerFactory.getMarker("PackInfoLoader");
     private static final String PACK_INFO_NAME = "gunpack_info.json";
     private final Map<String, PackInfo> dataMap = Maps.newHashMap();
 
@@ -27,9 +28,13 @@ public class PackInfoManager extends SimplePreparableReloadListener<Map<String, 
         Map<String, PackInfo> output = Maps.newHashMap();
 
         for (String namespaces : manager.getNamespaces()) {
-            manager.getResource(new ResourceLocation(namespaces, PACK_INFO_NAME)).ifPresent(rl -> {
+            manager.getResource(ResourceLocation.fromNamespaceAndPath(namespaces, PACK_INFO_NAME)).ifPresent(rl -> {
                 try (Reader reader = rl.openAsReader()) {
-                    PackInfo packInfo = GsonHelper.fromJson(CommonAssetsManager.GSON, reader, PackInfo.class, true);
+                    // Gun packs are documented and shipped as JSON-with-comments. Gson 2.14 is
+                    // strict by default, unlike the older runtime this code was ported from.
+                    JsonReader jsonReader = CommonAssetsManager.GSON.newJsonReader(reader);
+                    jsonReader.setStrictness(Strictness.LENIENT);
+                    PackInfo packInfo = CommonAssetsManager.GSON.fromJson(jsonReader, PackInfo.class);
                     PackInfo packInfo1 = output.put(namespaces, packInfo);
                     if (packInfo1 != null) {
                         throw new IllegalStateException("Duplicate data file ignored with namespace " + namespaces);
@@ -51,4 +56,7 @@ public class PackInfoManager extends SimplePreparableReloadListener<Map<String, 
     public PackInfo getData(String namespace) {
         return dataMap.get(namespace);
     }
+
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "packinfo_manager");
+
 }

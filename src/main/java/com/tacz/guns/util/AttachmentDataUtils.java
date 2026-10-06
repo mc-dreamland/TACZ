@@ -23,6 +23,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+
 /**
  * 配件数据工具类，用于离线计算物品属性<br>
  * 不应该频繁调用，应尽可能调用实体缓存<br>
@@ -95,12 +96,12 @@ public final class AttachmentDataUtils {
         }
 
         List<Modifier> modifiers = new ArrayList<>();
-        for (AttachmentType type : AttachmentType.values()){
+        for (AttachmentType type : AttachmentType.values()) {
             ResourceLocation id = iGun.getAttachmentId(gunItem, type);
             AttachmentData attachmentData = gunData.getExclusiveAttachments().get(id);
             if (attachmentData != null) {
                 var m = attachmentData.getModifier().get(WeightModifier.ID);
-                if(m != null && m.getValue() instanceof Modifier modifier) {
+                if (m != null && m.getValue() instanceof Modifier modifier) {
                     modifiers.add(modifier);
                 } else {
                     Modifier modifier = new Modifier();
@@ -110,7 +111,7 @@ public final class AttachmentDataUtils {
             } else {
                 TimelessAPI.getCommonAttachmentIndex(id).ifPresent(index -> {
                     var m = index.getData().getModifier().get(WeightModifier.ID);
-                    if(m != null && m.getValue() instanceof Modifier modifier) {
+                    if (m != null && m.getValue() instanceof Modifier modifier) {
                         modifiers.add(modifier);
                     } else {
                         Modifier modifier = new Modifier();
@@ -203,6 +204,7 @@ public final class AttachmentDataUtils {
 
     /**
      * 以指定id获取枪械物品的modifier列表
+     *
      * @param gunItem
      * @param gunData
      * @param id
@@ -222,14 +224,14 @@ public final class AttachmentDataUtils {
             AttachmentData attachmentData = gunData.getExclusiveAttachments().get(attachmentId);
             if (attachmentData != null) {
                 var m = attachmentData.getModifier().get(id);
-                if(m != null && m.getValue() instanceof Modifier modifier) {
+                if (m != null && m.getValue() instanceof Modifier modifier) {
                     modifiers.add(modifier);
                 }
             } else {
                 CommonAttachmentIndex index = TimelessAPI.getCommonAttachmentIndex(attachmentId).orElse(null);
                 if (index != null) {
                     var m = index.getData().getModifier().get(id);
-                    if(m != null && m.getValue() instanceof Modifier modifier) {
+                    if (m != null && m.getValue() instanceof Modifier modifier) {
                         modifiers.add(modifier);
                     }
                 }
@@ -240,12 +242,13 @@ public final class AttachmentDataUtils {
 
     /**
      * 计算布尔值，取或
-     * @param gunItem 枪械物品
-     * @param gunData 枪械原始数据
-     * @param id modifier id
-     * @param clazz data数据结构类
+     *
+     * @param gunItem  枪械物品
+     * @param gunData  枪械原始数据
+     * @param id       modifier id
+     * @param clazz    data数据结构类
      * @param resolver 获取布尔值的方法
-     * @param <T> data数据结构泛型
+     * @param <T>      data数据结构泛型
      * @return 计算结果
      */
     private static <T> boolean calcBooleanValue(ItemStack gunItem, GunData gunData, String id, Class<T> clazz, BooleanResolver<T> resolver) {
@@ -279,7 +282,7 @@ public final class AttachmentDataUtils {
         return false;
     }
 
-    private static <T> boolean resolve(JsonProperty<?> raw, BooleanResolver<T> data, Class<T> type){
+    private static <T> boolean resolve(JsonProperty<?> raw, BooleanResolver<T> data, Class<T> type) {
         if (raw != null && raw.getValue() != null && raw.getValue().getClass().equals(type)) {
             return data.apply((T) raw.getValue());
         }

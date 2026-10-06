@@ -15,9 +15,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -34,7 +34,7 @@ public class RecipeFilterManager extends SimplePreparableReloadListener<Map<Reso
 
     public RecipeFilterManager() {
         this.gson = CommonAssetsManager.GSON;
-        this.marker = MarkerManager.getMarker("RecipeFilter");
+        this.marker = MarkerFactory.getMarker("RecipeFilter");
         this.fileToIdConverter = FileToIdConverter.json("recipe_filters");
     }
 
@@ -98,4 +98,6 @@ public class RecipeFilterManager extends SimplePreparableReloadListener<Map<Reso
     public RecipeFilter getFilter(ResourceLocation id) {
         return filters.get(id);
     }
+
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "recipe_filter_manager");
 }

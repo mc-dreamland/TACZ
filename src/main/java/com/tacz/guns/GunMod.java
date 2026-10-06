@@ -1,62 +1,74 @@
 package com.tacz.guns;
 
+import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
 import com.tacz.guns.api.resource.ResourceManager;
-import com.tacz.guns.compat.kubejs.TimelessKubeJSPlugin;
 import com.tacz.guns.config.ClientConfig;
 import com.tacz.guns.config.CommonConfig;
+import com.tacz.guns.config.PreLoadConfig;
 import com.tacz.guns.config.ServerConfig;
-import com.tacz.guns.init.*;
-import com.tacz.guns.resource.GunPackLoader;
+import com.tacz.guns.init.CapabilityRegistry;
+import com.tacz.guns.init.CommonRegistry;
+import com.tacz.guns.init.ModAttributes;
+import com.tacz.guns.init.ModBlocks;
+import com.tacz.guns.init.ModCreativeTabs;
+import com.tacz.guns.init.ModEntities;
+import com.tacz.guns.init.ModItems;
+import com.tacz.guns.init.ModParticles;
+import com.tacz.guns.init.ModRecipe;
+import com.tacz.guns.init.ModSounds;
+import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
-import net.minecraft.server.packs.PackType;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fml.loading.FMLLoader;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 
 @Mod(GunMod.MOD_ID)
 public class GunMod {
     public static final String MOD_ID = "tacz";
-    public static final Logger LOGGER = LogManager.getLogger(MOD_ID);
-    /**
-     * 默认模型包文件夹
-     */
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final String DEFAULT_GUN_PACK_NAME = "tacz_default_gun";
 
-    public GunMod() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CommonConfig.init());
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, ServerConfig.init());
-        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.init());
+    public static net.neoforged.fml.ModContainer container;
 
-        Dist side = FMLLoader.getDist();
-        GunPackLoader.INSTANCE.packType = side.isClient() ? PackType.CLIENT_RESOURCES : PackType.SERVER_DATA;
+    public GunMod(IEventBus modEventBus, ModContainer modContainer) {
+        container = modContainer;
+        PreLoadConfig.migrateLegacyConfig();
+        modContainer.registerConfig(ModConfig.Type.STARTUP, PreLoadConfig.spec, "tacz-pre.toml");
+        modContainer.registerConfig(ModConfig.Type.COMMON, CommonConfig.spec);
+        modContainer.registerConfig(ModConfig.Type.SERVER, ServerConfig.spec);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.spec);
 
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
-        ModBlocks.BLOCKS.register(bus);
-        ModBlocks.TILE_ENTITIES.register(bus);
-        ModCreativeTabs.TABS.register(bus);
-        ModItems.ITEMS.register(bus);
-        ModEntities.ENTITY_TYPES.register(bus);
-        ModRecipe.RECIPE_SERIALIZERS.register(bus);
-        ModRecipe.RECIPE_TYPES.register(bus);
-        ModLootModifiers.LOOT_MODIFIER_SERIALIZERS.register(bus);
-        ModContainer.CONTAINER_TYPE.register(bus);
-        ModSounds.SOUNDS.register(bus);
-        ModParticles.PARTICLE_TYPES.register(bus);
-        ModAttributes.ATTRIBUTES.register(bus);
-        ModPainting.PAINTINGS.register(bus);
-        if (ModList.get().isLoaded("kubejs")) {
-            bus.register(new TimelessKubeJSPlugin());
-        }
+        CapabilityRegistry.ATTACHMENT_TYPES.register(modEventBus);
+        ModBlocks.BLOCKS.register(modEventBus);
+        ModBlocks.TILE_ENTITIES.register(modEventBus);
+        ModItems.ITEMS.register(modEventBus);
+        ModCreativeTabs.TABS.register(modEventBus);
+        ModRecipe.RECIPE_SERIALIZERS.register(modEventBus);
+        ModRecipe.RECIPE_TYPES.register(modEventBus);
+        ModRecipe.RECIPE_BOOK_CATEGORIES.register(modEventBus);
+        ModRecipe.INGREDIENT_TYPES.register(modEventBus);
+        ModEntities.ENTITY_TYPES.register(modEventBus);
+        com.tacz.guns.init.ModContainer.CONTAINER_TYPE.register(modEventBus);
+        ModSounds.SOUNDS.register(modEventBus);
+        com.tacz.guns.init.ModLootModifiers.LOOT_MODIFIER_SERIALIZERS.register(modEventBus);
+        ModParticles.PARTICLE_TYPES.register(modEventBus);
+        ModAttributes.ATTRIBUTES.register(modEventBus);
+
+        modEventBus.addListener(ModItems::onCommonSetup);
+        modEventBus.addListener(NetworkHandler::register);
+        modEventBus.addListener(NetworkHandler::registerConfigurationTasks);
+        modEventBus.addListener(CommonRegistry::onSetupEvent);
+        modEventBus.addListener(CommonRegistry::onLoadComplete);
+        modEventBus.addListener(CommonRegistry::registerAttributes);
+        modEventBus.addListener(CommonRegistry::onAddPackFinders);
 
         registerDefaultExtraGunPack();
         AttachmentPropertyManager.registerModifier();
+        LOGGER.info("TaCZ NeoForge 1.21.10 loading. modId={}", MOD_ID);
     }
 
     private static void registerDefaultExtraGunPack() {

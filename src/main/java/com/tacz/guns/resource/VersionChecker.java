@@ -5,12 +5,9 @@ import com.google.gson.JsonIOException;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.annotations.SerializedName;
 import com.tacz.guns.GunMod;
-import net.minecraftforge.fml.ModList;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
-import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
-import org.apache.maven.artifact.versioning.VersionRange;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,9 +24,8 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-
 public final class VersionChecker {
-    private static final Marker MARKER = MarkerManager.getMarker("VersionChecker");
+    private static final Marker MARKER = MarkerFactory.getMarker("VersionChecker");
     private static final Pattern PACK_INFO_PATTERN = Pattern.compile("^\\w+/pack\\.json$");
     private static final Map<Path, Boolean> VERSION_CHECK_CACHE = Maps.newHashMap();
 
@@ -50,7 +46,6 @@ public final class VersionChecker {
             return false;
         }
         Path packInfoFilePath = root.toPath().resolve("pack.json");
-        // 如果文件不存在，说明不检查版本信息，返回 true
         if (Files.notExists(packInfoFilePath)) {
             return true;
         }
@@ -73,18 +68,15 @@ public final class VersionChecker {
                 continue;
             }
             ZipEntry entry = zipFile.getEntry(path);
-            // 如果文件不存在，说明不检查版本信息，返回 true
             if (entry == null) {
                 return true;
             }
             try (InputStream stream = zipFile.getInputStream(entry)) {
                 Info info = CommonAssetsManager.GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), Info.class);
-                // 只要有一个不符，那么就不加载
                 if (!modVersionAllMatch(info)) {
                     return false;
                 }
-            } catch (IOException | JsonSyntaxException | JsonIOException |
-                     InvalidVersionSpecificationException exception) {
+            } catch (IOException | JsonSyntaxException | JsonIOException | InvalidVersionSpecificationException exception) {
                 GunMod.LOGGER.warn(MARKER, "Failed to read info json: {}", path);
                 GunMod.LOGGER.warn(exception.getMessage());
             }
@@ -95,19 +87,11 @@ public final class VersionChecker {
     private static boolean modVersionAllMatch(Info info) throws InvalidVersionSpecificationException {
         HashMap<String, String> dependencies = info.getDependencies();
         for (String modId : dependencies.keySet()) {
-            if (!modVersionMatch(modId, dependencies.get(modId))) {
+            if (!GunPackLoader.modVersionMatch(modId, dependencies.get(modId))) {
                 return false;
             }
         }
         return true;
-    }
-
-    private static boolean modVersionMatch(String modId, String version) throws InvalidVersionSpecificationException {
-        VersionRange versionRange = VersionRange.createFromVersionSpec(version);
-        return ModList.get().getModContainerById(modId).map(mod -> {
-            ArtifactVersion modVersion = mod.getModInfo().getVersion();
-            return versionRange.containsVersion(modVersion);
-        }).orElse(false);
     }
 
     private static class Info {

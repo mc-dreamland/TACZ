@@ -8,10 +8,12 @@ import com.tacz.guns.api.item.builder.AttachmentItemBuilder;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
 import com.tacz.guns.resource.pojo.data.block.TabConfig;
 import com.tacz.guns.resource.pojo.data.recipe.GunResult;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -54,13 +56,15 @@ public class RawGunTableResult {
             default -> new GunSmithTableResult(ItemStack.EMPTY, TabConfig.TAB_EMPTY);
         };
         if (raw.nbt != null) {
-            CompoundTag itemTag = result.getResult().getOrCreateTag();
-            for (String key : raw.nbt.getAllKeys()) {
-                Tag tag = raw.nbt.get(key);
-                if (tag != null) {
-                    itemTag.put(key, tag);
+            ItemStack resultStack = result.getResult();
+            CustomData.update(DataComponents.CUSTOM_DATA, resultStack, itemTag -> {
+                for (String key : raw.nbt.keySet()) {
+                    Tag tag = raw.nbt.get(key);
+                    if (tag != null) {
+                        itemTag.put(key, tag.copy());
+                    }
                 }
-            }
+            });
         }
         return result;
     }

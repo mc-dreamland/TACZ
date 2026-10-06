@@ -1,35 +1,46 @@
 package com.tacz.guns.util.block;
 
 import com.google.common.collect.Sets;
+import com.mojang.datafixers.util.Pair;
 import com.tacz.guns.config.common.AmmoConfig;
 import com.tacz.guns.util.HitboxHelper;
+import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.enchantment.ProtectionEnchantment;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.ExplosionDamageCalculator;
-import net.minecraft.world.level.Level;
+import net.minecraft.world.level.ServerExplosion;
+import net.minecraft.world.level.block.BaseFireBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.neoforged.neoforge.event.EventHooks;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-public class ProjectileExplosion extends Explosion {
+/** Keeps gun-pack damage and hitbox-aware occlusion while using the 1.21.10 block explosion callbacks. */
+public class ProjectileExplosion extends ServerExplosion {
     private static final ExplosionDamageCalculator DEFAULT_CONTEXT = new ExplosionDamageCalculator();
-    private final Level level;
+    private final ServerLevel level;
     private final double x;
     private final double y;
     private final double z;
@@ -40,8 +51,8 @@ public class ProjectileExplosion extends Explosion {
     private final Entity exploder;
     private final ExplosionDamageCalculator damageCalculator;
 
-    public ProjectileExplosion(Level level, Entity owner, Entity exploder, @Nullable DamageSource source, @Nullable ExplosionDamageCalculator damageCalculator, double x, double y, double z, float power, float radius, boolean knockback, Explosion.BlockInteraction mode) {
-        super(level, exploder, source, damageCalculator, x, y, z, radius, AmmoConfig.EXPLOSIVE_AMMO_FIRE.get(), mode);
+    public ProjectileExplosion(ServerLevel level, Entity owner, Entity exploder, @Nullable DamageSource source, @Nullable ExplosionDamageCalculator damageCalculator, double x, double y, double z, float power, float radius, boolean knockback, Explosion.BlockInteraction mode) {
+        super(level, exploder, source, damageCalculator == null ? DEFAULT_CONTEXT : damageCalculator, new Vec3(x, y, z), radius, AmmoConfig.EXPLOSIVE_AMMO_FIRE.get(), mode);
         this.level = level;
         this.x = x;
         this.y = y;
@@ -55,7 +66,10 @@ public class ProjectileExplosion extends Explosion {
     }
 
     @Override
-    public void explode() {
+    public int explode() {
+        if (this.radius <= 0) {
+            return 0;
+        }
         this.level.gameEvent(this.exploder, GameEvent.EXPLODE, BlockPos.containing(this.x, this.y, this.z));
         Set<BlockPos> set = Sets.newHashSet();
         int i = 16;
@@ -71,7 +85,7 @@ public class ProjectileExplosion extends Explosion {
                         d0 /= d3;
                         d1 /= d3;
                         d2 /= d3;
-                        float f = this.radius * (0.7F + this.level.random.nextFloat() * 0.6F);
+                        float f = this.radius * (0.7F + this.level.getRandom().nextFloat() * 0.6F);
                         double blockX = this.x;
                         double blockY = this.y;
                         double blockZ = this.z;
@@ -102,7 +116,7 @@ public class ProjectileExplosion extends Explosion {
             }
         }
 
-        this.getToBlow().addAll(set);
+        List<BlockPos> blocks = new ArrayList<>(set);
         float radius = this.radius;
         int minX = Mth.floor(this.x - (double) radius - 1.0D);
         int maxX = Mth.floor(this.x + (double) radius + 1.0D);
@@ -112,11 +126,11 @@ public class ProjectileExplosion extends Explosion {
         int maxZ = Mth.floor(this.z + (double) radius + 1.0D);
         radius *= 2;
         List<Entity> entities = this.level.getEntities(this.exploder, new AABB(minX, minY, minZ, maxX, maxY, maxZ));
-        net.minecraftforge.event.ForgeEventFactory.onExplosionDetonate(this.level, this, entities, radius);
+        EventHooks.onExplosionDetonate(this.level, this, entities, blocks);
         Vec3 explosionPos = new Vec3(this.x, this.y, this.z);
 
         for (Entity entity : entities) {
-            if (entity.ignoreExplosion()) {
+            if (entity.ignoreExplosion(this)) {
                 continue;
             }
 
@@ -155,7 +169,7 @@ public class ProjectileExplosion extends Explosion {
                 d[13] = new Vec3(deltaX, deltaY, boundingBox.maxZ);
                 d[14] = new Vec3(deltaX, deltaY, deltaZ);
                 for (int s = 0; s < 15; s++) {
-                    result = BlockRayTrace.rayTraceBlocks(this.level, new ClipContext(explosionPos, d[s], ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, null));
+                    result = BlockRayTrace.rayTraceBlocks(this.level, new ClipContext(explosionPos, d[s], ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()));
                     minDistance = (result.getType() != BlockHitResult.Type.BLOCK) ? Math.min(minDistance, explosionPos.distanceTo(d[s])) : minDistance;
                 }
                 strength = minDistance * 2 / radius;
@@ -177,22 +191,63 @@ public class ProjectileExplosion extends Explosion {
             }
 
             double damage = 1.0D - strength;
-            entity.hurt(this.getDamageSource(), (float) damage * this.power);
+            entity.hurtServer(this.level, this.getDamageSource(), (float) damage * this.power);
 
-            if (entity instanceof LivingEntity) {
-                damage = (float) ProtectionEnchantment.getExplosionKnockbackAfterDampener((LivingEntity) entity, damage);
+            if (entity instanceof LivingEntity livingEntity) {
+                // Blast Protection contributes to this attribute in 1.21.10.
+                damage *= 1.0D - livingEntity.getAttributeValue(Attributes.EXPLOSION_KNOCKBACK_RESISTANCE);
             }
 
             float multiplier = this.power * radius / 500;
             // 启用击退效果
             if (AmmoConfig.EXPLOSIVE_AMMO_KNOCK_BACK.get() && this.knockback) {
-                entity.setDeltaMovement(entity.getDeltaMovement().add(deltaX * damage * multiplier, deltaY * damage * multiplier, deltaZ * damage * multiplier));
+                Vec3 velocity = new Vec3(deltaX * damage * multiplier, deltaY * damage * multiplier, deltaZ * damage * multiplier);
+                velocity = EventHooks.getExplosionKnockback(this.level, this, entity, velocity, blocks);
+                entity.push(velocity);
                 if (entity instanceof Player player) {
                     if (!player.isSpectator() && (!player.isCreative() || !player.getAbilities().flying)) {
-                        this.getHitPlayers().put(player, new Vec3(deltaX * damage * multiplier, deltaY * damage * multiplier, deltaZ * damage * multiplier));
+                        this.getHitPlayers().put(player, velocity);
                     }
                 }
             }
+            entity.onExplosionHit(this.exploder);
         }
+
+        // 1.21.10 performs block destruction in explode(), rather than finalizeExplosion().
+        // Use the normal block callback so drops, block entities and other mods see this explosion.
+        if (getBlockInteraction() != Explosion.BlockInteraction.KEEP) {
+            Util.shuffle(blocks, this.level.getRandom());
+            List<Pair<ItemStack, BlockPos>> drops = new ArrayList<>();
+            for (BlockPos pos : blocks) {
+                this.level.getBlockState(pos).onExplosionHit(this.level, pos, this,
+                        (stack, dropPos) -> addDrop(drops, stack, dropPos));
+            }
+            for (Pair<ItemStack, BlockPos> drop : drops) {
+                Block.popResource(this.level, drop.getSecond(), drop.getFirst());
+            }
+        }
+        if (AmmoConfig.EXPLOSIVE_AMMO_FIRE.get()) {
+            for (BlockPos pos : blocks) {
+                if (this.level.getRandom().nextInt(3) == 0 && this.level.getBlockState(pos).isAir()
+                        && this.level.getBlockState(pos.below()).isSolidRender()) {
+                    this.level.setBlockAndUpdate(pos, BaseFireBlock.getState(this.level, pos));
+                }
+            }
+        }
+        return blocks.size();
+    }
+
+    private static void addDrop(List<Pair<ItemStack, BlockPos>> drops, ItemStack stack, BlockPos pos) {
+        // Match vanilla's small drop stacks instead of spawning an item entity for every block.
+        for (int i = 0; i < drops.size(); i++) {
+            Pair<ItemStack, BlockPos> existing = drops.get(i);
+            if (ItemEntity.areMergable(existing.getFirst(), stack)) {
+                drops.set(i, Pair.of(ItemEntity.merge(existing.getFirst(), stack, 16), existing.getSecond()));
+                if (stack.isEmpty()) {
+                    return;
+                }
+            }
+        }
+        drops.add(Pair.of(stack, pos.immutable()));
     }
 }

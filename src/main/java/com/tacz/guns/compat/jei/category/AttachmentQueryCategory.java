@@ -6,31 +6,29 @@ import com.tacz.guns.init.ModCreativeTabs;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
-import mezz.jei.api.gui.drawable.IDrawableStatic;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
-import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
 public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryEntry> {
-    public static final RecipeType<AttachmentQueryEntry> ATTACHMENT_QUERY = RecipeType.create(GunMod.MOD_ID, "attachment_query", AttachmentQueryEntry.class);
+    public static final IRecipeType<AttachmentQueryEntry> ATTACHMENT_QUERY = IRecipeType.create(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "attachment_query"), AttachmentQueryEntry.class);
     public static final int MAX_GUN_SHOW_COUNT = 60;
     private static final Component TITLE = Component.translatable("jei.tacz.attachment_query.title");
-    private final IDrawableStatic bgDraw;
     private final IDrawable slotDraw;
     private final IDrawable iconDraw;
 
     public AttachmentQueryCategory(IGuiHelper guiHelper) {
-        this.bgDraw = guiHelper.createBlankDrawable(160, 145);
         this.slotDraw = guiHelper.getSlotDrawable();
         this.iconDraw = guiHelper.createDrawableIngredient(VanillaTypes.ITEM_STACK, ModCreativeTabs.ATTACHMENT_SCOPE_TAB.get().getIconItem());
     }
@@ -40,7 +38,7 @@ public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryE
         List<ItemStack> extraAllowGunStacks = entry.getExtraAllowGunStacks();
         if (!extraAllowGunStacks.isEmpty()) {
             Font font = Minecraft.getInstance().font;
-            guiGraphics.drawString(font, Component.translatable("jei.tacz.attachment_query.more"), 128, 134, 0x555555, false);
+            guiGraphics.drawString(font, Component.translatable("jei.tacz.attachment_query.more"), 128, 134, 0xFF555555, false);
         }
     }
 
@@ -51,7 +49,7 @@ public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryE
         List<ItemStack> extraAllowGunStacks = entry.getExtraAllowGunStacks();
 
         // 先把配件放在正中央
-        builder.addSlot(RecipeIngredientRole.OUTPUT, 72, 0).addItemStack(attachmentStack).setBackground(slotDraw, -1, -1);
+        builder.addSlot(RecipeIngredientRole.OUTPUT, 72, 0).add(attachmentStack).setBackground(slotDraw, -1, -1);
 
         // 逐行画枪械，每行 9 个
         int xOffset = 0;
@@ -62,7 +60,7 @@ public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryE
             xOffset = column * 18;
             yOffset = 20 + row * 18;
             ItemStack gun = allowGunStacks.get(i);
-            builder.addSlot(RecipeIngredientRole.INPUT, xOffset, yOffset).addItemStack(gun).setBackground(slotDraw, -1, -1);
+            builder.addSlot(RecipeIngredientRole.INPUT, xOffset, yOffset).add(gun).setBackground(slotDraw, -1, -1);
         }
 
         // 如果超出上限，那么最后一格则为来回跳变的物品
@@ -72,7 +70,7 @@ public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryE
     }
 
     @Override
-    public RecipeType<AttachmentQueryEntry> getRecipeType() {
+    public IRecipeType<AttachmentQueryEntry> getRecipeType() {
         return ATTACHMENT_QUERY;
     }
 
@@ -82,9 +80,13 @@ public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryE
     }
 
     @Override
-    @SuppressWarnings("removal")
-    public IDrawable getBackground() {
-        return bgDraw;
+    public int getWidth() {
+        return 160;
+    }
+
+    @Override
+    public int getHeight() {
+        return 145;
     }
 
     @Override

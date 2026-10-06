@@ -11,14 +11,17 @@ import com.tacz.guns.client.gui.GunRefitScreen;
 import com.tacz.guns.init.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
+import com.tacz.guns.util.ItemNbtUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
 import javax.annotation.Nullable;
 import java.lang.reflect.InvocationTargetException;
@@ -29,7 +32,7 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /** Keeps wire/inventory stacks vanilla; native TACZ stacks exist only as client views. */
-@Mod.EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class GunResolver {
     private static final Map<String, ItemStack> RENDER_STACKS = new LinkedHashMap<>(128, .75f, true);
     private static final Map<String, StateView> STATES = new LinkedHashMap<>();
@@ -49,9 +52,9 @@ public final class GunResolver {
 
     @Nullable
     private static JsonObject metadata(ItemStack stack) {
-        if (!PaperClientBridge.active() || stack == null || stack.isEmpty() || !stack.hasTag()) return null;
-        CompoundTag tag = stack.getTag();
-        String wireData = tag.getCompound("PublicBukkitValues").getString("tacz:bridge");
+        if (!PaperClientBridge.active() || stack == null || stack.isEmpty()) return null;
+        CompoundTag tag = ItemNbtUtils.getTag(stack);
+        String wireData = tag.getCompoundOrEmpty("PublicBukkitValues").getStringOr("tacz:bridge", "");
         if (wireData.isEmpty()) return null;
         Metadata cached = METADATA.get(stack);
         if (cached != null && cached.material() == stack.getItem() && cached.wireData().equals(wireData)) return cached.parsed();
@@ -159,7 +162,7 @@ public final class GunResolver {
             // Inventory updates supersede the transient snapshot. Never overlay an old held-gun
             // snapshot on that gun after it has moved to another slot or changed on the server.
             boolean currentSnapshot = equipped != null && instance.equals(string(equipped, "instance", ""))
-                    && snapshot.baseline().equals(real.getTag().getCompound("PublicBukkitValues").getString("tacz:bridge"));
+                    && snapshot.baseline().equals(ItemNbtUtils.getTag(real).getCompoundOrEmpty("PublicBukkitValues").getStringOr("tacz:bridge", ""));
             if (currentSnapshot && id.equals(string(snapshot.data(), "id", ""))) {
                 for (var entry : snapshot.data().entrySet()) current.add(entry.getKey(), entry.getValue());
             } else {
@@ -168,7 +171,7 @@ public final class GunResolver {
         }
         ItemStack render = RENDER_STACKS.computeIfAbsent(key, ignored -> new ItemStack(nativeItem));
         CompoundTag tag = new CompoundTag();
-        if (real.hasCustomHoverName()) tag.put("display", real.getTag().getCompound("display").copy());
+        render.set(DataComponents.CUSTOM_NAME, real.get(DataComponents.CUSTOM_NAME));
         if (kind.equals("gun")) {
             tag.putString("GunId", id);
             tag.putString("GunDisplayId", string(current, "displayId", "tacz:default"));
@@ -194,8 +197,8 @@ public final class GunResolver {
                             copyLaserColor(current.getAsJsonObject("attachmentColors"), type.name().toLowerCase(Locale.ROOT), attachmentTag);
                         }
                         ItemStack attachmentStack = new ItemStack(ModItems.ATTACHMENT.get());
-                        attachmentStack.setTag(attachmentTag);
-                        tag.put("Attachment" + type.name(), attachmentStack.save(new CompoundTag()));
+                        attachmentStack.set(DataComponents.CUSTOM_DATA, CustomData.of(attachmentTag));
+                        tag.put("Attachment" + type.name(), ItemNbtUtils.saveItemStack(attachmentStack));
                     } catch (RuntimeException ignored) { }
                 }
             }
@@ -214,7 +217,7 @@ public final class GunResolver {
             tag.putInt("PaperBoxCapacity", Math.max(0, integer(current, "boxCapacity", 0)));
         }
         render.setCount(real.getCount());
-        if (!tag.equals(render.getTag())) render.setTag(tag);
+        if (!tag.equals(ItemNbtUtils.getTag(render))) render.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         if (RENDER_STACKS.size() > 512) RENDER_STACKS.remove(RENDER_STACKS.keySet().iterator().next());
         return render;
     }
@@ -232,7 +235,7 @@ public final class GunResolver {
             ItemStack held = owner.getMainHandItem();
             JsonObject item = metadata(held);
             if (item == null || !instance.equals(string(item, "instance", ""))) return;
-            STATES.put(instance, new StateView(state.deepCopy(), entityId, held.getTag().getCompound("PublicBukkitValues").getString("tacz:bridge")));
+            STATES.put(instance, new StateView(state.deepCopy(), entityId, ItemNbtUtils.getTag(held).getCompoundOrEmpty("PublicBukkitValues").getStringOr("tacz:bridge", "")));
             if (STATES.size() > 512) STATES.remove(STATES.keySet().iterator().next());
         }
     }

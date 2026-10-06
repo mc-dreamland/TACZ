@@ -5,6 +5,8 @@ import com.tacz.guns.api.item.ItemBehavior;
 import com.github.exopandora.shouldersurfing.api.client.IShoulderSurfingCamera;
 import com.github.exopandora.shouldersurfing.api.client.ShoulderSurfing;
 import com.tacz.guns.GunMod;
+import net.neoforged.neoforge.client.event.ViewportEvent;
+import net.neoforged.neoforge.client.event.ComputeFovModifierEvent;
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.event.BeforeRenderHandEvent;
@@ -20,13 +22,13 @@ import com.tacz.guns.api.modifier.ParameterizedCachePair;
 import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.index.ClientGunIndex;
-import com.tacz.guns.compat.shouldersurfing.ShoulderSurfingCompat;
 import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import com.tacz.guns.resource.modifier.custom.RecoilModifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.util.math.MathUtil;
 import com.tacz.guns.util.math.SecondOrderDynamics;
+import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
@@ -36,18 +38,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ComputeFovModifierEvent;
-import net.minecraftforge.client.event.ViewportEvent;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction;
 
 import java.util.Optional;
 
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = GunMod.MOD_ID)
 public class CameraSetupEvent {
     /**
      * 用于平滑 FOV 变化
@@ -60,7 +54,6 @@ public class CameraSetupEvent {
     private static double xRotO = 0;
     private static double yRotO = 0;
 
-    @SubscribeEvent
     public static void applyLevelCameraAnimation(ViewportEvent.ComputeCameraAngles event) {
         if (!Minecraft.getInstance().options.bobView().get()) {
             return;
@@ -71,13 +64,12 @@ public class CameraSetupEvent {
         }
         ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
         // 尝试调用物品的自定义相机动画
-        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(stack)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (BuiltinItemRendererRegistry.INSTANCE.get(com.tacz.guns.client.paper.GunResolver.renderStack(stack).getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.applyLevelCameraAnimation(event, stack, player);
         }
 
     }
 
-    @SubscribeEvent
     public static void applyItemInHandCameraAnimation(BeforeRenderHandEvent event) {
         if (!Minecraft.getInstance().options.bobView().get()) {
             return;
@@ -88,12 +80,11 @@ public class CameraSetupEvent {
         }
         ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
         // 尝试调用物品的自定义相机动画
-        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(stack)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (BuiltinItemRendererRegistry.INSTANCE.get(com.tacz.guns.client.paper.GunResolver.renderStack(stack).getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.applyItemInHandCameraAnimation(event, stack, player);
         }
     }
 
-    @SubscribeEvent
     public static void applyScopeMagnification(ViewportEvent.ComputeFov event) {
         if (!event.usedConfiguredFov()) {
             return; // 只修改世界渲染的 fov，因此如果是手部渲染 fov 事件，则返回
@@ -121,7 +112,6 @@ public class CameraSetupEvent {
         }
     }
 
-    @SubscribeEvent
     public static void applyGunModelFovModifying(ViewportEvent.ComputeFov event) {
         if (event.usedConfiguredFov()) {
             return; // 只修改手部物品的 fov，因此如果是世界渲染 fov 事件，则返回
@@ -147,9 +137,9 @@ public class CameraSetupEvent {
                         return viewsFov[zoomNumber % viewsFov.length];
                     })
                     .orElse(
-                        TimelessAPI.getGunDisplay(stack)
-                                .map(GunDisplayInstance::getZoomModelFov)
-                                .orElse((float) event.getFOV())
+                            TimelessAPI.getGunDisplay(stack)
+                                    .map(GunDisplayInstance::getZoomModelFov)
+                                    .orElse((float) event.getFOV())
                     );
             if (livingEntity instanceof LocalPlayer localPlayer) {
                 IClientPlayerGunOperator gunOperator = IClientPlayerGunOperator.fromLocalPlayer(localPlayer);
@@ -165,7 +155,6 @@ public class CameraSetupEvent {
         }
     }
 
-    @SubscribeEvent
     public static void initialCameraRecoil(GunFireEvent event) {
         if (event.getLogicalSide().isClient()) {
             LivingEntity shooter = event.getShooter();
@@ -191,7 +180,7 @@ public class CameraSetupEvent {
             // 获取所有配件对摄像机后坐力的修改
             ParameterizedCachePair<Float, Float> attachmentRecoilModifier = cacheProperty.getCache(RecoilModifier.ID);
             IClientPlayerGunOperator clientPlayerGunOperator = IClientPlayerGunOperator.fromLocalPlayer(player);
-            float partialTicks = Minecraft.getInstance().getFrameTime();
+            float partialTicks = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true);
             float aimingProgress = clientPlayerGunOperator.getClientAimingProgress(partialTicks);
             float zoom = iGun.getAimingZoom(mainHandItem);
             float aimingRecoilModifier = 1 - aimingProgress + aimingProgress / (float) Math.min(Math.sqrt(zoom), 1.5);
@@ -207,7 +196,6 @@ public class CameraSetupEvent {
         }
     }
 
-    @SubscribeEvent
     public static void applyCameraRecoil(ViewportEvent.ComputeCameraAngles event) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
@@ -216,27 +204,16 @@ public class CameraSetupEvent {
         long timeTotal = System.currentTimeMillis() - shootTimeStamp;
         if (pitchSplineFunction != null && pitchSplineFunction.isValidPoint(timeTotal)) {
             double value = pitchSplineFunction.value(timeTotal);
-            if (ShoulderSurfingCompat.isInstalled() && ShoulderSurfing.getInstance().isShoulderSurfing()) {
-                IShoulderSurfingCamera camera = ShoulderSurfing.getInstance().getCamera();
-                camera.setXRot(camera.getXRot() - (float) (value - xRotO));
-            } else {
-                player.setXRot(player.getXRot() - (float) (value - xRotO));
-            }
+            player.setXRot(player.getXRot() - (float) (value - xRotO));
             xRotO = value;
         }
         if (yawSplineFunction != null && yawSplineFunction.isValidPoint(timeTotal)) {
             double value = yawSplineFunction.value(timeTotal);
-            if (ShoulderSurfingCompat.isInstalled() && ShoulderSurfing.getInstance().isShoulderSurfing()) {
-                IShoulderSurfingCamera camera = ShoulderSurfing.getInstance().getCamera();
-                camera.setYRot(camera.getYRot() - (float) (value - yRotO));
-            } else {
-                player.setYRot(player.getYRot() - (float) (value - yRotO));
-            }
+            player.setYRot(player.getYRot() - (float) (value - yRotO));
             yRotO = value;
         }
     }
 
-    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onComputeMovementFov(ComputeFovModifierEvent event) {
         if (!RenderConfig.DISABLE_MOVEMENT_ATTRIBUTE_FOV.get()) return;
         LocalPlayer player = Minecraft.getInstance().player;

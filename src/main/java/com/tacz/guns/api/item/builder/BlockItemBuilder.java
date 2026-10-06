@@ -30,7 +30,7 @@ public final class BlockItemBuilder {
     }
 
     public ItemStack build() {
-        ItemStack block = new ItemStack(blockItem ,this.count);
+        ItemStack block = new ItemStack(blockItem, this.count);
         if (block.getItem() instanceof IBlock iBlock) {
             iBlock.setBlockId(block, this.blockId);
         }

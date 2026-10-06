@@ -14,12 +14,11 @@ import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.BulletData;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.GunFireModeAdjustData;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -108,9 +107,9 @@ public class KnockbackModifier implements IAttachmentModifier<Modifier, Float> {
             if (value != null) {
                 double eval = AttachmentPropertyManager.eval(value, 0.2);
                 if (eval > 0.2) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.knockback.increase").withStyle(ChatFormatting.GREEN));
+                    components.add(Component.translatable("tooltip.tacz.attachment.knockback.increase").withStyle(style -> style.withColor(0x55FF55)));
                 } else if (eval < 0.2) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.knockback.decrease").withStyle(ChatFormatting.RED));
+                    components.add(Component.translatable("tooltip.tacz.attachment.knockback.decrease").withStyle(style -> style.withColor(0xFF5555)));
                 }
             }
         }

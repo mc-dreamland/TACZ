@@ -5,6 +5,7 @@ import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.TooltipFlag;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public interface IComponentTooltip {
     static List<Component> getTooltipFromItem(ItemStack stack) {
         Options options = Minecraft.getInstance().options;
         LocalPlayer player = Minecraft.getInstance().player;
-        return stack.getTooltipLines(player, options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+        return stack.getTooltipLines(TooltipContext.EMPTY, player, options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
     }
 
     /**

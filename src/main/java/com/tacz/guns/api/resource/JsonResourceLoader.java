@@ -6,9 +6,9 @@ import com.tacz.guns.GunMod;
 import com.tacz.guns.util.TacPathVisitor;
 import net.minecraft.resources.ResourceLocation;
 import org.apache.commons.io.IOUtils;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,9 +23,10 @@ import java.util.zip.ZipFile;
 
 /**
  * 用于从枪包读取json资源文件的抽象类<br/>
+ *
+ * @param <T> 资源数据类型
  * @deprecated 不再config路径读取资源，请使用新的资源加载器<br/>
  * 仅保留供旧版资产转换器使用<br/>
- * @param <T> 资源数据类型
  */
 @Deprecated
 @ApiStatus.Internal
@@ -38,7 +39,7 @@ public abstract class JsonResourceLoader<T> {
 
     public JsonResourceLoader(Class<T> dataClass, String marker, String domain) {
         this.dataClass = dataClass;
-        this.marker = MarkerManager.getMarker(marker);
+        this.marker = MarkerFactory.getMarker(marker);
         this.domain = domain;
         this.pattern = Pattern.compile("^(\\w+)/" + domain + "/([\\w/]+)\\.json$");
     }
@@ -58,7 +59,7 @@ public abstract class JsonResourceLoader<T> {
                 return false;
             }
             try (InputStream stream = zipFile.getInputStream(entry)) {
-                ResourceLocation registryName = new ResourceLocation(namespace, path);
+                ResourceLocation registryName = ResourceLocation.fromNamespaceAndPath(namespace, path);
                 String json = IOUtils.toString(stream, StandardCharsets.UTF_8);
                 resolveJson(registryName, json);
                 return true;

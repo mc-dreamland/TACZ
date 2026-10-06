@@ -5,12 +5,14 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tacz.guns.client.model.bedrock.BedrockCubePerFace;
 import com.tacz.guns.client.model.bedrock.BedrockPart;
 import com.tacz.guns.client.resource.pojo.model.FaceUVsItem;
-import net.minecraft.client.model.EntityModel;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemDisplayContext;
 
 
-public class SlotModel extends EntityModel<Entity> {
+/**
+ * 26.2: EntityModel now requires EntityRenderState type param and Model requires ModelPart constructor.
+ * SlotModel is a simple quad renderer, so we make it standalone.
+ */
+public class SlotModel {
     private final BedrockPart bone;
 
     public SlotModel(boolean illuminated) {
@@ -24,11 +26,6 @@ public class SlotModel extends EntityModel<Entity> {
         this(false);
     }
 
-    @Override
-    public void setupAnim(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-    }
-
-    @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer buffer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
         bone.render(poseStack, ItemDisplayContext.GUI, buffer, packedLight, packedOverlay);
     }

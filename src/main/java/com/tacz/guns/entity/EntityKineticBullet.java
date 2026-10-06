@@ -1,5 +1,7 @@
 package com.tacz.guns.entity;
 
+import com.tacz.guns.api.LogicalSide;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
 import com.google.common.collect.Lists;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.DefaultAssets;
@@ -37,20 +39,19 @@ import com.tacz.guns.util.block.BlockRayTrace;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobCategory;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
@@ -61,19 +62,14 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.entity.IEntityAdditionalSpawnData;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.network.NetworkHooks;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import net.minecraft.world.entity.boss.EnderDragonPart;
 
 import java.util.*;
 
@@ -84,11 +80,16 @@ import static com.tacz.guns.api.event.common.GunDamageSourcePart.NON_ARMOR_PIERC
 /**
  * 动能武器打出的子弹实体。
  */
-public class EntityKineticBullet extends Projectile implements IEntityAdditionalSpawnData {
-    public static final EntityType<EntityKineticBullet> TYPE = EntityType.Builder.<EntityKineticBullet>of(EntityKineticBullet::new, MobCategory.MISC).noSummon().noSave().fireImmune().sized(0.0625F, 0.0625F).clientTrackingRange(5).updateInterval(5).setShouldReceiveVelocityUpdates(false).build("bullet");
-    public static final TagKey<EntityType<?>> USE_MAGIC_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("tacz:use_magic_damage_on"));
-    public static final TagKey<EntityType<?>> USE_VOID_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("tacz:use_void_damage_on"));
-    public static final TagKey<EntityType<?>> PRETEND_MELEE_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, new ResourceLocation("tacz:pretend_melee_damage_on"));
+public class EntityKineticBullet extends Projectile implements IEntityWithComplexSpawn {
+    public static final EntityType<EntityKineticBullet> TYPE = EntityType.Builder
+            .<EntityKineticBullet>of(EntityKineticBullet::new, MobCategory.MISC)
+            .noSummon().noSave().fireImmune()
+            .sized(0.0625F, 0.0625F)
+            .clientTrackingRange(5).updateInterval(5).setShouldReceiveVelocityUpdates(false)
+            .build(ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("tacz", "bullet")));
+    public static final TagKey<EntityType<?>> USE_MAGIC_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("tacz:use_magic_damage_on"));
+    public static final TagKey<EntityType<?>> USE_VOID_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("tacz:use_void_damage_on"));
+    public static final TagKey<EntityType<?>> PRETEND_MELEE_DAMAGE_ON = TagKey.create(Registries.ENTITY_TYPE, ResourceLocation.parse("tacz:pretend_melee_damage_on"));
 
     /**
      * 允许其他 mod 使用 persistent data（永久数据） 控制曳光弹的颜色和粗细。<p>
@@ -142,9 +143,9 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     private float cameraYRot;
     private Vector3f firstPersonRenderOffset;
     // 发射的枪械 ID
-    private ResourceLocation gunId;
+    private ResourceLocation gunId = DefaultAssets.EMPTY_GUN_ID;
     // 枪械display ID
-    private ResourceLocation gunDisplayId;
+    private ResourceLocation gunDisplayId = DefaultAssets.DEFAULT_GUN_DISPLAY_ID;
     private float armorIgnore;
     private float headShot;
     private float shotDamageMultiplier = 1f;
@@ -273,7 +274,7 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
     }
 
     @Override
@@ -282,8 +283,8 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         // 调用 TaC 子弹服务器事件
         this.onBulletTick();
         // 粒子效果
-        if (this.level().isClientSide) {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> AmmoParticleSpawner.addParticle(this));
+        if (this.level().isClientSide()) {
+            AmmoParticleSpawner.addParticle(this);
         }
         // 子弹模型的旋转与抛物线
         Vec3 movement = this.getDeltaMovement();
@@ -404,8 +405,8 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
 
         this.setDeltaMovement(vec3.x, vec3.y, vec3.z);
         double d0 = vec3.horizontalDistance();
-        this.setYRot((float)(Mth.atan2(vec3.x, vec3.z) * (double)(180F / (float)Math.PI)));
-        this.setXRot((float)(Mth.atan2(vec3.y, d0) * (double)(180F / (float)Math.PI)));
+        this.setYRot((float) (Mth.atan2(vec3.x, vec3.z) * (double) (180F / (float) Math.PI)));
+        this.setXRot((float) (Mth.atan2(vec3.y, d0) * (double) (180F / (float) Math.PI)));
         this.yRotO = this.getYRot();
         this.xRotO = this.getXRot();
     }
@@ -421,9 +422,9 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
             Entity core
     ) {
         public static MaybeMultipartEntity of(Entity hitPart) {
-            var core = (hitPart instanceof PartEntity<?> part)
-                    ? part.getParent()
-                    : hitPart;
+            Entity core = hitPart instanceof net.neoforged.neoforge.entity.PartEntity<?> part
+                    ? part.getParent() : hitPart instanceof EnderDragonPart dragonPart
+                    ? dragonPart.parentMob : hitPart;
             return new MaybeMultipartEntity(hitPart, core);
         }
     }
@@ -446,8 +447,8 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         float headShotMultiplier = Math.max(this.headShot, 0);
         // 发布Pre事件
         var preEvent = new EntityHurtByGunEvent.Pre(this, entity, attacker, this.gunId, this.gunDisplayId, damage, sources, headshot, headShotMultiplier, LogicalSide.SERVER);
-        var cancelled = MinecraftForge.EVENT_BUS.post(preEvent);
-        if (cancelled) {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(preEvent);
+        if (preEvent.isCanceled()) {
             return;
         }
         // 刷新由Pre事件修改后的参数
@@ -465,13 +466,14 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         }
         // 点燃
         if (this.igniteEntity && AmmoConfig.IGNITE_ENTITY.get()) {
-            entity.setSecondsOnFire(this.igniteEntityTime);
+            entity.igniteForSeconds(this.igniteEntityTime);
             // 给予粒子效果
             if (this.level() instanceof ServerLevel serverLevel) {
                 serverLevel.sendParticles(ParticleTypes.LAVA, entity.getX(), entity.getY() + entity.getEyeHeight(), entity.getZ(), 1, 0, 0, 0, 0);
             }
         }
-        // TODO 暴击判定（不是爆头）暴击判定内部逻辑，需要输出一个是否暴击的 flag
+        // TACZ 1.1.8 has no gun-data field or event result for a separate random critical hit.
+        // Headshots are the only projectile critical multiplier currently defined by the schema.
         if (headshot) {
             // 默认爆头伤害是 1x
             damage *= headShotMultiplier;
@@ -498,14 +500,16 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         // 只对 LivingEntity 执行击杀判定
         if (parts.core() instanceof LivingEntity livingCore) {
             // 事件同步，从服务端到客户端
-            if (!level().isClientSide) {
+            if (!level().isClientSide()) {
                 int attackerId = attacker == null ? 0 : attacker.getId();
                 // 如果生物死了
                 if (livingCore.isDeadOrDying()) {
-                    MinecraftForge.EVENT_BUS.post(new EntityKillByGunEvent(this, livingCore, attacker, newGunId, gunDisplayId, damage, sources, headshot, headShotMultiplier, LogicalSide.SERVER));
+                    EntityKillByGunEvent killByGunEvent = new EntityKillByGunEvent(this, livingCore, attacker, newGunId, gunDisplayId, damage, sources, headshot, headShotMultiplier, LogicalSide.SERVER);
+                    net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(killByGunEvent);
                     NetworkHandler.sendToDimension(new ServerMessageGunKill(getId(), livingCore.getId(), attackerId, newGunId, gunDisplayId, damage, headshot, headShotMultiplier), livingCore);
                 } else {
-                    MinecraftForge.EVENT_BUS.post(new EntityHurtByGunEvent.Post(this, livingCore, attacker, newGunId, gunDisplayId, damage, sources, headshot, headShotMultiplier, LogicalSide.SERVER));
+                    EntityHurtByGunEvent.Post hurtByGunEvent = new EntityHurtByGunEvent.Post(this, livingCore, attacker, newGunId, gunDisplayId, damage, sources, headshot, headShotMultiplier, LogicalSide.SERVER);
+                    net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(hurtByGunEvent);
                     NetworkHandler.sendToDimension(new ServerMessageGunHurt(getId(), livingCore.getId(), attackerId, newGunId, gunDisplayId, damage, headshot, headShotMultiplier), livingCore);
                 }
             }
@@ -520,7 +524,9 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         Vec3 hitVec = result.getLocation();
         // 触发事件
         // 提前触发事件以让事件可以取消原版的命中行为（例如敲钟，打倒靶子等）
-        if (MinecraftForge.EVENT_BUS.post(new AmmoHitBlockEvent(this.level(), result, this.level().getBlockState(pos), this))) {
+        AmmoHitBlockEvent ammoHitBlockEvent = new AmmoHitBlockEvent(this.level(), result, this.level().getBlockState(pos), this);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(ammoHitBlockEvent);
+        if (ammoHitBlockEvent.isCanceled()) {
             return;
         }
         super.onHitBlock(result);
@@ -544,7 +550,7 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
             if (BaseFireBlock.canBePlacedAt(this.level(), offsetPos, result.getDirection())) {
                 BlockState fireState = BaseFireBlock.getState(this.level(), offsetPos);
                 this.level().setBlock(offsetPos, fireState, Block.UPDATE_ALL_IMMEDIATE);
-                ((ServerLevel) this.level()).sendParticles(ParticleTypes.LAVA, hitVec.x - 1.0 + this.random.nextDouble() * 2.0, hitVec.y, hitVec.z - 1.0 + this.random.nextDouble() * 2.0, 4, 0, 0, 0, 0);
+                ((ServerLevel) this.level()).sendParticles(ParticleTypes.LAVA, hitVec.x - 1.0 + this.getRandom().nextDouble() * 2.0, hitVec.y, hitVec.z - 1.0 + this.getRandom().nextDouble() * 2.0, 4, 0, 0, 0, 0);
             }
         }
         this.discard();
@@ -591,16 +597,16 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     }
 
     /**
-     * @return Pair<非穿甲伤害源，穿甲伤害源>
+     * @return Pair<非穿甲伤害源 ， 穿甲伤害源>
      */
     private Pair<DamageSource, DamageSource> createDamageSources(MaybeMultipartEntity parts) {
         DamageSource source1, source2;
         var hitPartType = parts.hitPart().getType();
-        var directCause = hitPartType.is(PRETEND_MELEE_DAMAGE_ON) ? this.getOwner() : this;
+        var directCause = hitPartType.builtInRegistryHolder().is(PRETEND_MELEE_DAMAGE_ON) ? this.getOwner() : this;
         // 给末影人造成伤害
-        if (hitPartType.is(USE_MAGIC_DAMAGE_ON)) {
+        if (hitPartType.builtInRegistryHolder().is(USE_MAGIC_DAMAGE_ON)) {
             source1 = source2 = this.damageSources().indirectMagic(this, getOwner());
-        } else if (hitPartType.is(USE_VOID_DAMAGE_ON)) {
+        } else if (hitPartType.builtInRegistryHolder().is(USE_VOID_DAMAGE_ON)) {
             source1 = ModDamageTypes.Sources.bulletVoid(this.level().registryAccess(), directCause, this.getOwner(), false);
             source2 = ModDamageTypes.Sources.bulletVoid(this.level().registryAccess(), directCause, this.getOwner(), true);
         } else {
@@ -626,13 +632,9 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
         parts.hitPart().hurt(source2, damage * armorDamagePercent);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
 
     @Override
-    public void writeSpawnData(FriendlyByteBuf buffer) {
+    public void writeSpawnData(net.minecraft.network.RegistryFriendlyByteBuf buffer) {
         buffer.writeFloat(getXRot());
         buffer.writeFloat(getYRot());
         buffer.writeDouble(getDeltaMovement().x);
@@ -657,7 +659,7 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     }
 
     @Override
-    public void readSpawnData(FriendlyByteBuf additionalData) {
+    public void readSpawnData(net.minecraft.network.RegistryFriendlyByteBuf additionalData) {
         setXRot(additionalData.readFloat());
         setYRot(additionalData.readFloat());
         setDeltaMovement(additionalData.readDouble(), additionalData.readDouble(), additionalData.readDouble());
@@ -726,11 +728,12 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     }
 
     public Optional<float[]> getTracerColorOverride() {
-        var pd = getPersistentData();
-        if (!pd.contains(TRACER_COLOR_OVERRIDER_KEY, Tag.TAG_INT_ARRAY)) {
+        var pd = this.getPersistentData();
+        var optInts = pd.getIntArray(TRACER_COLOR_OVERRIDER_KEY);
+        if (optInts.isEmpty()) {
             return Optional.empty();
-        } else {
-            var ints = pd.getIntArray(TRACER_COLOR_OVERRIDER_KEY);
+        }
+        var ints = optInts.get();
             // 请避免使用 1 或者 2 个值的数组。
             // 此处 1~2 个值的分支仅为优雅地处理异常情况来代替崩溃所作的措施 :(
             switch (ints.length) {
@@ -759,12 +762,11 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
                     return Optional.of(new float[]{r, g, b, a});
                 }
             }
-        }
     }
 
     public float getTracerSizeOverride() {
-        var pd = getPersistentData();
-        return pd.contains(TRACER_SIZE_OVERRIDER_KEY, Tag.TAG_ANY_NUMERIC) ? pd.getFloat(TRACER_SIZE_OVERRIDER_KEY) : 1;
+        var pd = this.getPersistentData();
+        return pd.contains(TRACER_SIZE_OVERRIDER_KEY) ? pd.getFloatOr(TRACER_SIZE_OVERRIDER_KEY, 1f) : 1;
     }
 
     @Override

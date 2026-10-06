@@ -1,10 +1,24 @@
 package com.tacz.guns.util.math;
 
+import com.tacz.guns.util.TaczThreads;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 public class SecondOrderDynamics {
-    public static final ScheduledExecutorService executorService = Executors.newScheduledThreadPool(15, Thread::new);
+    /**
+     * 每个实例占用一个线程跑 {@link #update()} 死循环，所以池容量必须 >= 实例数。
+     *
+     * <p><b>必须是 daemon 池</b>：{@code update()} 是 {@code while (!stop)} 死循环，
+     * 而 {@code stop()} 全仓从未被调用；同时有 5 个常驻实例。
+     * 原先用的 {@code Thread::new} 会<b>继承创建者线程</b>的 daemon 属性
+     * —— 静态初始化块由谁先触发就随谁，等于把「关闭游戏会不会崩」交给运气。
+     * 一旦摊上非 daemon，这 5 个线程就会卡住 JVM 退出，
+     * 15 秒后 {@code ClientShutdownWatchdog} 发一份崩溃报告。
+     * 详见 {@link TaczThreads}。
+     */
+    public static final ScheduledExecutorService executorService =
+            Executors.newScheduledThreadPool(15, TaczThreads.daemonFactory("tacz-dynamics"));
 
     static {
         for (int i = 0; i < 15; i++) {

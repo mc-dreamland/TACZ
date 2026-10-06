@@ -1,12 +1,12 @@
 package com.tacz.guns.api.event.common;
 
+import com.tacz.guns.api.LogicalSide;
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.ICancellableEvent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.eventbus.api.Cancelable;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.LogicalSide;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.ApiStatus.Obsolete;
@@ -30,6 +30,10 @@ public class EntityHurtByGunEvent extends Event implements KubeJSGunEventPoster<
     protected float headshotMultiplier;
     protected final LogicalSide logicalSide;
 
+
+
+
+
     @ApiStatus.Internal
     protected EntityHurtByGunEvent(Entity bullet, @Nullable Entity hurtEntity, @Nullable LivingEntity attacker,
                                    ResourceLocation gunId, ResourceLocation gunDisplayId,
@@ -51,8 +55,7 @@ public class EntityHurtByGunEvent extends Event implements KubeJSGunEventPoster<
     /**
      * 实体受到枪击，伤害判定前触发的事件，可以设置枪击的伤害属性
      */
-    @Cancelable
-    public static class Pre extends EntityHurtByGunEvent {
+    public static class Pre extends EntityHurtByGunEvent implements ICancellableEvent {
         @ApiStatus.Internal
         public Pre(Entity bullet, @Nullable Entity hurtEntity, @Nullable LivingEntity attacker,
                    ResourceLocation gunId, ResourceLocation gunDisplayId,
@@ -101,6 +104,7 @@ public class EntityHurtByGunEvent extends Event implements KubeJSGunEventPoster<
 
     /**
      * 实体受到枪击，伤害判定结束但没有死亡后触发的事件
+     *
      * @see EntityKillByGunEvent 实体因枪击致死时触发的事件
      */
     public static class Post extends EntityHurtByGunEvent {

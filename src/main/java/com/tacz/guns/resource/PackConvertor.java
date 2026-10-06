@@ -3,9 +3,9 @@ package com.tacz.guns.resource;
 import com.google.gson.*;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.client.resource.pojo.PackInfo;
+import net.neoforged.fml.ModList;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.fml.loading.FMLPaths;
 import org.apache.commons.lang3.time.StopWatch;
 
 import java.io.*;
@@ -37,7 +37,7 @@ public class PackConvertor {
     }
 
     public static void convert(CommandSourceStack source) {
-        Path resourcePacksPath = FMLPaths.GAMEDIR.get().resolve("tacz");
+        Path resourcePacksPath = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("tacz");
         File folder = resourcePacksPath.toFile();
         if (!folder.isDirectory()) {
             try {
@@ -60,7 +60,7 @@ public class PackConvertor {
                 GunMod.LOGGER.info("Start converting legacy packs...");
                 for (File file : files) {
                     if (file.isFile() && file.getName().endsWith(".zip")) {
-                        PackConvertor.LegacyPack pack = fromZipFile(file);
+                        LegacyPack pack = fromZipFile(file);
                         if (pack != null) {
                             msg(source, Component.translatable("message.tacz.converter.pack.start", file.getName()));
                             GunMod.LOGGER.info("Attempt to converting legacy pack: {}", file.getName());
@@ -71,7 +71,7 @@ public class PackConvertor {
                                 GunMod.LOGGER.warn("Target file already exists: {}", file.getName());
                                 skip++;
                                 continue;
-                            } catch (Exception e){
+                            } catch (Exception e) {
                                 msg(source, Component.translatable("message.tacz.converter.pack.failed", file.getName()));
                                 GunMod.LOGGER.error("Failed to convert legacy pack: {}", file.getName(), e);
                                 error++;
@@ -96,7 +96,7 @@ public class PackConvertor {
         }
     }
 
-    public static PackConvertor.LegacyPack fromZipFile(File file) {
+    public static LegacyPack fromZipFile(File file) {
         try (ZipFile zipFile = new ZipFile(file)) {
             var iteration = zipFile.entries();
             while (iteration.hasMoreElements()) {
@@ -109,7 +109,7 @@ public class PackConvertor {
                     try (InputStream stream = zipFile.getInputStream(entry)) {
                         PackInfo info = GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), PackInfo.class);
                         if (info != null) {
-                            return new PackConvertor.LegacyPack(file, namespace, info);
+                            return new LegacyPack(file, namespace, info);
                         }
                     } catch (IOException | JsonSyntaxException | JsonIOException exception) {
                         GunMod.LOGGER.warn(exception.getMessage());
@@ -152,7 +152,11 @@ public class PackConvertor {
             if (matcher.find()) {
                 String namespace = matcher.group(1);
                 String path = matcher.group(2);
-                String newPath = "data/" + namespace + "/recipes/" + path;
+                // 26.2 的数据包目录是【单数】recipe/，不再是 1.20 时代的 recipes/
+                // （vanilla jar 里只有 data/minecraft/recipe/，已核实）。
+                // 旧枪包转换器若仍写 recipes/，产出的配方会被原版数据包加载器整个忽略 ——
+                // 表现为「转换成功但工作台里没有该枪包的任何配方」。
+                String newPath = "data/" + namespace + "/recipe/" + path;
 
                 try (InputStream stream = oldPack.getInputStream(entry)) {
                     JsonObject object = GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), JsonObject.class);
@@ -316,7 +320,7 @@ public class PackConvertor {
         }
 
         public void convert() throws FileAlreadyExistsException {
-            Path newPath = FMLPaths.GAMEDIR.get().resolve("tacz");
+            Path newPath = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("tacz");
             String newName = file.getName().replace(".zip", "") + "_converted.zip";
             File newFile = new File(newPath.toFile(), newName);
 

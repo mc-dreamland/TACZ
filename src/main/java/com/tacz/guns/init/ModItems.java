@@ -2,42 +2,60 @@ package com.tacz.guns.init;
 
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.item.gun.GunItemManager;
-import com.tacz.guns.item.*;
+import com.tacz.guns.item.AmmoBoxItem;
+import com.tacz.guns.item.AmmoItem;
+import com.tacz.guns.item.AttachmentItem;
+import com.tacz.guns.item.DefaultTableItem;
+import com.tacz.guns.item.GunSmithTableItem;
+import com.tacz.guns.item.ModernKineticGunItem;
+import com.tacz.guns.item.TargetMinecartItem;
+
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegisterEvent;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModItems {
-    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, GunMod.MOD_ID);
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(GunMod.MOD_ID);
 
-    public static RegistryObject<ModernKineticGunItem> MODERN_KINETIC_GUN = ITEMS.register("modern_kinetic_gun", ModernKineticGunItem::new);
+    public static final DeferredItem<ModernKineticGunItem> MODERN_KINETIC_GUN =
+            ITEMS.registerItem("modern_kinetic_gun", ModernKineticGunItem::new);
 
-//    public static RegistryObject<ThrowableItem> M67 = ITEMS.register("m67", ThrowableItem::new);
+    public static final DeferredItem<AmmoItem> AMMO =
+            ITEMS.registerItem("ammo", AmmoItem::new);
+    public static final DeferredItem<AttachmentItem> ATTACHMENT =
+            ITEMS.registerItem("attachment", AttachmentItem::new);
 
-    public static RegistryObject<Item> AMMO = ITEMS.register("ammo", AmmoItem::new);
-    public static RegistryObject<AttachmentItem> ATTACHMENT = ITEMS.register("attachment", AttachmentItem::new);
+    public static final DeferredItem<GunSmithTableItem> GUN_SMITH_TABLE =
+            ITEMS.registerItem("gun_smith_table",
+                    props -> new DefaultTableItem(ModBlocks.GUN_SMITH_TABLE.get(), props));
+    public static final DeferredItem<GunSmithTableItem> WORKBENCH_111 =
+            ITEMS.registerItem("workbench_a",
+                    props -> new GunSmithTableItem(ModBlocks.WORKBENCH_111.get(), props));
+    public static final DeferredItem<GunSmithTableItem> WORKBENCH_211 =
+            ITEMS.registerItem("workbench_b",
+                    props -> new GunSmithTableItem(ModBlocks.WORKBENCH_211.get(), props));
+    public static final DeferredItem<GunSmithTableItem> WORKBENCH_121 =
+            ITEMS.registerItem("workbench_c",
+                    props -> new GunSmithTableItem(ModBlocks.WORKBENCH_121.get(), props));
 
-    public static RegistryObject<GunSmithTableItem> GUN_SMITH_TABLE = ITEMS.register("gun_smith_table", () -> new DefaultTableItem(ModBlocks.GUN_SMITH_TABLE.get()));
-    public static RegistryObject<GunSmithTableItem> WORKBENCH_111 = ITEMS.register("workbench_a", () -> new GunSmithTableItem(ModBlocks.WORKBENCH_111.get()));
-    public static RegistryObject<GunSmithTableItem> WORKBENCH_211 = ITEMS.register("workbench_b", () -> new GunSmithTableItem(ModBlocks.WORKBENCH_211.get()));
-    public static RegistryObject<GunSmithTableItem> WORKBENCH_121 = ITEMS.register("workbench_c", () -> new GunSmithTableItem(ModBlocks.WORKBENCH_121.get()));
+    public static final DeferredItem<BlockItem> TARGET =
+            ITEMS.registerSimpleBlockItem("target", ModBlocks.TARGET);
+    public static final DeferredItem<BlockItem> STATUE =
+            ITEMS.registerSimpleBlockItem("statue", ModBlocks.STATUE);
+    public static final DeferredItem<AmmoBoxItem> AMMO_BOX =
+            ITEMS.registerItem("ammo_box", AmmoBoxItem::new);
+    public static final DeferredItem<TargetMinecartItem> TARGET_MINECART =
+            ITEMS.registerItem("target_minecart", TargetMinecartItem::new);
 
-
-    public static RegistryObject<Item> TARGET = ITEMS.register("target", () -> new BlockItem(ModBlocks.TARGET.get(), new Item.Properties()));
-    public static RegistryObject<Item> STATUE = ITEMS.register("statue", () -> new BlockItem(ModBlocks.STATUE.get(), new Item.Properties()));
-    public static RegistryObject<Item> AMMO_BOX = ITEMS.register("ammo_box", AmmoBoxItem::new);
-    public static RegistryObject<Item> TARGET_MINECART = ITEMS.register("target_minecart", TargetMinecartItem::new);
-
-    @SubscribeEvent
-    public static void onItemRegister(RegisterEvent event) {
-        if (event.getRegistryKey().equals(ForgeRegistries.ITEMS.getRegistryKey())) {
-            GunItemManager.registerGunItem(ModernKineticGunItem.TYPE_NAME, MODERN_KINETIC_GUN);
-        }
+    public static void onCommonSetup(FMLCommonSetupEvent event) {
+        GunItemManager.registerGunItem(ModernKineticGunItem.TYPE_NAME, MODERN_KINETIC_GUN.get());
+        GunMod.LOGGER.info(
+                "registries ready: gun={} workbench_a={} gun_smith_table={} recipe={}",
+                MODERN_KINETIC_GUN.getId(),
+                ModBlocks.WORKBENCH_111.getId(),
+                GUN_SMITH_TABLE.getId(),
+                ModRecipe.GUN_SMITH_TABLE_CRAFTING.getId());
     }
 }

@@ -5,11 +5,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.tacz.guns.client.resource.ClientAssetsManager;
 import com.tacz.guns.resource.CommonAssetsManager;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.ModList;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
 import org.apache.commons.lang3.time.StopWatch;
 
 import java.util.concurrent.TimeUnit;
@@ -26,8 +26,8 @@ public class ReloadCommand {
     private static int reloadAllPack(CommandContext<CommandSourceStack> context) {
         StopWatch watch = StopWatch.createStarted();
         {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> ReloadCommand::reloadClient);
-            DistExecutor.safeRunWhenOn(Dist.DEDICATED_SERVER, () -> CommonAssetsManager::reloadAllPack);
+            if (net.neoforged.fml.loading.FMLEnvironment.getDist() == Dist.CLIENT) ReloadCommand.reloadClient();
+            CommonAssetsManager.reloadAllPack();
         }
         watch.stop();
         double time = watch.getTime(TimeUnit.MICROSECONDS) / 1000.0;

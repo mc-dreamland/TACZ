@@ -1,23 +1,21 @@
 package com.tacz.guns.resource.serialize;
 
+import com.tacz.guns.util.CraftingHelper;
 import com.google.gson.*;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.crafting.result.GunSmithTableResult;
+import com.tacz.guns.crafting.RecipeCompat;
 import com.tacz.guns.crafting.result.RawGunTableResult;
 import com.tacz.guns.resource.CommonAssetsManager;
-import com.tacz.guns.resource.pojo.data.block.TabConfig;
 import com.tacz.guns.resource.pojo.data.recipe.GunResult;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.crafting.CraftingHelper;
 
 import java.lang.reflect.Type;
 
 
 public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithTableResult> {
-
     @Override
     public GunSmithTableResult deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
         if (json.isJsonObject()) {
@@ -37,7 +35,7 @@ public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithT
                 if (!raw.contains(":")) {
                     raw = GunMod.MOD_ID + ":" + raw;
                 }
-                tabOverride = ResourceLocation.tryParse(raw);
+                tabOverride = ResourceLocation.parse(raw);
             }
 
             GunSmithTableResult result;
@@ -57,20 +55,36 @@ public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithT
                     result = new GunSmithTableResult(raw, tabOverride);
                 }
                 case GunSmithTableResult.CUSTOM -> {
-                    JsonObject resultObject = GsonHelper.getAsJsonObject(jsonObject, "item");
-                    ItemStack itemStack = CraftingHelper.getItemStack(resultObject, true);
-                    result = new GunSmithTableResult(itemStack, tabOverride);
+                    result = new GunSmithTableResult(normalizeCustomResultJson(jsonObject).deepCopy(), tabOverride);
                 }
                 default -> {
-                    return new GunSmithTableResult(ItemStack.EMPTY, TabConfig.TAB_EMPTY);
+                    throw new JsonSyntaxException("Unknown or invalid gun-smith result: " + json);
                 }
             }
-            return result;
+            return result.withRecipeJson(jsonObject);
         }
-        return new GunSmithTableResult(ItemStack.EMPTY, TabConfig.TAB_EMPTY);
+        throw new JsonSyntaxException("Unknown or invalid gun-smith result: " + json);
     }
 
     private ResourceLocation getId(JsonObject jsonObject) {
-        return new ResourceLocation(GsonHelper.getAsString(jsonObject, "id"));
+        return ResourceLocation.parse(GsonHelper.getAsString(jsonObject, "id"));
+    }
+
+    /** Accepts legacy nested item objects, shorthand item ids and modern component results. */
+    private static JsonObject normalizeCustomResultJson(JsonObject jsonObject) {
+        JsonElement itemElement = jsonObject.get("item");
+        JsonObject inner = itemElement != null && itemElement.isJsonObject()
+                ? itemElement.getAsJsonObject() : jsonObject;
+        JsonElement itemId = inner.has("id") ? inner.get("id") : inner.get("item");
+        if (itemId == null || !itemId.isJsonPrimitive() || !itemId.getAsJsonPrimitive().isString()) {
+            throw new JsonSyntaxException("Custom gun-smith result requires an item id: " + jsonObject);
+        }
+        JsonObject normalized = new JsonObject();
+        normalized.add("id", itemId);
+        for (String field : new String[]{"count", "nbt", "components"}) {
+            JsonElement value = inner.has(field) ? inner.get(field) : jsonObject.get(field);
+            if (value != null) normalized.add(field, value.deepCopy());
+        }
+        return RecipeCompat.normalizeLegacyResult(normalized).getAsJsonObject();
     }
 }

@@ -2,10 +2,11 @@ package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.item.ItemBehavior;
 
+import com.tacz.guns.api.entity.ForcePose;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.network.message.ClientMessagePlayerCrawl;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Pose;
@@ -45,7 +46,7 @@ public class LocalPlayerCrawl {
         TimelessAPI.getClientGunIndex(gunId).ifPresent(gunIndex -> {
             this.isCrawling = isCrawl;
             this.crawCooldownTicks = COOLDOWN_TICKS;
-            NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerCrawl(isCrawl));
+            ClientPacketDistributor.sendToServer(new ClientMessagePlayerCrawl(isCrawl));
         });
     }
 
@@ -88,9 +89,9 @@ public class LocalPlayerCrawl {
 
     private void setCrawlPose() {
         if (isCrawling) {
-            player.setForcedPose(Pose.SWIMMING);
+            ((ForcePose) player).tacz$setForcedPose(Pose.SWIMMING);
         } else {
-            player.setForcedPose(null);
+            ((ForcePose) player).tacz$setForcedPose(null);
         }
     }
 }

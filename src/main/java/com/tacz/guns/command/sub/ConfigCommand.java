@@ -1,5 +1,6 @@
 package com.tacz.guns.command.sub;
 
+import net.neoforged.neoforge.server.command.EnumArgument;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -8,7 +9,6 @@ import com.tacz.guns.config.sync.SyncConfig;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.server.command.EnumArgument;
 
 public class ConfigCommand {
     private static final String CONFIG_NAME = "config";
@@ -46,6 +46,7 @@ public class ConfigCommand {
         ;
 
         public final String lang;
+
         ConfigKey(String lang) {
             this.lang = lang;
         }

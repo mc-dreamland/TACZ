@@ -13,14 +13,15 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.io.Reader;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -29,9 +30,10 @@ import java.util.function.Supplier;
 /**
  * 通用数据管理器，采用懒加载策略<br>
  * 从资源包/数据包中读取json文件并解析为数据
+ *
  * @param <T> 数据类型
  */
-public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJsonDataManager.PreparedResult<T>> {
+public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJsonDataManager.PreparedResult<T>>  {
 
     protected final Map<ResourceLocation, T> dataMap = Maps.newHashMap();
     protected final Map<ResourceLocation, Supplier<LoadResult<T>>> lazyLoaderMap = Maps.newHashMap();
@@ -55,7 +57,8 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     public LazyJsonDataManager(Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker, Predicate<ResourceLocation> eagerLoadPredicate) {
         this.gson = pGson;
         this.dataClass = dataClass;
-        this.marker = MarkerManager.getMarker(marker);
+        this.marker = MarkerFactory.getMarker(marker);
+        this.ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
         this.fileToIdConverter = fileToIdConverter;
         this.eagerLoadPredicate = eagerLoadPredicate;
     }
@@ -145,7 +148,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     @Nullable
     protected final JsonElement readResourceElement(ResourceManager manager, ResourceLocation resourcePath) {
         try (Reader reader = openReader(manager, resourcePath)) {
-            return reader == null ? null : GsonHelper.fromJson(gson, reader, JsonElement.class, true);
+            return reader == null ? null : GsonHelper.fromJson(gson, reader, JsonElement.class);
         } catch (IOException | JsonParseException | IllegalArgumentException exception) {
             GunMod.LOGGER.error(marker, "Failed to read raw data file {}", resourcePath, exception);
             return null;
@@ -211,6 +214,8 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     protected final FileToIdConverter getFileToIdConverter() {
         return fileToIdConverter;
     }
+
+    public final ResourceLocation ID;
 
     protected record LoadResult<T>(@Nullable T data, boolean failed) {
         protected static <T> LoadResult<T> success(@Nullable T data) {

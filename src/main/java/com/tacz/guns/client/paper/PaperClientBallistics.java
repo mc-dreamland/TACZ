@@ -25,13 +25,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ExtractLevelRenderStateEvent;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import com.tacz.guns.api.LogicalSide;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import javax.annotation.Nullable;
 import java.util.Iterator;
@@ -45,7 +45,7 @@ import static com.tacz.guns.client.paper.GunResolver.bool;
 import static com.tacz.guns.client.paper.GunResolver.string;
 
 /** Paper owns impacts and damage. These untracked local entities only animate and render. */
-@Mod.EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class PaperClientBallistics {
     private static final int MAX_VISUALS = 2048;
     private static final int MAX_REMEMBERED = 8192;
@@ -238,10 +238,10 @@ public final class PaperClientBallistics {
         Visual visual = VISUALS.get(id);
         Entity bullet = visual == null ? null : visual.bullet;
         if (bool(record, "kill", false)) {
-            MinecraftForge.EVENT_BUS.post(new EntityKillByGunEvent(bullet, target instanceof LivingEntity living ? living : null,
+            NeoForge.EVENT_BUS.post(new EntityKillByGunEvent(bullet, target instanceof LivingEntity living ? living : null,
                     attacker, gun, display, base, null, headshot, appliedMultiplier, LogicalSide.CLIENT));
         } else {
-            MinecraftForge.EVENT_BUS.post(new EntityHurtByGunEvent.Post(bullet, target, attacker, gun, display,
+            NeoForge.EVENT_BUS.post(new EntityHurtByGunEvent.Post(bullet, target, attacker, gun, display,
                     base, null, headshot, appliedMultiplier, LogicalSide.CLIENT));
             // The server can confirm a distant hit whose victim is outside entity tracking.
             // Preserve the local shooter's feedback without inventing a target entity.
@@ -263,8 +263,7 @@ public final class PaperClientBallistics {
     }
 
     @SubscribeEvent
-    public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public static void tick(ClientTickEvent.Post event) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level != world || !PaperClientBridge.active()) { reset(); world = level; }
         if (level == null) return;
@@ -301,26 +300,21 @@ public final class PaperClientBallistics {
     }
 
     @SubscribeEvent
-    public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES || VISUALS.isEmpty()) return;
+    public static void render(ExtractLevelRenderStateEvent event) {
+        if (VISUALS.isEmpty()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != world || !PaperClientBridge.active()) { reset(); return; }
         var dispatcher = mc.getEntityRenderDispatcher();
-        var buffers = mc.renderBuffers().bufferSource();
         Vec3 camera = event.getCamera().getPosition();
-        float partial = event.getPartialTick();
+        float partial = event.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         for (Visual visual : VISUALS.values()) {
             EntityKineticBullet bullet = visual.bullet;
             if (bullet.isRemoved() || visual.blocked && visual.renderedBlocked
                     || !dispatcher.shouldRender(bullet, event.getFrustum(), camera.x, camera.y, camera.z)) continue;
-            Vec3 position = bullet.getPosition(partial);
-            dispatcher.render(bullet, position.x - camera.x, position.y - camera.y, position.z - camera.z,
-                    Mth.lerp(partial, bullet.yRotO, bullet.getYRot()), partial, event.getPoseStack(), buffers,
-                    dispatcher.getPackedLightCoords(bullet, partial));
+            event.getRenderState().entityRenderStates.add(dispatcher.extractEntity(bullet, partial));
             if (visual.terminalAt >= 0) visual.renderedTerminal = true;
             if (visual.blocked) visual.renderedBlocked = true;
         }
-        buffers.endBatch();
     }
 
     private static void copyPrevious(EntityKineticBullet bullet) {

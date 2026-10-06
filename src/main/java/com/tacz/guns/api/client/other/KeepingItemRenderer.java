@@ -22,9 +22,10 @@ public interface KeepingItemRenderer {
 
     /**
      * ItemInHandRenderer 通过 Mixin 的方式实现了此接口。
+     *
      * @return 返回 ItemInHandRenderer 实例
      */
-    static KeepingItemRenderer getRenderer(){
+    static KeepingItemRenderer getRenderer() {
         return (KeepingItemRenderer) Minecraft.getInstance().getEntityRenderDispatcher().getItemInHandRenderer();
     }
 }

@@ -9,23 +9,20 @@ import com.tacz.guns.api.item.IAttachment;
 import com.tacz.guns.api.item.attachment.AttachmentType;
 import com.tacz.guns.client.model.BedrockAttachmentModel;
 import com.tacz.guns.client.model.BedrockGunModel;
-import com.tacz.guns.client.model.IFunctionalRenderer;
+import com.tacz.guns.client.model.IFunctionalSubmitter;
+import com.tacz.guns.client.render.scope.ScopeRenderTypes;
 import com.tacz.guns.client.renderer.item.AttachmentItemRenderer;
 import com.tacz.guns.util.RenderDistance;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.apache.commons.lang3.tuple.Pair;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
 
-import java.util.EnumMap;
 
-public class AttachmentRender implements IFunctionalRenderer {
+public class AttachmentRender implements IFunctionalSubmitter {
     private final BedrockGunModel bedrockGunModel;
     private final AttachmentType type;
 
@@ -34,49 +31,69 @@ public class AttachmentRender implements IFunctionalRenderer {
         this.type = type;
     }
 
-    public static void renderAttachment(ItemStack attachmentItem, ItemStack gunItem, PoseStack poseStack, ItemDisplayContext transformType, int light, int overlay) {
+
+
+    public static void submitAttachment(ItemStack attachmentItem,
+                                        ItemStack gunItem,
+                                        PoseStack poseStack,
+                                        ItemDisplayContext transformType,
+                                        SubmitNodeCollector collector,
+                                        int light,
+                                        int overlay) {
         poseStack.translate(0, -1.5, 0);
-        if (ItemBehavior.of(attachmentItem) instanceof IAttachment iAttachment) {
-            ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
-            TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresentOrElse(attachmentIndex -> {
-                BedrockAttachmentModel model = attachmentIndex.getAttachmentModel();
-                ResourceLocation texture = attachmentIndex.getModelTexture();
-                // 这里是枪械里的配件渲染，没有模型材质就不渲染
-                if (model != null && texture != null) {
-                    // 调用低模
-                    Pair<BedrockAttachmentModel, ResourceLocation> lodModel = attachmentIndex.getLodModel();
-                    // 有低模、在高模渲染范围外、不是第一人称
-                    if (lodModel != null && !RenderDistance.inRenderHighPolyModelDistance(poseStack) && !transformType.firstPerson()) {
-                        model = lodModel.getLeft();
-                        texture = lodModel.getRight();
-                    }
-                    RenderType renderType = RenderType.entityCutout(texture);
-                    model.render(attachmentItem, gunItem, poseStack, transformType, renderType, light, overlay);
-                }
-            }, () -> {
-                // 没有对应的 attachmentIndex，渲染黑紫材质以提醒
-                MultiBufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-                VertexConsumer buffer = bufferSource.getBuffer(RenderType.entityTranslucent(MissingTextureAtlasSprite.getLocation()));
-                AttachmentItemRenderer.SLOT_ATTACHMENT_MODEL.renderToBuffer(poseStack, buffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-            });
+        if (!(ItemBehavior.of(attachmentItem) instanceof IAttachment iAttachment)) {
+            return;
         }
+        ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
+        TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresentOrElse(attachmentIndex -> {
+            BedrockAttachmentModel model = attachmentIndex.getAttachmentModel();
+            ResourceLocation texture = attachmentIndex.getModelTexture();
+            if (model != null && texture != null) {
+                Pair<BedrockAttachmentModel, ResourceLocation> lodModel = attachmentIndex.getLodModel();
+                if (lodModel != null && !RenderDistance.inRenderHighPolyModelDistance(poseStack) && !transformType.firstPerson()) {
+                    model = lodModel.getLeft();
+                    texture = lodModel.getRight();
+                }
+                RenderType renderType = RenderType.entityCutout(texture);
+                // The scope itself reaches this call before it marks the aperture, so it keeps its
+                // dedicated depth-body sequence. Non-scope attachments are traversed afterwards and
+                // use the same screen-space outside mask as the gun body when the aperture is active.
+                renderType = ScopeRenderTypes.clipForViewmodel(renderType, texture,
+                        transformType != null && transformType.firstPerson());
+                model.submit(attachmentItem, gunItem, poseStack, transformType, collector,
+                        renderType, texture, light, overlay);
+            }
+        }, () -> collector.submitCustomGeometry(
+                poseStack,
+                RenderType.entityTranslucent(MissingTextureAtlasSprite.getLocation()),
+                (pose, buffer) -> {
+                    PoseStack frozen = new PoseStack();
+                    frozen.last().pose().set(pose.pose());
+                    frozen.last().normal().set(pose.normal());
+                    AttachmentItemRenderer.SLOT_ATTACHMENT_MODEL.renderToBuffer(
+                            frozen, buffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
+                }
+        ));
     }
 
     @Override
-    public void render(PoseStack poseStack, VertexConsumer vertexBuffer, ItemDisplayContext transformType, int light, int overlay) {
-        EnumMap<AttachmentType, ItemStack> currentAttachmentItem = bedrockGunModel.getCurrentAttachmentItem();
-        ItemStack attachmentItem = currentAttachmentItem.get(type);
-        if (attachmentItem != null && !attachmentItem.isEmpty()) {
-            Matrix3f normal = new Matrix3f(poseStack.last().normal());
-            Matrix4f pose = new Matrix4f(poseStack.last().pose());
-            //和枪械模型共用顶点缓冲的都需要代理到渲染结束后渲染
-            bedrockGunModel.delegateRender((poseStack1, vertexBuffer1, transformType1, light1, overlay1) -> {
-                PoseStack poseStack2 = new PoseStack();
-                poseStack2.last().normal().mul(normal);
-                poseStack2.last().pose().mul(pose);
-                // 渲染配件
-                renderAttachment(attachmentItem, bedrockGunModel.getCurrentGunItem(), poseStack2, transformType, light, overlay);
-            });
+    public void extract(ExtractionContext context) {
+        ItemStack attachmentItem = bedrockGunModel.getCurrentAttachmentItem().get(type);
+        if (attachmentItem == null || attachmentItem.isEmpty()) {
+            return;
         }
+        ItemStack frozenAttachment = attachmentItem.copy();
+        ItemStack frozenGun = bedrockGunModel.getCurrentGunItem().copy();
+        PoseStack frozenPose = context.poseStack();
+        ItemDisplayContext displayContext = context.displayContext();
+        int light = context.light();
+        int overlay = context.overlay();
+        context.add(collector -> {
+            PoseStack taskPose = new PoseStack();
+            taskPose.last().pose().set(frozenPose.last().pose());
+            taskPose.last().normal().set(frozenPose.last().normal());
+            submitAttachment(frozenAttachment, frozenGun, taskPose, displayContext, collector, light, overlay);
+        });
     }
+
 }

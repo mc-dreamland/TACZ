@@ -10,11 +10,10 @@ import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.client.ConfigScreenHandler;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.ModLoadingContext;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 
 public class ClothConfigScreen extends Screen {
     public static final String CLOTH_CONFIG_URL = "https://www.curseforge.com/minecraft/mc-mods/cloth-config";
@@ -26,10 +25,13 @@ public class ClothConfigScreen extends Screen {
         this.lastScreen = lastScreen;
     }
 
-    public static void registerNoClothConfigPage() {
+    /**
+     * Mods-menu fallback when Cloth Config is absent (MUKSC/TACZ-1.21.1 idiom).
+     * Shows a download hint instead of the config screen.
+     */
+    public static void registerNoClothConfigPage(ModContainer container) {
         if (!ModList.get().isLoaded(CompatRegistry.CLOTH_CONFIG)) {
-            ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class, () ->
-                    new ConfigScreenHandler.ConfigScreenFactory((client, parent) -> new ClothConfigScreen(parent)));
+            container.registerExtensionPoint(IConfigScreenFactory.class, (modContainer, screen) -> new ClothConfigScreen(screen));
         }
     }
 
@@ -43,25 +45,33 @@ public class ClothConfigScreen extends Screen {
                         .bounds(posX, posY - 15, 200, 20).build()
         );
         this.addRenderableWidget(
-                Button.builder(CommonComponents.GUI_BACK, b -> Minecraft.getInstance().setScreen(this.lastScreen))
+                Button.builder(CommonComponents.GUI_BACK, b -> this.minecraft.setScreenAndShow(this.lastScreen))
                         .bounds(posX, posY + 50, 200, 20).build()
         );
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
-        this.renderBackground(gui);
-        this.message.renderCentered(gui, this.width / 2, 80);
+    public void render(GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
+        // 26.1.2: vanilla Screen#extractRenderState already extracts the (blurred)
+        // background exactly once per frame — never call extractBackground manually
+        // here (r13 crash: "Can only blur once per frame").
+        int centerX = this.width / 2;
+        int centerY = this.height / 4 - 20;
+        int lineY = centerY;
+        for (var line : this.font.split(Component.translatable("gui.tacz.cloth_config_warning.tips"), 300)) {
+            gui.drawCenteredString(this.font, line, centerX, lineY, 0xFFFFFFFF);
+            lineY += 9;
+        }
         super.render(gui, pMouseX, pMouseY, pPartialTick);
     }
 
     private void openUrl(String url) {
         if (StringUtils.isNotBlank(url) && minecraft != null) {
-            minecraft.setScreen(new ConfirmLinkScreen(yes -> {
+            minecraft.setScreenAndShow(new ConfirmLinkScreen(yes -> {
                 if (yes) {
                     Util.getPlatform().openUri(url);
                 }
-                minecraft.setScreen(this);
+                minecraft.setScreenAndShow(this);
             }, url, true));
         }
     }

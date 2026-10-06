@@ -2,6 +2,7 @@ package com.tacz.guns.client.tooltip;
 
 import com.tacz.guns.api.item.ItemBehavior;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
@@ -15,12 +16,11 @@ import com.tacz.guns.client.resource.ClientAssetsManager;
 import com.tacz.guns.client.resource.pojo.PackInfo;
 import com.tacz.guns.inventory.tooltip.AttachmentItemTooltip;
 import com.tacz.guns.resource.pojo.data.attachment.AttachmentData;
-import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -29,7 +29,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix4f;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +56,7 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
     private void addPackInfo() {
         PackInfo packInfoObject = ClientAssetsManager.INSTANCE.getPackInfo(attachmentId);
         if (packInfoObject != null) {
-            packInfo = Component.translatable(packInfoObject.getName()).withStyle(ChatFormatting.BLUE).withStyle(ChatFormatting.ITALIC);
+            packInfo = Component.translatable(packInfoObject.getName()).withStyle(style -> style.withColor(0x5555FF)).withStyle(style -> style.withItalic(true));
         }
     }
 
@@ -77,8 +76,8 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public int getHeight() {
-        if (!Screen.hasShiftDown()) {
+    public int getHeight(Font font) {
+        if (!isShiftDown()) {
             return components.size() * 10 + 28;
         }
         return (showGuns.size() - 1) / 16 * 18 + 50 + components.size() * 10;
@@ -91,7 +90,7 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
             width[0] = Math.max(width[0], font.width(packInfo) + 4);
         }
         components.forEach(c -> width[0] = Math.max(width[0], font.width(c)));
-        if (!Screen.hasShiftDown()) {
+        if (!isShiftDown()) {
             return Math.max(width[0], font.width(tips) + 4);
         } else {
             width[0] = Math.max(width[0], font.width(support) + 4);
@@ -103,39 +102,39 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public void renderText(Font font, int pX, int pY, Matrix4f matrix4f, MultiBufferSource.BufferSource bufferSource) {
+    public void renderText(GuiGraphics graphics, Font font, int pX, int pY) {
         int yOffset = pY;
         for (Component component : this.components) {
-            font.drawInBatch(component, pX, yOffset, 0xffaa00, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, component, pX, yOffset, 0xFFffaa00);
             yOffset += 10;
         }
-        if (!Screen.hasShiftDown()) {
-            font.drawInBatch(tips, pX, pY + 5 + this.components.size() * 10, 0x9e9e9e, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+        if (!isShiftDown()) {
+            graphics.drawString(font, tips, pX, pY + 5 + this.components.size() * 10, 0xFF9e9e9e);
             yOffset += 10;
         } else {
             yOffset += (showGuns.size() - 1) / 16 * 18 + 32;
         }
         // 枪包名
         if (packInfo != null) {
-            font.drawInBatch(this.packInfo, pX, yOffset + 8, 0xffffff, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.packInfo, pX, yOffset + 8, 0xFFffffff);
         }
     }
 
     @Override
-    public void renderImage(Font font, int mouseX, int mouseY, GuiGraphics gui) {
-        if (!Screen.hasShiftDown()) {
+    public void renderImage(Font font, int mouseX, int mouseY, int width, int height, GuiGraphics graphics) {
+        if (!isShiftDown()) {
             return;
         }
         int minY = components.size() * 10 + 3;
         int maxX = getWidth(font);
-        gui.fill(mouseX, mouseY + minY, mouseX + maxX, mouseY + minY + 11, 0x8F00b0ff);
-        gui.drawString(font, support, mouseX + 2, mouseY + minY + 2, 0xe3f2fd);
+        graphics.fill(mouseX, mouseY + minY, mouseX + maxX, mouseY + minY + 11, 0x8F00b0ff);
+        graphics.drawString(font, support, mouseX + 2, mouseY + minY + 2, 0xFFe3f2fd);
 
         for (int i = 0; i < showGuns.size(); i++) {
             ItemStack stack = showGuns.get(i);
             int x = i % 16 * 16 + 2;
             int y = i / 16 * 18 + minY + 15;
-            gui.renderItem(stack, mouseX + x, mouseY + y);
+            graphics.renderItem(stack, mouseX + x, mouseY + y);
         }
     }
 
@@ -145,6 +144,11 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
         } catch (ExecutionException e) {
             e.printStackTrace();
         }
+    }
+
+    private static boolean isShiftDown() {
+        return InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), InputConstants.KEY_LSHIFT)
+                || InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), InputConstants.KEY_RSHIFT);
     }
 
     public static String rgbToHex(int rgb) {
@@ -162,7 +166,7 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
             if (tooltipKey != null) {
                 String text = I18n.get(tooltipKey);
                 String[] split = text.split("\n");
-                Arrays.stream(split).forEach(s -> components.add(Component.literal(s).withStyle(ChatFormatting.GRAY)));
+                Arrays.stream(split).forEach(s -> components.add(Component.literal(s).withStyle(style -> style.withColor(0xAAAAAA))));
             }
 
             if (ItemBehavior.of(attachment) instanceof IAttachment iAttachment) {
@@ -185,18 +189,18 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
                         zoomText[i] = "x" + zoom[i];
                     }
                     String zoomJoinText = StringUtils.join(zoomText, ", ");
-                    components.add(Component.translatable("tooltip.tacz.attachment.zoom", zoomJoinText).withStyle(ChatFormatting.GOLD));
+                    components.add(Component.translatable("tooltip.tacz.attachment.zoom", zoomJoinText).withStyle(style -> style.withColor(0xFFAA00)));
                 }
             }
 
             if (type == AttachmentType.EXTENDED_MAG) {
                 int magLevel = data.getExtendedMagLevel();
                 if (magLevel == 1) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_1").withStyle(ChatFormatting.GRAY));
+                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_1").withStyle(style -> style.withColor(0xAAAAAA)));
                 } else if (magLevel == 2) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_2").withStyle(ChatFormatting.BLUE));
+                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_2").withStyle(style -> style.withColor(0x5555FF)));
                 } else if (magLevel == 3) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_3").withStyle(ChatFormatting.LIGHT_PURPLE));
+                    components.add(Component.translatable("tooltip.tacz.attachment.extended_mag_level_3").withStyle(style -> style.withColor(0xFF55FF)));
                 }
             }
 

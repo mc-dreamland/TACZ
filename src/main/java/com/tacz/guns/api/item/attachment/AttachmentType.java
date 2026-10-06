@@ -1,40 +1,33 @@
 package com.tacz.guns.api.item.attachment;
 
 import com.google.gson.annotations.SerializedName;
+import com.mojang.serialization.Codec;
 
 public enum AttachmentType {
-    /**
-     * 瞄具
-     */
     @SerializedName("scope")
     SCOPE,
-    /**
-     * 枪口组件
-     */
     @SerializedName("muzzle")
     MUZZLE,
-    /**
-     * 枪托
-     */
     @SerializedName("stock")
     STOCK,
-    /**
-     * 握把
-     */
     @SerializedName("grip")
     GRIP,
-    /**
-     * 激光指示器
-     */
     @SerializedName("laser")
     LASER,
-    /**
-     * 扩容弹夹（匣）
-     */
     @SerializedName("extended_mag")
     EXTENDED_MAG,
-    /**
-     * 用来表示物品不是配件的情况。
-     */
-    NONE
+    NONE;
+
+    public static final Codec<AttachmentType> CODEC = Codec.STRING.xmap(
+            s -> AttachmentType.valueOf(s.toUpperCase(java.util.Locale.ROOT)),
+            t -> t.name().toLowerCase(java.util.Locale.ROOT)
+    );
+
+    public static AttachmentType fromId(int id) {
+        AttachmentType[] values = values();
+        if (id < 0 || id >= values.length) {
+            return NONE;
+        }
+        return values[id];
+    }
 }

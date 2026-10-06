@@ -2,10 +2,15 @@ package com.tacz.guns.entity.sync.core;
 
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.entity.Entity;
 import org.apache.commons.lang3.Validate;
 
 public class DataEntry<E extends Entity, T> {
+    public static final StreamCodec<FriendlyByteBuf, DataEntry<?, ?>> STREAM_CODEC = StreamCodec.of(
+            (buf, entry) -> entry.write(buf),
+            DataEntry::read
+    );
     private final SyncedDataKey<E, T> key;
     private T value;
     private boolean dirty;

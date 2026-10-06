@@ -33,13 +33,15 @@ public interface IAttachment {
      */
     void setAttachmentId(ItemStack attachmentStack, @Nullable ResourceLocation attachmentId);
 
-    /**@deprecated
+    /**
+     * @deprecated
      */
     @Deprecated
     @Nullable
     ResourceLocation getSkinId(ItemStack attachmentStack);
 
-    /**@deprecated
+    /**
+     * @deprecated
      */
     @Deprecated
     void setSkinId(ItemStack attachmentStack, @Nullable ResourceLocation skinId);
@@ -64,6 +66,7 @@ public interface IAttachment {
 
     /**
      * 获取镭射配件的激光颜色
+     *
      * @return 镭射颜色，RGB
      */
     int getLaserColor(ItemStack attachmentStack);

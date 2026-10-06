@@ -1,6 +1,6 @@
 # TACZ Paper
 
-本模块为 **Paper 1.21.11 / Java 21** 提供 TACZ 服务端逻辑。客户端使用本仓库构建的 **Forge 1.20.1 MOD**，并安装或内置支持连接 1.21.11 的 ViaForge。原版版本转换由 ViaForge 负责，TACZ 动作和菜单通过 `tacz:paper` Plugin Message 通道传输。
+本模块为 **Paper 1.21.11 / Java 21** 提供 TACZ 服务端逻辑。客户端使用本仓库构建的 **NeoForge 1.21.10 MOD / Java 21**。1.21.10 客户端连接 1.21.11 服务端仍需额外配置兼容的原版协议转换方案；TACZ 桥接不负责原版版本转换。TACZ 动作和菜单通过 `tacz:paper` Plugin Message 通道传输，桥接协议保持为 4。
 
 ## 支持范围
 
@@ -17,12 +17,12 @@
 
 ## 构建
 
-两个模块各自使用自己的 Gradle Wrapper，避免旧版 ForgeGradle 与新版 paperweight 的 Gradle 要求冲突。IDE 可以单独导入 `paper/settings.gradle.kts`。
+两个模块各自使用自己的 Gradle Wrapper，分别管理 ModDevGradle 和 paperweight 的构建环境。IDE 可以单独导入 `paper/settings.gradle.kts`。
 
-客户端：在仓库根目录使用 Java 17：
+客户端：在仓库根目录使用 Java 21：
 
 ```powershell
-.\gradlew.bat build jarJar
+.\gradlew.bat test build
 ```
 
 插件：在 `paper/` 目录使用 Java 21：
@@ -31,14 +31,14 @@
 .\gradlew.bat test build
 ```
 
-Linux/macOS 对应使用 `sh ./gradlew`。构建产物分别位于根目录 `build/libs/` 和 `paper/build/libs/`；客户端部署包含内嵌依赖的 `*-all.jar`，不要部署 sources JAR。
+Linux/macOS 对应使用 `sh ./gradlew`。构建产物分别位于根目录 `build/libs/` 和 `paper/build/libs/`；客户端部署 `tacz-1.21.10-neoforge-1.1.8+neoforge.1.21.10.hotfix2.jar`，该 JAR 已包含内嵌依赖，不要部署 sources JAR 或旧 Forge 构建产物。
 
 Paper 使用 [paperweight-userdev](https://docs.papermc.io/paper/dev/userdev/) 的 1.21.11 dev bundle，可直接引用 Paper API、CraftBukkit、Mojang 映射 NMS，产物标记为 `MOJANG_PRODUCTION`。当前逻辑主要使用 Paper API。
 
 ## 部署和首次使用
 
 1. 将 `tacz-paper-*-paper-SNAPSHOT.jar` 放入 Paper 1.21.11 的 `plugins/`，使用 Java 21 启动。
-2. 客户端替换为本仓库新构建的 MOD，保留默认枪包资源，配置好 ViaForge 后连接服务器。旧版未经桥接修改的 TACZ 客户端无法使用这些插件物品。
+2. 客户端安装 NeoForge 21.10.64 或同系列更新版和本仓库新构建的 MOD，保留默认枪包资源，配置好 1.21.10 → 1.21.11 原版协议转换后连接服务器。旧版未经桥接修改的 TACZ 客户端无法使用这些插件物品。
 3. `/tacz status` 显示客户端桥接“已就绪”后，由 OP 或控制台发放物品。当前使用桥接协议 **4**，以 PDC 的类型与型号 ID 识别物品，必须同时更新客户端和插件；协议 1/2/3 的旧版本不能与新版本混用。
 4. 玩家使用原 TACZ 按键射击、换弹、瞄准和改装；使用插件工作台命令制作物品。
 
@@ -193,7 +193,7 @@ hitboxes:
 
 ## 验证
 
-自动测试覆盖默认包引用/标签、目录首次导出与递归加载、配置重载失败回滚、无 CMD 的物品识别与状态持久化、忽略旧编号表、默认配件参数、换弹阶段、伤害衰减和射速、客户端射击调度与服务端早到请求、协议边界、分片校验、弹道消息合批大小与顺序、弹道观察范围/结束清理/命中反馈、菜单消息大小、补给菜单权限与领取，以及库存事务的扣料、退弹、令牌过期和重放防护。构建和服务测试不能代替真实的 Forge → ViaForge → Paper 联调与多人流量压测。
+自动测试覆盖默认包引用/标签、目录首次导出与递归加载、配置重载失败回滚、无 CMD 的物品识别与状态持久化、忽略旧编号表、默认配件参数、换弹阶段、伤害衰减和射速、客户端射击调度与服务端早到请求、协议边界、分片校验、弹道消息合批大小与顺序、弹道观察范围/结束清理/命中反馈、菜单消息大小、补给菜单权限与领取，以及库存事务的扣料、退弹、令牌过期和重放防护。构建和服务测试不能代替真实的 NeoForge 1.21.10 → 版本转换 → Paper 1.21.11 联调与多人流量压测。
 
 实机验收应检查：
 

@@ -1,47 +1,38 @@
 package com.tacz.guns.block.entity;
 
-import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.init.ModBlocks;
-import com.tacz.guns.inventory.GunSmithTableMenu;
+
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+
 import org.jetbrains.annotations.Nullable;
 
-public class GunSmithTableBlockEntity extends BlockEntity implements MenuProvider {
-    public static final BlockEntityType<GunSmithTableBlockEntity> TYPE = BlockEntityType.Builder.of(GunSmithTableBlockEntity::new,
-            ModBlocks.GUN_SMITH_TABLE.get(),
-            ModBlocks.WORKBENCH_111.get(),
-            ModBlocks.WORKBENCH_121.get(),
-            ModBlocks.WORKBENCH_211.get()
-    ).build(null);
-
+/**
+ * Work package ②: persist table id. Menu provider is work package ③/④
+ * (NeoForge {@code IMenuProvider} / extra-data instead of Fabric {@code ExtendedMenuProvider}).
+ */
+public class GunSmithTableBlockEntity extends BlockEntity {
     private static final String ID_TAG = "BlockId";
 
     @Nullable
     private ResourceLocation id = null;
 
     public GunSmithTableBlockEntity(BlockPos pos, BlockState blockState) {
-        super(TYPE, pos, blockState);
+        super(ModBlocks.GUN_SMITH_TABLE_BE.get(), pos, blockState);
     }
 
     public void setId(ResourceLocation id) {
         this.id = id;
+        this.setChanged();
     }
 
     @Nullable
@@ -56,42 +47,28 @@ public class GunSmithTableBlockEntity extends BlockEntity implements MenuProvide
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
-    public AABB getRenderBoundingBox() {
-        return new AABB(worldPosition.offset(-2, 0, -2), worldPosition.offset(2, 1, 2));
-    }
-
-    @Override
-    public Component getDisplayName() {
-        return Component.literal("Gun Smith Table");
-    }
-
-    @Nullable
-    @Override
-    public AbstractContainerMenu createMenu(int id, Inventory inventory, Player player) {
-        return new GunSmithTableMenu(id, inventory, getId());
-    }
-
-    @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        if (tag.contains(ID_TAG, Tag.TAG_STRING)) {
-            this.id = ResourceLocation.tryParse(tag.getString(ID_TAG));
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        String raw = input.getStringOr(ID_TAG, "");
+        if (!raw.isEmpty()) {
+            this.id = ResourceLocation.tryParse(raw);
         } else {
-            this.id = DefaultAssets.DEFAULT_BLOCK_ID;
+            // Leave the id unset for naturally placed/legacy tables. The block implementation
+            // resolves the physical workbench to the corresponding gun-pack index id.
+            this.id = null;
         }
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
         if (id != null) {
-            tag.putString(ID_TAG, id.toString());
+            output.putString(ID_TAG, id.toString());
         }
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        return saveWithoutMetadata();
+    public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
+        return saveWithoutMetadata(provider);
     }
 }

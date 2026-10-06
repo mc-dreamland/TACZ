@@ -18,11 +18,10 @@ import com.tacz.guns.resource.pojo.data.gun.ExtraDamage;
 import com.tacz.guns.resource.pojo.data.gun.ExtraDamage.DistanceDamagePair;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.GunFireModeAdjustData;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -142,9 +141,9 @@ public class DamageModifier implements IAttachmentModifier<Modifier, LinkedList<
                 double eval = AttachmentPropertyManager.eval(value, 9);
                 int damage = (int) Math.round(eval);
                 if (damage > 9) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.damage.increase").withStyle(ChatFormatting.GREEN));
+                    components.add(Component.translatable("tooltip.tacz.attachment.damage.increase").withStyle(style -> style.withColor(0x55FF55)));
                 } else if (damage < 9) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.damage.decrease").withStyle(ChatFormatting.RED));
+                    components.add(Component.translatable("tooltip.tacz.attachment.damage.decrease").withStyle(style -> style.withColor(0xFF5555)));
                 }
             }
         }

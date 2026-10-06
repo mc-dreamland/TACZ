@@ -9,8 +9,8 @@ import com.tacz.guns.client.renderer.item.AttachmentItemRenderer;
 import com.tacz.guns.client.resource.index.ClientAttachmentIndex;
 import com.tacz.guns.inventory.tooltip.AttachmentItemTooltip;
 import com.tacz.guns.resource.index.CommonAttachmentIndex;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -18,32 +18,29 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 import static com.tacz.guns.util.datafixer.AttachmentIdFix.updateAttachmentIdInTag;
 
 public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
-    public AttachmentItem() {
-        super(new Properties().stacksTo(1));
+    public AttachmentItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override
     @Nonnull
-    @OnlyIn(Dist.CLIENT)
+    // 双端公共方法，禁用 client 索引（26.1 不剥 @OnlyIn 成员，dedicated 必崩）。
+    // 详见 AbstractGunItem#getName 注释与 records/SERVER_TEST_20260821_DEDICATED.md。
     public Component getName(@Nonnull ItemStack stack) {
         ResourceLocation attachmentId = this.getAttachmentId(stack);
-        Optional<ClientAttachmentIndex> attachmentIndex = TimelessAPI.getClientAttachmentIndex(attachmentId);
-        if (attachmentIndex.isPresent()) {
-            return Component.translatable(attachmentIndex.get().getName());
+        var attachmentIndex = TimelessAPI.getCommonAttachmentIndex(attachmentId);
+        if (attachmentIndex.isPresent() && attachmentIndex.get().getPojo().getName() != null) {
+            return Component.translatable(attachmentIndex.get().getPojo().getName());
         }
         return super.getName(stack);
     }
@@ -67,22 +64,6 @@ public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
     }
 
     @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            AttachmentItemRenderer renderer;
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    Minecraft minecraft = Minecraft.getInstance();
-                    renderer = new AttachmentItemRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
-                }
-
-                return renderer;
-            }
-        });
-    }
-
-    @Override
     @Nonnull
     public AttachmentType getType(ItemStack attachmentStack) {
         IAttachment iAttachment = IAttachment.getIAttachmentOrNull(attachmentStack);
@@ -99,7 +80,6 @@ public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
         return Optional.of(new AttachmentItemTooltip(this.getAttachmentId(stack), this.getType(stack), stack));
     }
 
-    @Override
     public void verifyTagAfterLoad(@NotNull CompoundTag tag) {
         updateAttachmentIdInTag(tag);
     }

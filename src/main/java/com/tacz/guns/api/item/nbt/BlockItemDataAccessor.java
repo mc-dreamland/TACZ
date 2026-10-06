@@ -2,8 +2,8 @@ package com.tacz.guns.api.item.nbt;
 
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.IBlock;
+import com.tacz.guns.util.ItemNbtUtils;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -17,9 +17,9 @@ public interface BlockItemDataAccessor extends IBlock {
     @Override
     @Nonnull
     default ResourceLocation getBlockId(ItemStack block) {
-        CompoundTag nbt = block.getOrCreateTag();
-        if (nbt.contains(BLOCK_ID, Tag.TAG_STRING)) {
-            ResourceLocation gunId = ResourceLocation.tryParse(nbt.getString(BLOCK_ID));
+        CompoundTag nbt = ItemNbtUtils.getTag(block);
+        if (nbt.contains(BLOCK_ID)) {
+            ResourceLocation gunId = ResourceLocation.tryParse(nbt.getStringOr(BLOCK_ID, ""));
             return Objects.requireNonNullElse(gunId, DefaultAssets.EMPTY_BLOCK_ID);
         }
         return DefaultAssets.EMPTY_BLOCK_ID;
@@ -27,12 +27,13 @@ public interface BlockItemDataAccessor extends IBlock {
 
     @Override
     default void setBlockId(ItemStack block, @Nullable ResourceLocation blockId) {
-        CompoundTag nbt = block.getOrCreateTag();
-        if (blockId != null) {
-            nbt.putString(BLOCK_ID, blockId.toString());
-            return;
-        }
-        nbt.putString(BLOCK_ID, DefaultAssets.EMPTY_BLOCK_ID.toString());
+        ItemNbtUtils.updateTag(block, nbt -> {
+            if (blockId != null) {
+                nbt.putString(BLOCK_ID, blockId.toString());
+            } else {
+                nbt.putString(BLOCK_ID, DefaultAssets.EMPTY_BLOCK_ID.toString());
+            }
+        });
     }
 
 }

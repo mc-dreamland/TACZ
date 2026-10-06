@@ -269,7 +269,7 @@ public class ObjectAnimationRunner {
             animation.update(blend, progressNs);
             ObjectAnimationSoundChannel soundChannel = animation.getSoundChannel();
             if (soundChannel != null && Minecraft.getInstance().player != null) {
-                soundChannel.playSound(fromTimeNs / 1e9, progressNs / 1e9, Minecraft.getInstance().player, 16, 1 ,1);
+                soundChannel.playSound(fromTimeNs / 1e9, progressNs / 1e9, Minecraft.getInstance().player, 16, 1, 1);
             }
         }
     }
@@ -281,7 +281,7 @@ public class ObjectAnimationRunner {
         lastUpdateNs = currentNs;
         ObjectAnimationSoundChannel soundChannel = animation.getSoundChannel();
         if (soundChannel != null && Minecraft.getInstance().player != null) {
-            soundChannel.playSound(fromTimeNs / 1e9, progressNs / 1e9, Minecraft.getInstance().player, 16, 1 ,1);
+            soundChannel.playSound(fromTimeNs / 1e9, progressNs / 1e9, Minecraft.getInstance().player, 16, 1, 1);
         }
     }
 
@@ -289,7 +289,9 @@ public class ObjectAnimationRunner {
         return running;
     }
 
-    public boolean isPausing() { return pausing; }
+    public boolean isPausing() {
+        return pausing;
+    }
 
     public boolean isHolding() {
         return progressNs == (long) (getAnimation().getMaxEndTimeS() * 1e9) + 1;

@@ -1,8 +1,8 @@
 package com.tacz.guns.api.event.common;
 
+import net.neoforged.bus.api.Event;
 import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.Event;
 
 /**
  * 缓存配件属性修改值时触发的事件
@@ -12,6 +12,11 @@ import net.minecraftforge.eventbus.api.Event;
 public class AttachmentPropertyEvent extends Event implements KubeJSGunEventPoster<AttachmentPropertyEvent> {
     private final ItemStack gunItem;
     private final AttachmentCacheProperty cacheProperty;
+
+
+    public interface Callback {
+        void post(AttachmentPropertyEvent event);
+    }
 
     public AttachmentPropertyEvent(ItemStack gunItem, AttachmentCacheProperty attachmentProperty) {
         this.gunItem = gunItem;

@@ -11,19 +11,21 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
  * 该类会在资源重新加载时一次性加载所有数据，可能会导致性能问题，在加载重资产时建议使用{@link LazyJsonDataManager}替代<br>
  * 通用数据管理器<br>
  * 从资源包/数据包中读取json文件并解析为数据
+ *
  * @param <T> 数据类型
  */
-public class JsonDataManager<T> extends SimplePreparableReloadListener<Map<ResourceLocation, JsonElement>> {
+public class JsonDataManager<T> extends SimplePreparableReloadListener<Map<ResourceLocation, JsonElement>>  {
     protected final Map<ResourceLocation, T> dataMap = Maps.newHashMap();
 
     private final Gson gson;
@@ -32,6 +34,8 @@ public class JsonDataManager<T> extends SimplePreparableReloadListener<Map<Resou
 
     private final FileToIdConverter fileToIdConverter;
 
+    public final ResourceLocation ID;
+
     public JsonDataManager(Class<T> dataClass, Gson pGson, String directory, String marker) {
         this(dataClass, pGson, FileToIdConverter.json(directory), marker);
     }
@@ -39,7 +43,8 @@ public class JsonDataManager<T> extends SimplePreparableReloadListener<Map<Resou
     public JsonDataManager(Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker) {
         this.gson = pGson;
         this.dataClass = dataClass;
-        this.marker = MarkerManager.getMarker(marker);
+        this.marker = MarkerFactory.getMarker(marker);
+        this.ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
         this.fileToIdConverter = fileToIdConverter;
     }
 

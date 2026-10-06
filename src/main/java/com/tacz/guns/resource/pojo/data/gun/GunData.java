@@ -306,7 +306,7 @@ public class GunData {
             rpm = Mth.clamp(cacheProperty.<Integer>getCache(RpmModifier.ID), 1, 1200);
         }
         IGun iGun = IGun.getIGunOrNull(gunStack);
-        if(hasHeatData())
+        if (hasHeatData())
             rpm = (int) (rpm * iGun.lerpRPM(gunStack));
 
         return 60_000L / rpm;

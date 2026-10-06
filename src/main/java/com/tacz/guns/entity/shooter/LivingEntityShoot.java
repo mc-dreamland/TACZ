@@ -1,10 +1,12 @@
 package com.tacz.guns.entity.shooter;
 
+import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.api.event.common.GunShootEvent;
 import com.tacz.guns.api.item.IGun;
+import com.tacz.guns.api.item.ammo.AmmoSourceRegistry;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import com.tacz.guns.api.item.gun.FireMode;
 import com.tacz.guns.config.sync.SyncConfig;
@@ -20,12 +22,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fml.LogicalSide;
-import net.minecraftforge.network.PacketDistributor;
 
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -41,14 +38,14 @@ public class LivingEntityShoot {
     }
 
     public ShootResult shoot(Supplier<Float> pitch, Supplier<Float> yaw, long timestamp) {
-        return shoot(pitch, yaw, timestamp, 0f, false);
+        return shootInternal(pitch, yaw, timestamp, 0f, false);
     }
 
     public ShootResult shoot(Supplier<Float> pitch, Supplier<Float> yaw, long timestamp, float chargeProgress) {
-        return shoot(pitch, yaw, timestamp, chargeProgress, true);
+        return shootInternal(pitch, yaw, timestamp, chargeProgress, true);
     }
 
-    private ShootResult shoot(Supplier<Float> pitch, Supplier<Float> yaw, long timestamp, float chargeProgress, boolean hasChargeContext) {
+    protected ShootResult shootInternal(Supplier<Float> pitch, Supplier<Float> yaw, long timestamp, float chargeProgress, boolean hasChargeContext) {
         if (data.currentGunItem == null) {
             return ShootResult.NOT_DRAW;
         }
@@ -75,12 +72,16 @@ public class LivingEntityShoot {
         }
         if (SyncConfig.SERVER_SHOOT_NETWORK_V.get()) {
             // 根据 tick time 和 允许的网络延迟波动 计算 时间戳的接受窗口
-            MinecraftServer server = Objects.requireNonNull(shooter.getServer());
-            double tickTime = Math.max(server.tickTimes[server.getTickCount() % 100] * 1.0E-6D, 50);
+            MinecraftServer server = shooter.level().getServer();
+            if (server == null) {
+                return ShootResult.NETWORK_FAIL;
+            }
+            // Keep the acceptance window proportional to actual server tick time.
+            double tickTime = Math.max(50, server.getAverageTickTimeNanos() * 1.0E-6D);
             long alpha = System.currentTimeMillis() - data.baseTimestamp - timestamp;
             if (alpha < -300 || alpha > 300 + tickTime * 2) { // 允许 +- 300ms 的网络波动、窗口下限再扩大 2 个 tick time 时间(最坏情况射击会延迟2个 tick)
                 if (shooter instanceof ServerPlayer player) {
-                    NetworkHandler.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new ServerMessageSyncBaseTimestamp());
+                    NetworkHandler.sendToClientPlayer(ServerMessageSyncBaseTimestamp.INSTANCE, player);
                 }
                 return ShootResult.NETWORK_FAIL;
             }
@@ -122,8 +123,8 @@ public class LivingEntityShoot {
             return ShootResult.NO_AMMO;
         }
         //Handle Heat Data
-        if(gunIndex.getGunData().hasHeatData()) {
-            if(iGun.isOverheatLocked(currentGunItem)) {
+        if (gunIndex.getGunData().hasHeatData()) {
+            if (iGun.isOverheatLocked(currentGunItem)) {
                 return ShootResult.OVERHEATED;
             }
         }
@@ -142,7 +143,9 @@ public class LivingEntityShoot {
             iGun.setBulletInBarrel(currentGunItem, true);
         }
         // 触发射击事件
-        if (MinecraftForge.EVENT_BUS.post(new GunShootEvent(shooter, currentGunItem, LogicalSide.SERVER))) {
+        GunShootEvent gunShootEvent = new GunShootEvent(shooter, currentGunItem, LogicalSide.SERVER);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(gunShootEvent);
+        if (gunShootEvent.isCanceled()) {
             return ShootResult.FORGE_EVENT_CANCEL;
         }
 
@@ -159,7 +162,14 @@ public class LivingEntityShoot {
     }
 
     // 简单校验，服务端不追踪扳机按住状态，所以只拒绝超过“客户端一直按住蓄力”时理论可达到的最大进度。
-    private boolean isChargeProgressReasonable(ChargeData chargeData, float chargeProgress) {
+    /**
+     * Enforces the server trust boundary for client-reported charge progress.
+     *
+     * <p>This check must continue to reject non-finite values, progress below the firing threshold, and
+     * progress above the maximum reachable in the server-observed time window. Overrides must not weaken
+     * those constraints or expand the network-jitter tolerance merely to match client-side prediction.</p>
+     */
+    protected boolean isChargeProgressReasonable(ChargeData chargeData, float chargeProgress) {
         final float tolerance = 0.001f;
         if (!Float.isFinite(chargeProgress)) {
             return false;
@@ -180,7 +190,13 @@ public class LivingEntityShoot {
         return true;
     }
 
-    private float getMaxReasonableChargeProgress(ChargeData chargeData) {
+    /**
+     * Computes the greatest charge value the client could reasonably have reached.
+     *
+     * <p>The finite jitter allowance is part of the server validation boundary and must not become an
+     * unbounded bypass. The result remains capped by the gun's configured maximum charge.</p>
+     */
+    protected float getMaxReasonableChargeProgress(ChargeData chargeData) {
         // 预留少量 tick 余量，用于容忍网络抖动和客户端/服务端调度偏差。
         final float extraTicks = 4f;
         float startProgress = getChargeProgressAfterLastFire(chargeData);
@@ -189,7 +205,11 @@ public class LivingEntityShoot {
         return Math.min(maxProgress, chargeData.getMaxCharge());
     }
 
-    private float getChargeProgressAfterLastFire(ChargeData chargeData) {
+    /**
+     * Reconstructs the authoritative starting charge after the previous shot.
+     * Delay-charge weapons intentionally reset to zero; other modes retain only configured residual charge.
+     */
+    protected float getChargeProgressAfterLastFire(ChargeData chargeData) {
         if (data.shootTimestamp < 0) {
             return 0f;
         }
@@ -200,7 +220,11 @@ public class LivingEntityShoot {
         return Math.max(0f, data.chargeProgress - chargeData.getDecreaseOnFire());
     }
 
-    private long getChargeElapsedMillis() {
+    /**
+     * Returns server-observed elapsed charge time from the last shot or draw timestamp.
+     * Client timestamps must not replace this server-side time source.
+     */
+    protected long getChargeElapsedMillis() {
         if (data.shootTimestamp >= 0) {
             long startTimestamp = data.baseTimestamp + data.shootTimestamp;
             return System.currentTimeMillis() - startTimestamp;
@@ -211,7 +235,12 @@ public class LivingEntityShoot {
         return 0L;
     }
 
-    private float validateChargeProgress(ChargeData chargeData, float chargeProgress, boolean hasChargeContext) {
+    /**
+     * Sanitizes accepted charge data before it is stored and used by server-side shooting logic.
+     * Missing context, missing charge data, and non-finite values remain zero; valid values remain clamped
+     * to the configured range. This is a final normalization step, not a replacement for reasonableness checks.
+     */
+    protected float validateChargeProgress(ChargeData chargeData, float chargeProgress, boolean hasChargeContext) {
         if (!hasChargeContext || !Float.isFinite(chargeProgress)) {
             return 0f;
         }
@@ -223,6 +252,7 @@ public class LivingEntityShoot {
 
     /**
      * 以当前时间戳查询射击冷却。返回值一般不会超过枪械的射击间隔
+     *
      * @return 射击冷却
      */
     public long getShootCoolDown() {
@@ -231,6 +261,7 @@ public class LivingEntityShoot {
 
     /**
      * 查询指定的 timestamp 下的射击冷却。根据情况返回值可能超过枪械的射击间隔。
+     *
      * @param timestamp 指定 timestamp，是偏移时间戳（基于base timestamp 的相对时间戳）
      * @return 射击冷却
      */
@@ -263,7 +294,8 @@ public class LivingEntityShoot {
     }
 
     /**
-     * 消耗备弹 TODO: 需要检查，是否有其他更简单的方法消耗背包内的弹药 (这段是直接从逻辑机 API 里复制过来的)
+     * 消耗备弹。统一复用 {@link AbstractGunItem} 的虚拟弹药与物品处理器提取逻辑，
+     * 以保持服务端射击和普通换弹对弹药箱/背包槽位的处理一致。
      */
     public void consumeAmmoFromPlayer(int neededAmount, ItemStack itemStack, boolean needCheckAmmo) {
         if (!(itemStack.getItem() instanceof AbstractGunItem abstractGunItem)) {
@@ -276,8 +308,7 @@ public class LivingEntityShoot {
         if (abstractGunItem.useDummyAmmo(itemStack)) {
             abstractGunItem.findAndExtractDummyAmmo(itemStack, neededAmount);
         } else {
-            shooter.getCapability(ForgeCapabilities.ITEM_HANDLER, null)
-                    .map(cap -> abstractGunItem.findAndExtractInventoryAmmo(cap, itemStack, neededAmount));
+            AmmoSourceRegistry.consumeAmmo(shooter, itemStack, neededAmount);
         }
     }
 }

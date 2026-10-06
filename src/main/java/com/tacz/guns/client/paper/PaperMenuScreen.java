@@ -7,6 +7,8 @@ import com.tacz.guns.init.ModItems;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -132,7 +134,7 @@ public final class PaperMenuScreen extends Screen {
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        renderBackground(graphics);
+        renderBackground(graphics, mouseX, mouseY, partialTick);
         graphics.fill(left, top, left + panelWidth, top + panelHeight, 0xec151a20);
         graphics.fill(left, top, left + panelWidth, top + 24, 0xff252e38);
         graphics.fill(left + panelWidth / 2 - 2, top + 31, left + panelWidth / 2 - 1, top + panelHeight - 34, 0xff475361);
@@ -180,12 +182,13 @@ public final class PaperMenuScreen extends Screen {
             default -> ItemStack.EMPTY;
         };
         if (!stack.isEmpty()) {
-            CompoundTag tag = stack.getOrCreateTag();
+            CompoundTag tag = new CompoundTag();
             tag.putString(kind.equals("gun") ? "GunId" : kind.equals("attachment") || kind.equals("installed") ? "AttachmentId" : "AmmoId", id);
             if (kind.equals("box") || kind.equals("ammo_box")) {
                 tag.putString("AmmoId", "tacz:empty");
                 tag.putInt("Level", id.contains("diamond") ? 2 : id.contains("gold") ? 1 : 0);
             }
+            stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
         }
         return stack;
     }

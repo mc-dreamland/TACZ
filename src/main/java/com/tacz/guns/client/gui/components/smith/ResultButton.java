@@ -1,19 +1,19 @@
 package com.tacz.guns.client.gui.components.smith;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.tacz.guns.GunMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.InputWithModifiers;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
 
 public class ResultButton extends Button {
-    private static final ResourceLocation TEXTURE = new ResourceLocation(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
     private final ItemStack stack;
     private boolean isSelected = false;
 
@@ -23,31 +23,37 @@ public class ResultButton extends Button {
     }
 
     @Override
-    protected void renderWidget(@NotNull GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
-        RenderSystem.enableDepthTest();
-
+    protected void renderWidget(GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
         if (isSelected) {
             if (isHoveredOrFocused()) {
-                gui.blit(TEXTURE, this.getX() - 1, this.getY() - 1, 52, 229, this.width + 2, this.height + 2, 256, 256);
+                gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, this.getX() - 1, this.getY() - 1, 52, 229, this.width + 2, this.height + 2, 256, 256);
             } else {
-                gui.blit(TEXTURE, this.getX(), this.getY(), 53, 230, this.width, this.height, 256, 256);
+                gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, this.getX(), this.getY(), 53, 230, this.width, this.height, 256, 256);
             }
         } else {
             if (isHoveredOrFocused()) {
-                gui.blit(TEXTURE, this.getX() - 1, this.getY() - 1, 52, 211, this.width + 2, this.height + 2, 256, 256);
+                gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, this.getX() - 1, this.getY() - 1, 52, 211, this.width + 2, this.height + 2, 256, 256);
             } else {
-                gui.blit(TEXTURE, this.getX(), this.getY(), 53, 212, this.width, this.height, 256, 256);
+                gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, this.getX(), this.getY(), 53, 212, this.width, this.height, 256, 256);
             }
         }
         Minecraft mc = Minecraft.getInstance();
         gui.renderItem(stack, this.getX() + 1, this.getY());
 
+        // 第 15 轮：防止长名称溢出按钮（按钮宽 94，图标占到 x+20，右侧留 2px 余量）。
+        // 原先直接整串绘制，像 ".30-06 孤星 手炮" 这类长名会画到按钮外面去。
         Component hoverName = this.stack.getHoverName();
-        renderScrollingString(gui, mc.font, hoverName, this.getX() + 20, this.getY() + 4, this.getX() + 92, this.getY() + 13, 0xFFFFFF);
+        int maxWidth = this.width - 20 - 2;
+        String name = hoverName.getString();
+        if (mc.font.width(name) > maxWidth) {
+            // 用原版的 plainSubstrByWidth 截断并补省略号，注意要给 "..." 预留宽度
+            name = mc.font.plainSubstrByWidth(name, maxWidth - mc.font.width("...")) + "...";
+        }
+        gui.drawString(mc.font, name, this.getX() + 20, this.getY() + 4, 0xFFFFFFFF);
     }
 
     @Override
-    public void onPress() {
+    public void onPress(InputWithModifiers input) {
         this.isSelected = true;
         this.onPress.onPress(this);
     }

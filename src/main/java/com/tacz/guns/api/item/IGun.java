@@ -232,56 +232,53 @@ public interface IGun {
      * 比如伤害和精准度这样的复杂属性，GunProperty 的类型是复杂的数据结构，传入和返回的值就只是简单的浮点数。
      *
      * @param dataHolder 状态数据
-     * @param gunItem 枪械物品
-     * @param shooter 射击者
-     * @param id 属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
-     * @param type 属性的数据类型
-     * @param original 属性原来的值
+     * @param gunItem    枪械物品
+     * @param shooter    射击者
+     * @param id         属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
+     * @param type       属性的数据类型
+     * @param original   属性原来的值
+     * @param <T>        属性的数据类型
      * @return 脚本或子类修改后的属性
-     * @param <T> 属性的数据类型
-     *
      * @author ChloePrime
      * @since 1.1.7
      */
     default <T> T modifyProperty(ShooterDataHolder dataHolder, ItemStack gunItem, LivingEntity shooter,
                                  GunProperty<?> id, Class<T> type, T original) {
-        return modifyProperty(dataHolder, gunItem ,shooter, id.name(), type, original);
+        return modifyProperty(dataHolder, gunItem, shooter, id.name(), type, original);
     }
 
     /**
      * 动态修改枪械的属性
      *
      * @param dataHolder 状态数据
-     * @param gunItem 枪械物品
-     * @param shooter 射击者
-     * @param id 属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
-     * @param type 属性的数据类型
-     * @param original 属性原来的值
+     * @param gunItem    枪械物品
+     * @param shooter    射击者
+     * @param id         属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
+     * @param type       属性的数据类型
+     * @param original   属性原来的值
+     * @param <T>        属性的数据类型
      * @return 脚本或子类修改后的属性
-     * @param <T> 属性的数据类型
-     *
      * @author ChloePrime
      * @since 1.1.7
      */
     default <T> T modifyProperty(ShooterDataHolder dataHolder, ItemStack gunItem, LivingEntity shooter,
                                  String id, Class<T> type, T original) {
-        return modifyProperty(dataHolder, gunItem ,shooter, "modify_property", id, type, original);
+        return modifyProperty(dataHolder, gunItem, shooter, "modify_property", id, type, original);
     }
 
     /**
      * 动态修改枪械的属性，
      * 允许指定修改用的 lua 函数的名称
      *
-     * @param dataHolder 状态数据
-     * @param gunItem 枪械物品
-     * @param shooter 射击者
+     * @param dataHolder    状态数据
+     * @param gunItem       枪械物品
+     * @param shooter       射击者
      * @param luaMethodName 修改属性的 lua 函数的函数名
-     * @param id 属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
-     * @param type 属性的数据类型
-     * @param original 属性原来的值
+     * @param id            属性 id，请参阅 {@link com.tacz.guns.api.GunProperties}
+     * @param type          属性的数据类型
+     * @param original      属性原来的值
+     * @param <T>           属性的数据类型
      * @return 脚本或子类修改后的属性
-     * @param <T> 属性的数据类型
-     *
      * @author ChloePrime
      * @since 1.1.7
      */
@@ -311,6 +308,15 @@ public interface IGun {
      */
     @Nullable
     CompoundTag getAttachmentTag(ItemStack gun, AttachmentType type);
+
+    /**
+     * 写回已安装配件自身的 custom_data 标签。
+     *
+     * <p>第 18 轮：接口上补回该声明（上游 IGun 第 314 行有，我们移植时漏了）。
+     * 实现见 {@code GunItemDataAccessor#setAttachmentTag}（第 16 轮补回）。
+     * 主要用途是可变倍瞄具切换倍率后把 ZoomNumber 持久化。
+     */
+    void setAttachmentTag(ItemStack gun, AttachmentType type, CompoundTag attachmentTag);
 
     @Nonnull
     ResourceLocation getBuiltInAttachmentId(ItemStack gun, AttachmentType type);

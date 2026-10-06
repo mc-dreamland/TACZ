@@ -9,6 +9,7 @@ import com.tacz.guns.api.modifier.JsonProperty;
 import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.ICommonResourceProvider;
 import com.tacz.guns.resource.filter.RecipeFilter;
+import com.tacz.guns.resource.pojo.data.recipe.TableRecipe;
 import com.tacz.guns.resource.index.CommonAmmoIndex;
 import com.tacz.guns.resource.index.CommonAttachmentIndex;
 import com.tacz.guns.resource.index.CommonBlockIndex;
@@ -34,6 +35,8 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
     public Map<ResourceLocation, GunData> gunData = new HashMap<>();
     public Map<ResourceLocation, AttachmentData> attachmentData = new HashMap<>();
     public Map<ResourceLocation, RecipeFilter> recipeFilter = new HashMap<>();
+    /** 第 12 轮：服务端同步过来的工作台配方（26.2 客户端无完整配方表）。 */
+    public Map<ResourceLocation, TableRecipe> tableRecipe = new HashMap<>();
     public Map<ResourceLocation, BlockData> blockData = new HashMap<>();
     public Map<ResourceLocation, CommonGunIndex> gunIndex = new HashMap<>();
     public Map<ResourceLocation, CommonAmmoIndex> ammoIndex = new HashMap<>();
@@ -62,6 +65,15 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
 
     @Nullable
     @Override
+    public TableRecipe getTableRecipe(ResourceLocation recipeId) {
+        return tableRecipe.get(recipeId);
+    }
+
+    @Override
+    public java.util.Set<Map.Entry<ResourceLocation, TableRecipe>> getAllTableRecipes() {
+        return tableRecipe.entrySet();
+    }
+
     public RecipeFilter getRecipeFilter(ResourceLocation id) {
         return recipeFilter.get(id);
     }
@@ -130,6 +142,7 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
         attachmentIndex.clear();
         blockIndex.clear();
         recipeFilter.clear();
+        tableRecipe.clear();
         blockData.clear();
 
         attachmentTags.clear();
@@ -149,7 +162,8 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
                 case BLOCK_INDEX:
                     delayed.put(entry.getKey(), entry.getValue());
                     break;
-                default: fromNetwork(entry.getKey(), entry.getValue());
+                default:
+                    fromNetwork(entry.getKey(), entry.getValue());
             }
         }
         for (Map.Entry<DataType, Map<ResourceLocation, String>> entry : delayed.entrySet()) {
@@ -171,12 +185,7 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
                     return;
                 }
                 JsonObject jsonObject = element.getAsJsonObject();
-                if (jsonObject.has(key)) {
-                    JsonProperty<?> property = value.readJson(json);
-                    property.initComponents();
-                    data.addModifier(key, property);
-                } else if (jsonObject.has(value.getOptionalFields())) {
-                    // 为了兼容旧版本，读取可选字段名
+                if (value.hasJsonField(jsonObject)) {
                     JsonProperty<?> property = value.readJson(json);
                     property.initComponents();
                     data.addModifier(key, property);
@@ -188,8 +197,9 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
 
     private void resolveAttachmentTags(Map<ResourceLocation, String> data) {
         for (Map.Entry<ResourceLocation, String> entry : data.entrySet()) {
-            List<String> tags = CommonAssetsManager.GSON.fromJson(entry.getValue(), new TypeToken<>(){});
-            if (entry.getKey().getPath().startsWith("allow_attachments/") && entry.getKey().getPath().length()>18) {
+            List<String> tags = CommonAssetsManager.GSON.fromJson(entry.getValue(), new TypeToken<>() {
+            });
+            if (entry.getKey().getPath().startsWith("allow_attachments/") && entry.getKey().getPath().length() > 18) {
                 ResourceLocation gunId = entry.getKey().withPath(entry.getKey().getPath().substring(18));
                 allowAttachmentTags.computeIfAbsent(gunId, (v) -> new HashSet<>()).addAll(tags);
             } else {
@@ -207,10 +217,13 @@ public enum CommonNetworkCache implements ICommonResourceProvider {
                     case GUN_INDEX -> gunIndex.put(entry.getKey(), parse(entry.getValue(), CommonGunIndex.class));
                     case AMMO_INDEX -> ammoIndex.put(entry.getKey(), parse(entry.getValue(), CommonAmmoIndex.class));
                     case ATTACHMENT_DATA -> attachmentData.put(entry.getKey(), parseAttachmentData(entry.getValue()));
-                    case ATTACHMENT_INDEX -> attachmentIndex.put(entry.getKey(), parse(entry.getValue(), CommonAttachmentIndex.class));
+                    case ATTACHMENT_INDEX ->
+                            attachmentIndex.put(entry.getKey(), parse(entry.getValue(), CommonAttachmentIndex.class));
                     case ATTACHMENT_TAGS -> resolveAttachmentTags(data);
                     case BLOCK_INDEX -> blockIndex.put(entry.getKey(), parse(entry.getValue(), CommonBlockIndex.class));
                     case RECIPE_FILTER -> recipeFilter.put(entry.getKey(), parse(entry.getValue(), RecipeFilter.class));
+                    // 第 12 轮：接上此前只声明未接线的 RECIPES 通道
+                    case RECIPES -> tableRecipe.put(entry.getKey(), parse(entry.getValue(), TableRecipe.class));
                     case BLOCK_DATA -> blockData.put(entry.getKey(), parse(entry.getValue(), BlockData.class));
                 }
             } catch (IllegalArgumentException | JsonParseException exception) {

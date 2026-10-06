@@ -2,6 +2,7 @@ package com.tacz.guns.resource.modifier.custom;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import com.tacz.guns.api.GunProperties;
 import com.tacz.guns.api.item.IGun;
@@ -16,12 +17,11 @@ import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.GunFireModeAdjustData;
 import com.tacz.guns.resource.pojo.data.gun.InaccuracyType;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
@@ -40,6 +40,14 @@ public class InaccuracyModifier implements IAttachmentModifier<Map<InaccuracyTyp
     @Override
     public String getOptionalFields() {
         return "inaccuracy_addend";
+    }
+
+    @Override
+    public boolean hasJsonField(JsonObject jsonObject) {
+        return IAttachmentModifier.super.hasJsonField(jsonObject)
+                || jsonObject.has("aim_inaccuracy")
+                || jsonObject.has("sneak_inaccuracy")
+                || jsonObject.has("lie_inaccuracy");
     }
 
     @Override
@@ -217,9 +225,9 @@ public class InaccuracyModifier implements IAttachmentModifier<Map<InaccuracyTyp
             }
             // 添加文本提示
             if (inaccuracyAddend > 0) {
-                components.add(Component.translatable(decreaseKey).withStyle(ChatFormatting.RED));
+                components.add(Component.translatable(decreaseKey).withStyle(style -> style.withColor(0xFF5555)));
             } else if (inaccuracyAddend < 0) {
-                components.add(Component.translatable(increaseKey).withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable(increaseKey).withStyle(style -> style.withColor(0x55FF55)));
             }
         }
     }

@@ -1,23 +1,17 @@
 package com.tacz.guns.client.event;
 
-import com.tacz.guns.GunMod;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
 import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
+import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = GunMod.MOD_ID)
 public class TickAnimationEvent {
-    @SubscribeEvent
-    public static void tickAnimation(TickEvent.ClientTickEvent event) {
-        LocalPlayer player = Minecraft.getInstance().player;
+    public static void tickAnimation(Minecraft client) {
+        LocalPlayer player = client.player;
         if (player == null) {
             return;
         }
@@ -32,10 +26,16 @@ public class TickAnimationEvent {
                 animationStateMachine.trigger(GunAnimationConstant.INPUT_IDLE);
                 return;
             }
-            if (!player.isMovingSlowly() && player.isSprinting()) {
-                // 如果玩家正在移动，播放移动动画，否则播放 idle 动画
+            boolean moving = player.input.getMoveVector().length() > 0.01;
+            boolean aiming = com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator.fromLocalPlayer(player).isAim();
+            if (!aiming && !player.isMovingSlowly() && player.isSprinting()) {
+                // 如果玩家正在移动，播放移动动画，否则播放 idle 动画。
+                // 26.2 注意：瞄准/使用物品等状态可能让 LocalPlayer#isMovingSlowly 为 true。
+                // 上游 1.21.1 的状态机仍是在 WALK 状态内部再按 aimingProgress 选择 walk_aiming，
+                // 因此这里不能因为“正在慢速移动”就直接发 IDLE；否则 ADS 移动永远进不了
+                // walk_aiming 分支，视觉幅度会像普通持枪移动/待机在参与混合。
                 animationStateMachine.trigger(GunAnimationConstant.INPUT_RUN);
-            } else if (!player.isMovingSlowly() && player.input.getMoveVector().length() > 0.01) {
+            } else if (moving && (aiming || !player.isMovingSlowly())) {
                 animationStateMachine.trigger(GunAnimationConstant.INPUT_WALK);
             } else {
                 animationStateMachine.trigger(GunAnimationConstant.INPUT_IDLE);
@@ -43,9 +43,8 @@ public class TickAnimationEvent {
         });
     }
 
-    @SubscribeEvent
-    public static void tickAnimation(TickEvent.RenderTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) {
+    public static void tickAnimation(RenderFrameEvent event) {
+        if (event instanceof RenderFrameEvent.Post) {
             return;
         }
         if (Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
@@ -56,11 +55,10 @@ public class TickAnimationEvent {
             return;
         }
         ItemStack mainHandItem = player.getMainHandItem();
-        // 渲染相关内容整理到物品的IClientItemExtensions了，这个接口有待进一步抽象
-        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(mainHandItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
-            // 如果物品不一样了，先尝试初始化状态机
+        if (BuiltinItemRendererRegistry.INSTANCE.get(com.tacz.guns.client.paper.GunResolver.renderStack(mainHandItem).getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+            float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
             if (renderer.needReInit(mainHandItem)) {
-                renderer.tryInit(mainHandItem, player, event.renderTickTime);
+                renderer.tryInit(mainHandItem, player, partial);
             }
             renderer.visualUpdate(mainHandItem);
         }

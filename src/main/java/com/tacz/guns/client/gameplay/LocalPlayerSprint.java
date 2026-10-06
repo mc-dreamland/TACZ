@@ -19,6 +19,7 @@ public class LocalPlayerSprint {
      * 根据情况返回玩家应当处于的冲刺状态，在玩家切换冲刺状态的时候调用。
      * 这里的逻辑应该严格与服务端对应，如果不对应，会出现客户端表现和服务端不符的情况。
      * （例如客户端的视觉效果是玩家在冲刺，而服务端玩家实际上没有冲刺）
+     *
      * @see com.tacz.guns.entity.shooter.LivingEntitySprint#getProcessedSprintStatus
      */
     public boolean getProcessedSprintStatus(boolean sprinting) {

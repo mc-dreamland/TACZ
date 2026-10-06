@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 
 /**
  * 无限动画状态机的实现。
+ *
  * @param <T> 状态机上下文类型
  */
 public class AnimationStateMachine<T extends AnimationStateContext> {
@@ -97,6 +98,7 @@ public class AnimationStateMachine<T extends AnimationStateContext> {
      * 调用此方法之前，需要满足以下条件：<p>
      * 1. context 已经被初始化<p>
      * 2. 状态机处于未初始化状态（首次创建或者调用 exit 方法可进入此状态）
+     *
      * @see AnimationState#entryAction(AnimationStateContext)
      */
     public void initialize() {
@@ -118,6 +120,7 @@ public class AnimationStateMachine<T extends AnimationStateContext> {
 
     /**
      * 调用此方法使状态机退出，会触发状态的 exit action.
+     *
      * @see AnimationState#exitAction(AnimationStateContext)
      */
     public void exit() {
@@ -138,6 +141,7 @@ public class AnimationStateMachine<T extends AnimationStateContext> {
     /**
      * 获取状态机的建议退出时间，单位为毫秒。<br/>
      * 用于在切换至同一个物品时，建议延迟重新初始化状态机，以便让动画播放完毕。<br/>
+     *
      * @return 建议退出时间
      */
     public long getExitingTime() {
@@ -191,13 +195,14 @@ public class AnimationStateMachine<T extends AnimationStateContext> {
     /**
      * 状态机初始化时调用，将提供的状态加入状态机的当前状态列表，作为初始状态。
      * 注意，这些状态的 entryAction 会被调用。
+     *
      * @param statesSupplier 初始状态列表的 Supplier
      */
     public void setStatesSupplier(Supplier<Iterable<? extends AnimationState<T>>> statesSupplier) {
         this.statesSupplier = statesSupplier;
     }
 
-    private void checkNullPointer(){
+    private void checkNullPointer() {
         if (context == null) {
             throw new IllegalStateException("Context has not been initialized");
         }

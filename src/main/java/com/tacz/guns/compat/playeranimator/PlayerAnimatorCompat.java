@@ -2,91 +2,98 @@ package com.tacz.guns.compat.playeranimator;
 
 import com.tacz.guns.GunMod;
 import com.tacz.guns.client.resource.GunDisplayInstance;
-import com.tacz.guns.compat.playeranimator.animation.AnimationDataRegisterFactory;
-import com.tacz.guns.compat.playeranimator.animation.AnimationManager;
-import com.tacz.guns.compat.playeranimator.animation.PlayerAnimatorAssetManager;
-import com.tacz.guns.compat.playeranimator.animation.PlayerAnimatorLoader;
+import com.tacz.guns.compat.playeranimator.pal.PalAnimationManager;
+import com.tacz.guns.compat.playeranimator.pal.PalAssetManager;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.ModList;
+import net.neoforged.fml.ModList;
 
-import java.io.File;
-import java.util.function.Consumer;
-import java.util.zip.ZipFile;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
 
-public class PlayerAnimatorCompat {
-    public static ResourceLocation LOWER_ANIMATION = new ResourceLocation(GunMod.MOD_ID, "lower_animation");
-    public static ResourceLocation LOOP_UPPER_ANIMATION = new ResourceLocation(GunMod.MOD_ID, "loop_upper_animation");
-    public static ResourceLocation ONCE_UPPER_ANIMATION = new ResourceLocation(GunMod.MOD_ID, "once_upper_animation");
-    public static ResourceLocation ROTATION_ANIMATION = new ResourceLocation(GunMod.MOD_ID, "rotation");
+/** Optional Player Animation Library 1.1.3 integration for Minecraft 1.21.10. */
+public final class PlayerAnimatorCompat {
+    public static final ResourceLocation LOWER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "lower_animation");
+    public static final ResourceLocation LOOP_UPPER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "loop_upper_animation");
+    public static final ResourceLocation ONCE_UPPER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "once_upper_animation");
+    public static final ResourceLocation ROTATION_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "rotation");
 
-    private static final String MOD_ID = "playeranimator";
-    private static boolean INSTALLED = false;
+    private static final String PAL = "player_animation_library";
+    private static boolean installed;
+
+    private PlayerAnimatorCompat() {
+    }
 
     public static void init() {
-        INSTALLED = ModList.get().isLoaded(MOD_ID);
-        if (isInstalled()) {
-            AnimationDataRegisterFactory.registerData();
-            MinecraftForge.EVENT_BUS.register(new AnimationManager());
-        }
-    }
-
-    public static boolean loadAnimationFromZip(ZipFile zipFile, String zipPath) {
-        if (isInstalled()) {
-            return PlayerAnimatorLoader.load(zipFile, zipPath);
-        }
-        return false;
-    }
-
-    public static void loadAnimationFromFile(File file) {
-        if (isInstalled()) {
-            PlayerAnimatorLoader.load(file);
-        }
-    }
-
-    public static void clearAllAnimationCache() {
-        if (isInstalled()) {
-            PlayerAnimatorAssetManager.get().clearAll();
-        }
-    }
-
-    public static boolean hasPlayerAnimator3rd(LivingEntity livingEntity, GunDisplayInstance display) {
-        if (isInstalled() && livingEntity instanceof AbstractClientPlayer) {
-            return AnimationManager.hasPlayerAnimator3rd(display);
-        }
-        return false;
-    }
-
-    public static void stopAllAnimation(LivingEntity livingEntity) {
-        if (isInstalled() && livingEntity instanceof AbstractClientPlayer player) {
-            AnimationManager.stopAllAnimation(player);
-        }
-    }
-
-    public static void stopAllAnimation(LivingEntity livingEntity, int fadeTime) {
-        if (isInstalled() && livingEntity instanceof AbstractClientPlayer player) {
-            AnimationManager.stopAllAnimation(player, fadeTime);
-        }
-    }
-
-    public static void playAnimation(LivingEntity livingEntity, GunDisplayInstance display, float limbSwingAmount) {
-        if (isInstalled() && livingEntity instanceof AbstractClientPlayer player) {
-            AnimationManager.playLowerAnimation(player, display, limbSwingAmount);
-            AnimationManager.playLoopUpperAnimation(player, display, limbSwingAmount);
-            AnimationManager.playRotationAnimation(player, display);
+        installed = ModList.get().isLoaded(PAL);
+        GunMod.LOGGER.info("[TACZ PAL] init: installed={} (modid={})", installed, PAL);
+        if (installed) {
+            PalAnimationManager.init();
         }
     }
 
     public static boolean isInstalled() {
-        return INSTALLED;
+        return installed;
     }
 
-    public static void registerReloadListener(Consumer<PreparableReloadListener> register) {
-        if (isInstalled()) {
-            register.accept(PlayerAnimatorAssetManager.get());
+    /** 已报告过 miss 原因的 display id —— 每个只打一条，避免每帧刷屏。 */
+    private static final Set<ResourceLocation> REPORTED = ConcurrentHashMap.newKeySet();
+
+    public static boolean hasPlayerAnimator3rd(LivingEntity livingEntity, GunDisplayInstance display) {
+        if (!installed) {
+            if (REPORTED.add(ResourceLocation.fromNamespaceAndPath("tacz", "not_installed"))) {
+                GunMod.LOGGER.warn("[TACZ PAL] compat inactive: modid '{}' is not loaded", PAL);
+            }
+            return false;
+        }
+        if (!(livingEntity instanceof AbstractClientPlayer)) {
+            return false;
+        }
+        // 诊断：明确指出每个 display 走不进 PAL 分支的原因（每 id 一次）。
+        var fileId = display.getPlayerAnimator3rd();
+        if (fileId == null) {
+            if (REPORTED.add(display.getDisplayId())) {
+                GunMod.LOGGER.info("[TACZ PAL] display {} has no player_animator_3rd data (vanilla third-person animation used)", display.getDisplayId());
+            }
+            return false;
+        }
+        if (!PalAnimationManager.hasAnimations(display)) {
+            if (REPORTED.add(fileId)) {
+                GunMod.LOGGER.warn("[TACZ PAL] animation file {} is NOT loaded (expected as assets/{}/player_animator/{}.json in a gun pack)", fileId, fileId.getNamespace(), fileId.getPath());
+            }
+            return false;
+        }
+        return true;
+    }
+
+    public static void playAnimation(LivingEntity livingEntity, GunDisplayInstance display, float limbSwingAmount) {
+        if (installed && livingEntity instanceof AbstractClientPlayer player) {
+            PalAnimationManager.play(player, display, limbSwingAmount);
+        }
+    }
+
+    public static void stopAllAnimation(LivingEntity livingEntity) {
+        stopAllAnimation(livingEntity, 8);
+    }
+
+    public static void stopAllAnimation(LivingEntity livingEntity, int fadeTime) {
+        if (installed && livingEntity instanceof AbstractClientPlayer player) {
+            PalAnimationManager.stopAll(player, fadeTime);
+        }
+    }
+
+    /**
+     * Registers the PAL asset reload listener onto the client reload event.
+     * Pass {@code event::addListener} from
+     * {@code AddClientReloadListenersEvent#addListener(ResourceLocation, PreparableReloadListener)}.
+     */
+    public static void registerReloadListener(BiConsumer<ResourceLocation, PreparableReloadListener> register) {
+        if (installed) {
+            GunMod.LOGGER.info("[TACZ PAL] reload listener registered as {}", PalAssetManager.ID);
+            register.accept(PalAssetManager.ID, PalAssetManager.INSTANCE);
         }
     }
 }

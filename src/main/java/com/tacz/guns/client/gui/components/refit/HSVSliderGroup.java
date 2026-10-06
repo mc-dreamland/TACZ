@@ -3,13 +3,15 @@ package com.tacz.guns.client.gui.components.refit;
 import com.tacz.guns.api.item.ItemBehavior;
 
 import com.tacz.guns.api.item.IAttachment;
+import com.tacz.guns.client.gui.components.ForgeSlider;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.api.item.attachment.AttachmentType;
+import com.tacz.guns.api.item.nbt.AttachmentItemDataAccessor;
 import com.tacz.guns.util.LaserColorUtil;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.gui.widget.ForgeSlider;
 import org.jetbrains.annotations.NotNull;
 
 import java.awt.*;
@@ -78,13 +80,40 @@ public class HSVSliderGroup {
                 return;
             }
 
-            ItemStack laser = iGun.getAttachment(gun, type);
-            if (ItemBehavior.of(laser) instanceof IAttachment iAttachment) {
-                iAttachment.setLaserColor(laser, rgb_new);
+            // 【必须改「枪上那份配件 NBT」，不能改 getAttachment() 返回的 ItemStack】
+            //
+            // getAttachment(gun, type) 内部是
+            //     ItemNbtUtils.loadItemStack(nbt.getCompoundOrEmpty(key))
+            // —— 每次调用都用 Codec【反序列化出一个全新的 ItemStack】，
+            // 与枪上真正存着的那份数据没有任何引用关系。
+            //
+            // 原先这里写的是
+            //     ItemStack laser = iGun.getAttachment(gun, type);
+            //     iAttachment.setLaserColor(laser, rgb_new);
+            // 等于把颜色写进了一个临时副本，方法返回后即被丢弃。
+            // 后果是【客户端本地这份也没改成】，于是：
+            //   1. 拖动滑块时镭射颜色毫无变化（本方法本来就是为了实时预览而"脏写"客户端 NBT，
+            //      写不进去，预览自然不动）；
+            //   2. 界面上任何一次重新读取 NBT（点其他按钮触发重建、或关闭界面）
+            //      都会让显示回到默认色；
+            //   3. 更隐蔽的是，退出界面时发给服务端的 ClientMessageLaserColor
+            //      是遍历 hasCustomLaserColor(attachment) 来收集要同步的颜色的，
+            //      而这份 NBT 压根没被写过 -> colorMap 为空 -> 服务端什么也不会改。
+            //      所以上一轮只修服务端 handle 是不够的，两侧是同一个 bug。
+            //
+            // 上游 1.21.1 的写法（逐行对照）：
+            //     CompoundTag tag = iGun.getAttachmentTag(gun, type);
+            //     if (tag != null) { AttachmentItemDataAccessor.setLaserColorToTag(tag, rgb_new); }
+            //     iGun.setAttachmentTag(gun, type, tag);
+            // getAttachmentTag/setAttachmentTag 操作的是枪 NBT 里
+            // 「配件 ItemStack 的 components.custom_data」那一层，改动会真正生效。
+            CompoundTag tag = iGun.getAttachmentTag(gun, type);
+            if (tag != null) {
+                AttachmentItemDataAccessor.setLaserColorToTag(tag, rgb_new);
+                iGun.setAttachmentTag(gun, type, tag);
             }
         }
     }
-
 
 
     private int getColor(AttachmentType type) {

@@ -15,11 +15,10 @@ import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.GunRecoil;
 import com.tacz.guns.resource.pojo.data.gun.GunRecoilKeyFrame;
 import it.unimi.dsi.fastutil.Pair;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -44,7 +43,7 @@ public class RecoilModifier implements IAttachmentModifier<Pair<Modifier, Modifi
     @Override
     @SuppressWarnings("deprecation")
     public JsonProperty<Pair<Modifier, Modifier>> readJson(String json) {
-        RecoilModifier.Data data = CommonAssetsManager.GSON.fromJson(json, RecoilModifier.Data.class);
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
         NewRecoilData newRecoilData = data.newRecoilData;
         OldRecoilData oldRecoilData = data.oldRecoilData;
         // 兼容旧版本写法
@@ -53,10 +52,10 @@ public class RecoilModifier implements IAttachmentModifier<Pair<Modifier, Modifi
             Modifier yaw = new Modifier();
             pitch.setPercent(oldRecoilData.getPitch());
             yaw.setPercent(oldRecoilData.getYaw());
-            return new RecoilModifier.RecoilJsonProperty(Pair.of(pitch, yaw));
+            return new RecoilJsonProperty(Pair.of(pitch, yaw));
         }
         assert newRecoilData != null;
-        return new RecoilModifier.RecoilJsonProperty(Pair.of(newRecoilData.getPitch(), newRecoilData.getYaw()));
+        return new RecoilJsonProperty(Pair.of(newRecoilData.getPitch(), newRecoilData.getYaw()));
     }
 
     @Override
@@ -149,14 +148,14 @@ public class RecoilModifier implements IAttachmentModifier<Pair<Modifier, Modifi
             }
 
             if (pitch > 1) {
-                components.add(Component.translatable("tooltip.tacz.attachment.pitch.increase").withStyle(ChatFormatting.RED));
+                components.add(Component.translatable("tooltip.tacz.attachment.pitch.increase").withStyle(style -> style.withColor(0xFF5555)));
             } else if (pitch < 1) {
-                components.add(Component.translatable("tooltip.tacz.attachment.pitch.decrease").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.pitch.decrease").withStyle(style -> style.withColor(0x55FF55)));
             }
             if (yaw > 1) {
-                components.add(Component.translatable("tooltip.tacz.attachment.yaw.increase").withStyle(ChatFormatting.RED));
+                components.add(Component.translatable("tooltip.tacz.attachment.yaw.increase").withStyle(style -> style.withColor(0xFF5555)));
             } else if (yaw < 1) {
-                components.add(Component.translatable("tooltip.tacz.attachment.yaw.decrease").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.yaw.decrease").withStyle(style -> style.withColor(0x55FF55)));
             }
         }
     }

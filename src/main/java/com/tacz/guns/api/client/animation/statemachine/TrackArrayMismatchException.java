@@ -5,7 +5,7 @@ public class TrackArrayMismatchException extends RuntimeException {
         super(msg);
     }
 
-    public TrackArrayMismatchException(){
+    public TrackArrayMismatchException() {
         super();
     }
 }

@@ -8,7 +8,7 @@ public class ReloadState {
     /**
      * 换弹状态
      */
-    protected ReloadState.StateType stateType;
+    protected StateType stateType;
     /**
      * 换弹状态的剩余时长，毫秒
      */

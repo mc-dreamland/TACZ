@@ -19,17 +19,10 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-@OnlyIn(Dist.CLIENT)
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = GunMod.MOD_ID)
 public class SoundPlayManager {
     private static final FileToIdConverter TACZ_SOUND_LISTER = new FileToIdConverter("tacz_sounds", ".ogg");
 
@@ -87,7 +80,6 @@ public class SoundPlayManager {
         }
         return playClientSound(entity, name, volume, pitch, distance, false, SoundConfig.HIGH_FREQUENCY_SOUND_CONCURRENCY_LIMIT.get(), true, false);
     }
-
 
     public static void stopPlayGunSound() {
         if (tmpSoundInstance != null) {
@@ -227,12 +219,10 @@ public class SoundPlayManager {
         });
     }
 
-    @SubscribeEvent
-    public static void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        Minecraft minecraft = Minecraft.getInstance();
+    public static void onClientTick(Minecraft minecraft) {
+//        if (event.phase != TickEvent.Phase.END) {
+//            return;
+//        }
         if (minecraft.level == null) {
             cleanupInvalidEntitySounds(minecraft);
             return;
@@ -352,7 +342,9 @@ public class SoundPlayManager {
         return exists;
     }
 
-    private record SoundKey(int entityId, ResourceLocation soundId) {}
+    private record SoundKey(int entityId, ResourceLocation soundId) {
+    }
 
-    private record TrackedGunSound(GunSoundInstance instance, UUID entityUuid) {}
+    private record TrackedGunSound(GunSoundInstance instance, UUID entityUuid) {
+    }
 }

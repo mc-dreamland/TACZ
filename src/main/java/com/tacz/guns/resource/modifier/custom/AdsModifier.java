@@ -10,11 +10,10 @@ import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -100,9 +99,9 @@ public class AdsModifier implements IAttachmentModifier<Modifier, Float> {
             }
             // 添加文本提示
             if (adsAddendTime > 0) {
-                components.add(Component.translatable("tooltip.tacz.attachment.ads.increase").withStyle(ChatFormatting.RED));
+                components.add(Component.translatable("tooltip.tacz.attachment.ads.increase").withStyle(style -> style.withColor(0xFF5555)));
             } else if (adsAddendTime < 0) {
-                components.add(Component.translatable("tooltip.tacz.attachment.ads.decrease").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.ads.decrease").withStyle(style -> style.withColor(0x55FF55)));
             }
         }
     }

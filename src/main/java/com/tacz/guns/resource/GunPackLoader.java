@@ -6,31 +6,33 @@ import com.tacz.guns.GunMod;
 import com.tacz.guns.api.resource.ResourceManager;
 import com.tacz.guns.config.PreLoadConfig;
 import com.tacz.guns.util.GetJarResources;
-import cpw.mods.jarhandling.SecureJar;
 import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.FilePackResources;
+import net.minecraft.server.packs.PackLocationInfo;
 import net.minecraft.server.packs.PackResources;
+import net.minecraft.server.packs.PackSelectionConfig;
 import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.PathPackResources;
+import net.minecraft.server.packs.metadata.pack.PackFormat;
 import net.minecraft.server.packs.metadata.pack.PackMetadataSection;
 import net.minecraft.server.packs.repository.Pack;
 import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.server.packs.repository.RepositorySource;
 import net.minecraft.server.packs.resources.IoSupplier;
-import net.minecraftforge.fml.ModContainer;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.forgespi.language.IModInfo;
-import net.minecraftforge.forgespi.locating.IModFile;
-import net.minecraftforge.resource.DelegatingPackResources;
-import net.minecraftforge.resource.PathPackResources;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
+import net.minecraft.util.InclusiveRange;
+import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
+import net.neoforged.fml.loading.FMLPaths;
+import net.neoforged.neoforgespi.language.IModInfo;
+import net.neoforged.neoforgespi.locating.IModFile;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,22 +50,46 @@ import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+/**
+ * 26.1.2 pack APIs from Fabric semantics; loader paths/version from NeoForge 26.1.
+ * Evidence: PathPackResources.PathResourcesSupplier(Path)#openPrimary(PackLocationInfo) ①
+ * FilePackResources.FileResourcesSupplier ①
+ * PackMetadataSection(Component, InclusiveRange&lt;PackFormat&gt;) ①
+ * WorldVersion#packVersion(PackType) ①
+ * Pack.readMetaAndCreate(PackLocationInfo, ResourcesSupplier, PackType, PackSelectionConfig) ①
+ * FMLPaths.GAMEDIR ② loader-11.0.15
+ */
 public enum GunPackLoader implements RepositorySource {
     INSTANCE;
-    private static final Marker MARKER = MarkerManager.getMarker("GunPackFinder");
-    public PackType packType;
+    private static final Marker MARKER = MarkerFactory.getMarker("GunPackFinder");
     private boolean firstLoad = true;
-
 
     @Override
     public void loadPacks(Consumer<Pack> pOnLoad) {
-        Pack extensionsPack = discoverExtensions();
+        // This path is taken when a repository calls loadPacks on us as a
+        // RepositorySource.  We cannot know the PackType here, so we default
+        // to SERVER_DATA (what the RecipeManager needs).  The per-type entry
+        // point loadPacksForType is preferred and is used by the
+        // AddPackFindersEvent handler in CommonRegistry.
+        loadPacksForType(pOnLoad, PackType.SERVER_DATA);
+    }
+
+    /**
+     * Entry point that knows which PackType the caller needs.
+     * Used by the AddPackFindersEvent handler which captures
+     * event.getPackType() in a closure instead of relying on a
+     * mutable singleton field that can be overwritten by a later
+     * event firing for the other PackType.
+     */
+    public void loadPacksForType(Consumer<Pack> pOnLoad, PackType packType) {
+        Pack extensionsPack = discoverExtensions(packType);
         if (extensionsPack != null) {
             pOnLoad.accept(extensionsPack);
         }
     }
 
-    public Pack discoverExtensions() {
+    private Pack discoverExtensions(PackType packType) {
+        GunMod.LOGGER.info(MARKER, "discoverExtensions called with packType={}, firstLoad={}", packType, firstLoad);
         Path resourcePacksPath = FMLPaths.GAMEDIR.get().resolve("tacz");
         File folder = resourcePacksPath.toFile();
         if (!folder.isDirectory()) {
@@ -75,12 +101,8 @@ public enum GunPackLoader implements RepositorySource {
             }
         }
 
-        // 确保配置文件加载，这个阶段将比标准的forge配置文件加载早
-        PreLoadConfig.load(resourcePacksPath);
-
-        // 仅在第一次加载时复制默认资源包
         if (firstLoad) {
-            if (!PreLoadConfig.override.get()) {
+            if (PreLoadConfig.shouldOverwriteDefaultPack()) {
                 for (ResourceManager.ExtraEntry entry : ResourceManager.EXTRA_ENTRIES) {
                     GetJarResources.copyModDirectory(entry.modMainClass(), entry.srcPath(), resourcePacksPath, entry.extraDirName());
                 }
@@ -91,47 +113,48 @@ public enum GunPackLoader implements RepositorySource {
         GunMod.LOGGER.info(MARKER, "Start scanning for gun packs in {}", resourcePacksPath);
         List<GunPack> gunPacks = scanExtensions(resourcePacksPath);
         GunMod.LOGGER.info(MARKER, "Found {} possible gunpack(s) and added them to resource set.", gunPacks.size());
-        List<PathPackResources> extensionPacks = new ArrayList<>();
+        List<PackResources> extensionPacks = new ArrayList<>();
 
-        for(GunPack gunPack : gunPacks) {
-            PathPackResources packResources = new PathPackResources(gunPack.name, false, gunPack.path) {
-                private final SecureJar secureJar = SecureJar.from(gunPack.path);
-
-                @NotNull
-                protected Path resolve(String... paths) {
-                    if (paths.length < 1) {
-                        throw new IllegalArgumentException("Missing path");
-                    } else {
-                        return this.secureJar.getPath(String.join("/", paths));
-                    }
-                }
-
-                public IoSupplier<InputStream> getResource(PackType type, ResourceLocation location) {
-                    return super.getResource(type, location);
-                }
-
-                public void listResources(PackType type, String namespace, String path, PackResources.ResourceOutput resourceOutput) {
-                    super.listResources(type, namespace, path, resourceOutput);
-                }
-            };
+        for (GunPack gunPack : gunPacks) {
+            PackResources packResources;
+            if (Files.isDirectory(gunPack.path)) {
+                packResources = new PathPackResources.PathResourcesSupplier(gunPack.path)
+                        .openPrimary(new PackLocationInfo(gunPack.name, Component.literal(gunPack.name), PackSource.BUILT_IN, Optional.empty()));
+            } else {
+                packResources = new FilePackResources.FileResourcesSupplier(gunPack.path)
+                        .openPrimary(new PackLocationInfo(gunPack.name, Component.literal(gunPack.name), PackSource.BUILT_IN, Optional.empty()));
+            }
             extensionPacks.add(packResources);
         }
 
-
-        return Pack.readMetaAndCreate("tacz_resources", Component.literal("TACZ Resources"), true, (id) -> {
-            return new DelegatingPackResources(id, false, new PackMetadataSection(Component.translatable("tacz.resources.modresources"),
-                    SharedConstants.getCurrentVersion().getPackVersion(packType)), extensionPacks) {
-                public IoSupplier<InputStream> getRootResource(String... paths) {
-                    if (paths.length == 1 && paths[0].equals("pack.png")) {
-                        Path logoPath = getModIcon("tacz");
-                        if (logoPath != null) {
-                            return IoSupplier.create(logoPath);
-                        }
+        PackFormat format = SharedConstants.getCurrentVersion().packVersion(packType);
+        PackLocationInfo location = new PackLocationInfo("tacz_resources", Component.literal("TACZ Resources"), PackSource.BUILT_IN, Optional.empty());
+        PackMetadataSection meta = new PackMetadataSection(
+                Component.translatable("tacz.resources.modresources"),
+                new InclusiveRange<>(format));
+        DelegatingPackResources pack = new DelegatingPackResources("tacz_resources", false, meta, extensionPacks) {
+            public IoSupplier<InputStream> getRootResource(String... paths) {
+                if (paths.length == 1 && paths[0].equals("pack.png")) {
+                    Path logoPath = getModIcon("tacz");
+                    if (logoPath != null) {
+                        return IoSupplier.create(logoPath);
                     }
-                    return null;
                 }
-            };
-        }, packType, Pack.Position.BOTTOM, PackSource.BUILT_IN);
+                return null;
+            }
+        };
+        Pack.ResourcesSupplier resourcesSupplier = new Pack.ResourcesSupplier() {
+            @Override
+            public PackResources openPrimary(PackLocationInfo locationInfo) {
+                return pack;
+            }
+
+            @Override
+            public PackResources openFull(PackLocationInfo locationInfo, Pack.Metadata metadata) {
+                return openPrimary(locationInfo);
+            }
+        };
+        return Pack.readMetaAndCreate(location, resourcesSupplier, packType, new PackSelectionConfig(true, Pack.Position.BOTTOM, false));
     }
 
     public static @Nullable Path getModIcon(String modId) {
@@ -140,53 +163,27 @@ public enum GunPackLoader implements RepositorySource {
             IModInfo mod = m.get().getModInfo();
             IModFile file = mod.getOwningFile().getFile();
             if (file != null) {
-                Path logoPath = file.findResource("icon.png");
+                Path logoPath = file.getFilePath().resolve("icon.png");
                 if (Files.exists(logoPath)) {
                     return logoPath;
                 }
             }
         }
-
         return null;
     }
-
-    // 检查路径中的config.json
-    // 应该不会在用这个了，先保留
-//    private static RepositoryConfig checkConfig(Path resourcePacksPath) {
-//        Path configPath = resourcePacksPath.resolve("config.json");
-//        if (Files.exists(configPath)) {
-//            try (InputStream stream = Files.newInputStream(configPath)) {
-//                return GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), RepositoryConfig.class);
-//            } catch (IOException | JsonSyntaxException | JsonIOException e) {
-//                GunMod.LOGGER.warn(MARKER, "Failed to read config json: {}", configPath);
-//            }
-//        }
-//        // 不存在或者出问题了，新建一个
-//        RepositoryConfig config = new RepositoryConfig(true);
-//        // 使用Gson写文件
-//        try (BufferedWriter writer = Files.newBufferedWriter(configPath, StandardCharsets.UTF_8)) {
-//            GSON.toJson(config, writer);
-//        } catch (IOException e) {
-//            GunMod.LOGGER.warn(MARKER, "Failed to init config json: {}", configPath);
-//        }
-//        return config;
-//    }
 
     private static GunPack fromDirPath(Path path) throws IOException {
         Path packInfoFilePath = path.resolve("gunpack.meta.json");
         try (InputStream stream = Files.newInputStream(packInfoFilePath)) {
             PackMeta info = CommonAssetsManager.GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), PackMeta.class);
-
             if (info == null) {
                 GunMod.LOGGER.warn(MARKER, "Failed to read info json: {}", packInfoFilePath.getFileName());
                 return null;
             }
-
-            if (info.getDependencies() !=null && !modVersionAllMatch(info)) {
+            if (info.getDependencies() != null && !modVersionAllMatch(info)) {
                 GunMod.LOGGER.warn(MARKER, "Mod version mismatch: {}", packInfoFilePath.getFileName());
                 return null;
             }
-
             return new GunPack(path, info.getName());
         } catch (IOException | JsonSyntaxException | JsonIOException | InvalidVersionSpecificationException exception) {
             GunMod.LOGGER.warn(MARKER, "Failed to read info json: {}", packInfoFilePath.getFileName());
@@ -195,42 +192,37 @@ public enum GunPackLoader implements RepositorySource {
         return null;
     }
 
-    private static GunPack fromZipPath(Path path)  {
-        try(ZipFile zipFile = new ZipFile(path.toFile())){
+    private static GunPack fromZipPath(Path path) {
+        try (ZipFile zipFile = new ZipFile(path.toFile())) {
             ZipEntry extDescriptorEntry = zipFile.getEntry("gunpack.meta.json");
             if (extDescriptorEntry == null) {
-                GunMod.LOGGER.error(MARKER,"Failed to load extension from ZIP {}. Error: {}", path.getFileName(), "No gunpack.meta.json found");
+                GunMod.LOGGER.error(MARKER, "Failed to load extension from ZIP {}. Error: {}", path.getFileName(), "No gunpack.meta.json found");
                 return null;
             }
-
             try (InputStream stream = zipFile.getInputStream(extDescriptorEntry)) {
                 PackMeta info = CommonAssetsManager.GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8), PackMeta.class);
-
                 if (info == null) {
                     GunMod.LOGGER.warn(MARKER, "Failed to read info json: {}", path.getFileName());
                     return null;
                 }
-
-                if (info.getDependencies() !=null && !modVersionAllMatch(info)) {
+                if (info.getDependencies() != null && !modVersionAllMatch(info)) {
                     GunMod.LOGGER.warn(MARKER, "Mod version mismatch: {}", path.getFileName());
                     return null;
                 }
-
                 return new GunPack(path, info.getName());
             } catch (IOException | JsonSyntaxException | JsonIOException | InvalidVersionSpecificationException e) {
-                GunMod.LOGGER.error(MARKER,"Failed to load extension from ZIP {}. Error: {}", path.getFileName(), e);
+                GunMod.LOGGER.error(MARKER, "Failed to load extension from ZIP {}. Error: {}", path.getFileName(), e);
                 return null;
             }
         } catch (IOException e) {
-            GunMod.LOGGER.error(MARKER,"Failed to load extension from ZIP {}. Error: {}", path.getFileName(), e);
+            GunMod.LOGGER.error(MARKER, "Failed to load extension from ZIP {}. Error: {}", path.getFileName(), e);
             return null;
         }
     }
 
     private static List<GunPack> scanExtensions(Path extensionsPath) {
         List<GunPack> gunPacks = new ArrayList<>();
-
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(extensionsPath)){
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(extensionsPath)) {
             for (Path entry : stream) {
                 GunPack gunPack = null;
                 if (Files.isDirectory(entry)) {
@@ -246,7 +238,6 @@ public enum GunPackLoader implements RepositorySource {
         } catch (IOException e) {
             GunMod.LOGGER.error(MARKER, "Failed to scan extensions from {}. Error: {}", extensionsPath, e);
         }
-
         return gunPacks;
     }
 
@@ -260,14 +251,36 @@ public enum GunPackLoader implements RepositorySource {
         return true;
     }
 
-    private static boolean modVersionMatch(String modId, String version) throws InvalidVersionSpecificationException {
-        VersionRange versionRange = VersionRange.createFromVersionSpec(version);
+    /**
+     * Charter 7.4: gun packs check {@code >=1.1.8}. Mod version uses {@code +} build metadata.
+     * Strip {@code +...} before Maven compare so {@code 1.1.8+neoforge...} still satisfies {@code >=1.1.8}.
+     */
+    static boolean modVersionMatch(String modId, String version) throws InvalidVersionSpecificationException {
+        VersionRange versionRange = parseGunPackRange(version);
         return ModList.get().getModContainerById(modId).map(mod -> {
-            ArtifactVersion modVersion = mod.getModInfo().getVersion();
+            ArtifactVersion modVersion = stripBuildMetadata(mod.getModInfo().getVersion());
             return versionRange.containsVersion(modVersion);
         }).orElse(false);
     }
 
+    static VersionRange parseGunPackRange(String spec) throws InvalidVersionSpecificationException {
+        String trimmed = spec.trim();
+        if (trimmed.startsWith(">=")) {
+            trimmed = "[" + trimmed.substring(2).trim() + ",)";
+        } else if (trimmed.startsWith(">")) {
+            trimmed = "(" + trimmed.substring(1).trim() + ",)";
+        }
+        return VersionRange.createFromVersionSpec(trimmed);
+    }
+
+    static ArtifactVersion stripBuildMetadata(ArtifactVersion version) {
+        String raw = version.toString();
+        int plus = raw.indexOf('+');
+        if (plus >= 0) {
+            return new DefaultArtifactVersion(raw.substring(0, plus));
+        }
+        return version;
+    }
 
     public record GunPack(Path path, String name) {
     }

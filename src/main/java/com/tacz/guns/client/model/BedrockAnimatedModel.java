@@ -62,7 +62,6 @@ public class BedrockAnimatedModel extends BedrockModel implements AnimationListe
     }
 
 
-
     @Nullable
     public List<BedrockPart> getConstraintPath() {
         return constraintPath;

@@ -70,6 +70,17 @@ public class BedrockCubePerFace implements BedrockCube {
     }
 
 
+    /**
+     * 只读访问六个面。与 {@code BedrockCubeBox#getPolygons} 同构。
+     *
+     * <p>目镜几何<b>几乎全部</b>走这个实现（默认枪包 161 个目镜立方体无一例外），
+     * 因为它们都带 {@code face_uv}。瞄具掩码依赖本方法取顶点。</p>
+     */
+    @Override
+    public BedrockPolygon[] getPolygons() {
+        return this.polygons;
+    }
+
     @Override
     public void compile(PoseStack.Pose pose, VertexConsumer consumer, int light, int overlay, float red, float green, float blue, float alpha) {
         Matrix4f matrix4f = pose.pose();
@@ -86,9 +97,18 @@ public class BedrockCubePerFace implements BedrockCube {
                 float x = vertex.pos.x() / 16.0F;
                 float y = vertex.pos.y() / 16.0F;
                 float z = vertex.pos.z() / 16.0F;
+                // 26.2 迁移: 使用新 VertexConsumer API
                 Vector4f vector4f = new Vector4f(x, y, z, 1.0F);
                 vector4f.mul(matrix4f);
-                consumer.vertex(vector4f.x(), vector4f.y(), vector4f.z(), red, green, blue, alpha, vertex.u, vertex.v, overlay, light, nx, ny, nz);
+                // 法线已在上面经 matrix3f 变换过一次，必须写裸值：
+                // setNormal(Pose,…) 会再乘一次 pose.transformNormal（26.2 字节码确认），
+                // 曾导致枪械光照方向错误（见 BedrockCubeBox#compile 注释）。
+                consumer.addVertex(vector4f.x(), vector4f.y(), vector4f.z())
+                        .setColor(red, green, blue, alpha)
+                        .setUv(vertex.u, vertex.v)
+                        .setOverlay(overlay)
+                        .setLight(light)
+                        .setNormal(nx, ny, nz);
             }
         }
     }

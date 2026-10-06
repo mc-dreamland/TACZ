@@ -1,21 +1,51 @@
 package com.tacz.guns.network.message;
 
-import com.tacz.guns.api.DefaultAssets;
-import com.tacz.guns.client.sound.SoundPlayManager;
-import net.minecraft.network.FriendlyByteBuf;
+import com.tacz.guns.GunMod;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public class ServerMessageSound implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<ServerMessageSound> TYPE = new CustomPacketPayload.Type<>(
+        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_sound")
+    );
+    public static final StreamCodec<RegistryFriendlyByteBuf, ServerMessageSound> STREAM_CODEC = StreamCodec.of(
+        (buf, msg) -> {
+            buf.writeInt(msg.getEntityId());
+            ResourceLocation.STREAM_CODEC.encode(buf, msg.getGunId());
+            ResourceLocation.STREAM_CODEC.encode(buf, msg.getGunDisplayId());
+            buf.writeUtf(msg.getSoundName());
+            buf.writeFloat(msg.getVolume());
+            buf.writeFloat(msg.getPitch());
+            buf.writeInt(msg.getDistance());
+        },
+        buf -> new ServerMessageSound(
+            buf.readInt(),
+            ResourceLocation.STREAM_CODEC.decode(buf),
+            ResourceLocation.STREAM_CODEC.decode(buf),
+            buf.readUtf(),
+            buf.readFloat(),
+            buf.readFloat(),
+            buf.readInt()
+        )
+    );
 
-public class ServerMessageSound {
-    private final int entityId;
+    @Override
+    public @NotNull CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public final int entityId;
     private final ResourceLocation gunId;
     private final ResourceLocation gunDisplayId;
     private final String soundName;
     private final float volume;
     private final float pitch;
-    private final int distance;
+    public final int distance;
 
     public ServerMessageSound(int entityId, ResourceLocation gunId, ResourceLocation gunDisplayId, String soundName, float volume, float pitch, int distance) {
         this.entityId = entityId;
@@ -27,37 +57,8 @@ public class ServerMessageSound {
         this.distance = distance;
     }
 
-    public ServerMessageSound(int entityId, ResourceLocation gunId, String soundName, float volume, float pitch, int distance) {
-        this(entityId, gunId, DefaultAssets.DEFAULT_GUN_DISPLAY_ID, soundName, volume, pitch, distance);
-    }
-
-    public static void encode(ServerMessageSound message, FriendlyByteBuf buf) {
-        buf.writeVarInt(message.entityId);
-        buf.writeResourceLocation(message.gunId);
-        buf.writeResourceLocation(message.gunDisplayId);
-        buf.writeUtf(message.soundName);
-        buf.writeFloat(message.volume);
-        buf.writeFloat(message.pitch);
-        buf.writeInt(message.distance);
-    }
-
-    public static ServerMessageSound decode(FriendlyByteBuf buf) {
-        int entityId = buf.readVarInt();
-        ResourceLocation gunId = buf.readResourceLocation();
-        ResourceLocation gunDisplayId = buf.readResourceLocation();
-        String soundName = buf.readUtf();
-        float volume = buf.readFloat();
-        float pitch = buf.readFloat();
-        int distance = buf.readInt();
-        return new ServerMessageSound(entityId, gunId, gunDisplayId, soundName, volume, pitch, distance);
-    }
-
-    public static void handle(ServerMessageSound message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        if (context.getDirection().getReceptionSide().isClient()) {
-            context.enqueueWork(() -> SoundPlayManager.playMessageSound(message));
-        }
-        context.setPacketHandled(true);
+    public static void handle(ServerMessageSound message, IPayloadContext context) {
+        context.enqueueWork(() -> com.tacz.guns.network.ClientPacketBridge.invoke("onSound", new Class[]{com.tacz.guns.network.message.ServerMessageSound.class}, message));
     }
 
     public int getEntityId() {

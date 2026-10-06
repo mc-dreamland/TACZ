@@ -16,9 +16,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.util.*;
 
@@ -35,7 +35,7 @@ public class AttachmentsTagManager extends SimplePreparableReloadListener<Map<Re
 
     public AttachmentsTagManager() {
         this.gson = CommonAssetsManager.GSON;
-        this.marker = MarkerManager.getMarker("AllowTagManager");
+        this.marker = MarkerFactory.getMarker("AllowTagManager");
         this.fileToIdConverter = FileToIdConverter.json("tacz_tags/attachments");
     }
 
@@ -70,7 +70,7 @@ public class AttachmentsTagManager extends SimplePreparableReloadListener<Map<Re
                 }
             }
 
-            if (id.getPath().startsWith("allow_attachments/") && id.getPath().length()>18) {
+            if (id.getPath().startsWith("allow_attachments/") && id.getPath().length() > 18) {
                 ResourceLocation gunId = id.withPath(id.getPath().substring(18));
                 allow_attachments.computeIfAbsent(gunId, (v) -> Sets.newHashSet()).addAll(temp);
             } else {
@@ -84,7 +84,8 @@ public class AttachmentsTagManager extends SimplePreparableReloadListener<Map<Re
     }
 
     private List<String> parseJson(JsonElement element) {
-        return gson.fromJson(element, new TypeToken<>(){});
+        return gson.fromJson(element, new TypeToken<>() {
+        });
     }
 
     @Override
@@ -104,4 +105,6 @@ public class AttachmentsTagManager extends SimplePreparableReloadListener<Map<Re
     public Set<String> getAllowAttachmentTags(ResourceLocation registryName) {
         return allow_attachments.get(registryName);
     }
+
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "attachments_tag_manager");
 }

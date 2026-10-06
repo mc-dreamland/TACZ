@@ -1,19 +1,20 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.event.common.GunDrawEvent;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
 import com.tacz.guns.client.sound.SoundPlayManager;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.network.message.ClientMessagePlayerDrawGun;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
+
+import java.util.concurrent.TimeUnit;
 
 public class LocalPlayerDraw {
     private final LocalPlayerDataHolder data;
@@ -45,13 +46,13 @@ public class LocalPlayerDraw {
         if (Minecraft.getInstance().gameMode != null) {
             Minecraft.getInstance().gameMode.ensureHasSentCarriedItem();
         }
-        NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerDrawGun());
-        MinecraftForge.EVENT_BUS.post(new GunDrawEvent(player, lastItem, currentItem, LogicalSide.CLIENT));
+        ClientPacketDistributor.sendToServer(ClientMessagePlayerDrawGun.INSTANCE);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new GunDrawEvent(player, lastItem, currentItem, LogicalSide.CLIENT));
 
-//        // 不处于收枪状态时才能收枪
-//        if (drawTime >= 0) {
-//            doPutAway(lastItem, putAwayTime);
-//        }
+        // 不处于收枪状态时才能收枪
+        if (drawTime >= 0) {
+            doPutAway(lastItem, putAwayTime);
+        }
 
         // 异步放映抬枪动画
         if (currentGun != null) {
@@ -68,27 +69,30 @@ public class LocalPlayerDraw {
                 data.drawFuture.cancel(false);
             }
             // 根据 put away time 预定 draw 行为（仅播放音效，状态机的初始化为了保证一致性已经移动）
-//            data.drawFuture = LocalPlayerDataHolder.SCHEDULED_EXECUTOR_SERVICE.schedule(() -> {
-//                Minecraft.getInstance().submitAsync(() -> {
-//                    SoundPlayManager.stopPlayGunSound();
-//                    SoundPlayManager.playDrawSound(player, display);
-//                });
-//            }, putAwayTime, TimeUnit.MILLISECONDS);
+            data.drawFuture = LocalPlayerDataHolder.SCHEDULED_EXECUTOR_SERVICE.schedule(() -> {
+                Minecraft.getInstance().submit(() -> {
+                    SoundPlayManager.stopPlayGunSound();
+                    SoundPlayManager.playDrawSound(player, display);
+                });
+            }, putAwayTime, TimeUnit.MILLISECONDS);
         });
     }
 
     private void doPutAway(ItemStack lastItem, long putAwayTime) {
-        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (BuiltinItemRendererRegistry.INSTANCE.get(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem).getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             renderer.tryExit(lastItem, putAwayTime);
-            TimelessAPI.getGunDisplay(lastItem).ifPresent(display -> {
+        }
+        TimelessAPI.getGunDisplay(lastItem).ifPresent(display -> {
+            Minecraft.getInstance().submit(() -> {
+                // 播放收枪音效
                 SoundPlayManager.stopPlayGunSound();
                 SoundPlayManager.playPutAwaySound(player, display);
             });
-        }
+        });
     }
 
     private long getDrawTime(ItemStack lastItem, IGun lastGun, long drawTime) {
-        if (IClientItemExtensions.of(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem)).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+        if (BuiltinItemRendererRegistry.INSTANCE.get(com.tacz.guns.client.paper.GunResolver.renderStack(lastItem).getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
             long putAwayTime = renderer.getPutAwayTime(lastItem);
             if (drawTime > putAwayTime) {
                 drawTime = putAwayTime;

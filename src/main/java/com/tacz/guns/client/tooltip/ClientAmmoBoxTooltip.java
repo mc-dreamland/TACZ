@@ -7,10 +7,8 @@ import com.tacz.guns.inventory.tooltip.AmmoBoxTooltip;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix4f;
 
 public class ClientAmmoBoxTooltip implements ClientTooltipComponent {
     private final ItemStack ammo;
@@ -29,7 +27,7 @@ public class ClientAmmoBoxTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public int getHeight() {
+    public int getHeight(Font font) {
         return 28;
     }
 
@@ -39,13 +37,13 @@ public class ClientAmmoBoxTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public void renderText(Font font, int pX, int pY, Matrix4f matrix4f, MultiBufferSource.BufferSource bufferSource) {
-        font.drawInBatch(ammoName, pX + 20, pY + 4, 0xffaa00, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
-        font.drawInBatch(count, pX + 20, pY + 15, 0x666666, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+    public void renderText(GuiGraphics graphics, Font font, int pX, int pY) {
+        graphics.drawString(font, ammoName, pX + 20, pY + 4, 0xFFffaa00);
+        graphics.drawString(font, count, pX + 20, pY + 15, 0xFF666666);
     }
 
     @Override
-    public void renderImage(Font pFont, int pX, int pY, GuiGraphics pGuiGraphics) {
-        pGuiGraphics.renderItem(ammo, pX, pY + 5);
+    public void renderImage(Font pFont, int pX, int pY, int width, int height, GuiGraphics graphics) {
+        graphics.renderItem(ammo, pX, pY + 5);
     }
 }

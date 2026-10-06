@@ -4,16 +4,16 @@ import com.tacz.guns.GunMod;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.builder.BlockItemBuilder;
 import com.tacz.guns.api.item.gun.GunItemManager;
+import com.tacz.guns.compat.jei.category.AmmoQueryCategory;
 import com.tacz.guns.compat.jei.category.AttachmentQueryCategory;
 import com.tacz.guns.compat.jei.category.GunSmithTableCategory;
 import com.tacz.guns.compat.jei.entry.AttachmentQueryEntry;
+import com.tacz.guns.compat.recipeviewer.AmmoQueryEntry;
 import com.tacz.guns.crafting.GunSmithTableRecipe;
 import com.tacz.guns.init.ModItems;
-import com.tacz.guns.init.ModRecipe;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
-import mezz.jei.api.constants.VanillaTypes;
-import mezz.jei.api.recipe.RecipeType;
+import mezz.jei.api.recipe.types.IRecipeType;
 import mezz.jei.api.registration.IRecipeCatalystRegistration;
 import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
@@ -22,7 +22,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.crafting.RecipeManager;
 
 import java.util.HashMap;
 import java.util.List;
@@ -31,9 +30,9 @@ import java.util.Objects;
 
 @JeiPlugin
 public class GunModPlugin implements IModPlugin {
-    private static final ResourceLocation UID = new ResourceLocation(GunMod.MOD_ID, "jei");
+    private static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "jei");
 
-    private Map<ResourceLocation, RecipeType<GunSmithTableRecipe>> recipeTypeMap = new HashMap<>();
+    private Map<ResourceLocation, IRecipeType<GunSmithTableRecipe>> recipeTypeMap = new HashMap<>();
 
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
@@ -42,18 +41,32 @@ public class GunModPlugin implements IModPlugin {
         for (var entry : map) {
             BlockItem item = entry.getValue().getBlock();
             ItemStack icon = BlockItemBuilder.create(item).setId(entry.getKey()).build();
-            RecipeType<GunSmithTableRecipe> type = RecipeType.create(GunMod.MOD_ID, "gun_smith_table/" + entry.getKey().toString().replace(':', '_'), GunSmithTableRecipe.class);
+            IRecipeType<GunSmithTableRecipe> type = IRecipeType.create(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "gun_smith_table/" + entry.getKey().toString().replace(':', '_')), GunSmithTableRecipe.class);
             registration.addRecipeCategories(new GunSmithTableCategory(registration.getJeiHelpers().getGuiHelper(), icon, type, item.getName(icon)));
             recipeTypeMap.put(entry.getKey(), type);
         }
-        registration.addRecipeCategories(new AttachmentQueryCategory(registration.getJeiHelpers().getGuiHelper()));
+        registration.addRecipeCategories(
+                new AttachmentQueryCategory(registration.getJeiHelpers().getGuiHelper()),
+                new AmmoQueryCategory(registration.getJeiHelpers().getGuiHelper()));
     }
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
-        if(Minecraft.getInstance().level==null) return;
-        RecipeManager recipeManager = Minecraft.getInstance().level.getRecipeManager();
-        List<GunSmithTableRecipe> recipes = recipeManager.getAllRecipesFor(ModRecipe.GUN_SMITH_TABLE_CRAFTING.get());
+        if (Minecraft.getInstance().level == null) return;
+        // 与 GunSmithTableScreen 一致，改用 CommonAssetsManager.get()。
+        List<GunSmithTableRecipe> recipes = new java.util.ArrayList<>();
+        for (var e : com.tacz.guns.resource.CommonAssetsManager.get().getAllTableRecipes()) {
+            if (e.getValue() != null && e.getValue().getResult() != null) {
+                GunSmithTableRecipe r = new GunSmithTableRecipe(e.getKey(), e.getValue());
+                try {
+                    r.init();   // 解析 raw result，否则 getResult() 恒为 EMPTY
+                } catch (RuntimeException ex) {
+                    GunMod.LOGGER.error("Failed to init gun smith table recipe {} for JEI, skipping it", e.getKey(), ex);
+                    continue;
+                }
+                recipes.add(r);
+            }
+        }
 
         for (var entry : recipeTypeMap.entrySet()) {
             TimelessAPI.getCommonBlockIndex(entry.getKey()).ifPresent(blockIndex -> {
@@ -66,6 +79,7 @@ public class GunModPlugin implements IModPlugin {
         }
 
         registration.addRecipes(AttachmentQueryCategory.ATTACHMENT_QUERY, AttachmentQueryEntry.getAllAttachmentQueryEntries());
+        registration.addRecipes(AmmoQueryCategory.AMMO_QUERY, AmmoQueryEntry.getAllAmmoQueryEntries());
     }
 
     @Override
@@ -73,22 +87,20 @@ public class GunModPlugin implements IModPlugin {
         for (var entry : recipeTypeMap.entrySet()) {
             TimelessAPI.getCommonBlockIndex(entry.getKey()).ifPresent(blockIndex -> {
                 ItemStack stack = BlockItemBuilder.create(blockIndex.getBlock()).setId(entry.getKey()).build();
-                registration.addRecipeCatalyst(stack, entry.getValue());
+                registration.addCraftingStation(entry.getValue(), stack);
             });
-
         }
-
     }
 
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.AMMO.get(), GunModSubtype.getAmmoSubtype());
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.ATTACHMENT.get(), GunModSubtype.getAttachmentSubtype());
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.AMMO_BOX.get(), GunModSubtype.getAmmoBoxSubtype());
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.WORKBENCH_111.get(), GunModSubtype.getTableSubType());
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.WORKBENCH_121.get(), GunModSubtype.getTableSubType());
-        registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, ModItems.WORKBENCH_211.get(), GunModSubtype.getTableSubType());
-        GunItemManager.getAllGunItems().forEach(item -> registration.registerSubtypeInterpreter(VanillaTypes.ITEM_STACK, item.get(), GunModSubtype.getGunSubtype()));
+        registration.registerSubtypeInterpreter(ModItems.AMMO.get(), GunModSubtype.getAmmoSubtype());
+        registration.registerSubtypeInterpreter(ModItems.ATTACHMENT.get(), GunModSubtype.getAttachmentSubtype());
+        registration.registerSubtypeInterpreter(ModItems.AMMO_BOX.get(), GunModSubtype.getAmmoBoxSubtype());
+        registration.registerSubtypeInterpreter(ModItems.WORKBENCH_111.get(), GunModSubtype.getTableSubType());
+        registration.registerSubtypeInterpreter(ModItems.WORKBENCH_121.get(), GunModSubtype.getTableSubType());
+        registration.registerSubtypeInterpreter(ModItems.WORKBENCH_211.get(), GunModSubtype.getTableSubType());
+        GunItemManager.getAllGunItems().forEach(item -> registration.registerSubtypeInterpreter(item, GunModSubtype.getGunSubtype()));
     }
 
     @Override

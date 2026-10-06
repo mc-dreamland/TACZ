@@ -6,8 +6,9 @@ import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAmmo;
 import com.tacz.guns.api.item.IGun;
+import com.tacz.guns.util.ItemNbtUtils;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -21,9 +22,9 @@ public interface AmmoItemDataAccessor extends IAmmo {
     @Override
     @Nonnull
     default ResourceLocation getAmmoId(ItemStack ammo) {
-        CompoundTag nbt = ammo.getOrCreateTag();
-        if (nbt.contains(AMMO_ID_TAG, Tag.TAG_STRING)) {
-            ResourceLocation gunId = ResourceLocation.tryParse(nbt.getString(AMMO_ID_TAG));
+        CompoundTag nbt = ItemNbtUtils.getTag(ammo);
+        if (nbt.contains(AMMO_ID_TAG)) {
+            ResourceLocation gunId = ResourceLocation.tryParse(nbt.getStringOr(AMMO_ID_TAG, ""));
             return Objects.requireNonNullElse(gunId, DefaultAssets.EMPTY_AMMO_ID);
         }
         return DefaultAssets.EMPTY_AMMO_ID;
@@ -31,12 +32,24 @@ public interface AmmoItemDataAccessor extends IAmmo {
 
     @Override
     default void setAmmoId(ItemStack ammo, @Nullable ResourceLocation ammoId) {
-        CompoundTag nbt = ammo.getOrCreateTag();
-        if (ammoId != null) {
-            nbt.putString(AMMO_ID_TAG, ammoId.toString());
+        ItemNbtUtils.updateTag(ammo, nbt -> {
+            if (ammoId != null) {
+                nbt.putString(AMMO_ID_TAG, ammoId.toString());
+            } else {
+                nbt.putString(AMMO_ID_TAG, DefaultAssets.DEFAULT_AMMO_ID.toString());
+            }
+        });
+        applyMaxStackSize(ammo);
+    }
+
+    /** Keep the per-ammunition stack limit in the component consumed by Minecraft. */
+    static void applyMaxStackSize(ItemStack ammo) {
+        if (!(ammo.getItem() instanceof IAmmo iAmmo)) {
             return;
         }
-        nbt.putString(AMMO_ID_TAG, DefaultAssets.DEFAULT_AMMO_ID.toString());
+        TimelessAPI.getCommonAmmoIndex(iAmmo.getAmmoId(ammo))
+                .map(index -> Math.clamp(index.getStackSize(), 1, 99))
+                .ifPresent(size -> ammo.set(DataComponents.MAX_STACK_SIZE, size));
     }
 
     @Override

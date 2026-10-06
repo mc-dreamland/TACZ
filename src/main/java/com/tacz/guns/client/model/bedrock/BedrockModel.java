@@ -3,11 +3,11 @@ package com.tacz.guns.client.model.bedrock;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tacz.guns.client.model.IFunctionalRenderer;
+import com.tacz.guns.client.renderer.snapshot.BedrockRenderSnapshot;
 import com.tacz.guns.client.resource.pojo.model.*;
-import com.tacz.guns.compat.oculus.OculusCompat;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -348,28 +348,35 @@ public class BedrockModel {
         return indexBones.get(name);
     }
 
-    public void render(PoseStack matrixStack, ItemDisplayContext transformType, RenderType renderType, int light, int overlay) {
-        render(matrixStack, transformType, renderType, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-    }
-
-    public void render(PoseStack matrixStack, ItemDisplayContext transformType, RenderType renderType, int light, int overlay, float red, float green, float blue, float alpha) {
-        MultiBufferSource.BufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
-        VertexConsumer builder = bufferSource.getBuffer(renderType);
-
-        matrixStack.pushPose();
-        for (BedrockPart model : shouldRender) {
-            model.render(matrixStack, transformType, builder, light, overlay, red, green, blue, alpha);
-        }
-        matrixStack.popPose();
-        if (!OculusCompat.endBatch(bufferSource)) {
-            bufferSource.endBatch(renderType);
-        }
-
-        for (IFunctionalRenderer renderer : delegateRenderers) {
-            renderer.render(matrixStack, builder, transformType, light, overlay);
-        }
+    public void renderInto(PoseStack poseStack, ItemDisplayContext transformType, VertexConsumer consumer, int light, int overlay, float red, float green, float blue, float alpha) {
+        poseStack.pushPose();
+        for (BedrockPart model : shouldRender) { model.render(poseStack, transformType, consumer, light, overlay, red, green, blue, alpha); }
+        poseStack.popPose();
+        for (IFunctionalRenderer renderer : delegateRenderers) { renderer.render(poseStack, consumer, transformType, light, overlay); }
         delegateRenderers = new ArrayList<>();
     }
+    public void renderInto(PoseStack poseStack, ItemDisplayContext transformType, VertexConsumer consumer, int light, int overlay) { renderInto(poseStack, transformType, consumer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F); }
+    public void submit(PoseStack poseStack, ItemDisplayContext transformType, SubmitNodeCollector collector, RenderType renderType, int light, int overlay, float red, float green, float blue, float alpha) {
+        // Extraction happens now; the delayed callback receives immutable matrices rather than the
+        // shared BedrockPart objects that cleanAnimationTransform() or another entity can mutate.
+        BedrockRenderSnapshot snapshot = BedrockRenderSnapshot.capture(
+                this, poseStack, transformType, light, overlay, red, green, blue, alpha
+        );
+
+        if (!snapshot.isEmpty()) {
+            // Matrices in the snapshot already include the complete incoming item/entity pose.
+            // Submit from an identity stack to avoid applying that root transform twice.
+            PoseStack identity = new PoseStack();
+            collector.submitCustomGeometry(identity, renderType, (entryPose, consumer) -> snapshot.write(consumer));
+        }
+        snapshot.submitFunctionalTasks(collector);
+
+        // Legacy delegate renderers cannot safely submit nested RenderTypes from a VertexConsumer
+        // callback. A3 migrates them to collector-aware immutable tasks; never retain them across
+        // submissions in the meantime.
+        delegateRenderers = new ArrayList<>();
+    }
+    public void submit(PoseStack matrixStack, ItemDisplayContext transformType, SubmitNodeCollector collector, RenderType renderType, int light, int overlay) { submit(matrixStack, transformType, collector, renderType, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F); }
 
     protected List<BedrockPart> getPath(@Nullable ModelRendererWrapper rendererWrapper) {
         if (rendererWrapper == null) {

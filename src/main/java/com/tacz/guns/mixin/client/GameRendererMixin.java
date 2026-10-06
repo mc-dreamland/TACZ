@@ -4,71 +4,94 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.client.event.RenderItemInHandBobEvent;
 import com.tacz.guns.api.client.event.RenderLevelBobEvent;
 import com.tacz.guns.client.renderer.other.GunHurtBobTweak;
-import net.minecraft.client.Camera;
+import com.tacz.guns.compat.shader.ShaderCompat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraftforge.common.MinecraftForge;
+import net.neoforged.neoforge.common.NeoForge;
+import org.joml.Matrix4f;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/** 1.21.11 bob hooks. RenderFrameEvent is already fired by NeoForge ClientHooks. */
 @Mixin(GameRenderer.class)
 public abstract class GameRendererMixin {
+    @Shadow @Final private Minecraft minecraft;
+
     @Unique
-    private boolean tacz$useFovSetting;
+    private boolean tacz$renderingItemInHand;
 
-    @Shadow
-    public abstract Minecraft getMinecraft();
+    // 1.21.11: renderItemInHand(float partialTick, boolean renderHand, Matrix4f projection)
+    // 26.1 的签名是 (CameraRenderState, float, Matrix4fc)——多了 state、少了 boolean、
+    // 且是 Matrix4fc 接口而非 Matrix4f 实现类。三处都要跟着改（javap 核实，
+    // 语义来源：姊妹项目 1.21.11 分支同款修正）。
+    @Inject(method = "renderItemInHand", at = @At("HEAD"))
+    private void tacz$beginHandPass(float partialTick,
+                                    boolean renderHand,
+                                    Matrix4f projection,
+                                    CallbackInfo ci) {
+        this.tacz$renderingItemInHand = true;
+    }
 
-    @Shadow
-    public abstract void render(float pPartialTicks, long pNanoTime, boolean pRenderLevel);
+    @Inject(method = "renderItemInHand", at = @At("RETURN"))
+    private void tacz$endHandPass(float partialTick,
+                                  boolean renderHand,
+                                  Matrix4f projection,
+                                  CallbackInfo ci) {
+        this.tacz$renderingItemInHand = false;
+    }
+
+    @Unique
+    private boolean tacz$isItemInHandBobPass() {
+        return this.tacz$renderingItemInHand || ShaderCompat.isHandRendererActive();
+    }
 
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
-    public void onBobHurt(PoseStack pMatrixStack, float pPartialTicks, CallbackInfo ci) {
-        // 取消受伤导致的视角摇晃
-        if (this.getMinecraft().getCameraEntity() instanceof LocalPlayer player && !player.isDeadOrDying()) {
-            if (GunHurtBobTweak.onHurtBobTweak(player, pMatrixStack, pPartialTicks)) {
+    // 1.21.11: bobHurt(PoseStack, float partialTick)；26.1 是 (CameraRenderState, PoseStack)。
+    // partialTick 由形参直接给出，比原先从 DeltaTracker 现取更准。
+    private void tacz$bobHurt(PoseStack poseStack, float partialTick, CallbackInfo ci) {
+        if (minecraft.getCameraEntity() instanceof LocalPlayer player && !player.isDeadOrDying()) {
+            if (GunHurtBobTweak.onHurtBobTweak(player, poseStack, partialTick)) {
                 ci.cancel();
                 return;
             }
         }
-        // 触发其他事件
-        boolean cancel;
-        if (!tacz$useFovSetting) {
-            cancel = MinecraftForge.EVENT_BUS.post(new RenderItemInHandBobEvent.BobHurt());
+
+        if (this.tacz$isItemInHandBobPass()) {
+            RenderItemInHandBobEvent.BobHurt event = new RenderItemInHandBobEvent.BobHurt();
+            NeoForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                ci.cancel();
+            }
         } else {
-            cancel = MinecraftForge.EVENT_BUS.post(new RenderLevelBobEvent.BobHurt());
-        }
-        if (cancel) {
-            ci.cancel();
+            RenderLevelBobEvent.BobHurt event = new RenderLevelBobEvent.BobHurt();
+            NeoForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                ci.cancel();
+            }
         }
     }
 
     @Inject(method = "bobView", at = @At("HEAD"), cancellable = true)
-    public void onBobView(PoseStack pMatrixStack, float pPartialTicks, CallbackInfo ci) {
-        boolean cancel;
-        if (!tacz$useFovSetting) {
-            cancel = MinecraftForge.EVENT_BUS.post(new RenderItemInHandBobEvent.BobView());
+    // 1.21.11: bobView(PoseStack, float partialTick)；26.1 是 (CameraRenderState, PoseStack)。
+    private void tacz$bobView(PoseStack poseStack, float partialTick, CallbackInfo ci) {
+        if (this.tacz$isItemInHandBobPass()) {
+            RenderItemInHandBobEvent.BobView event = new RenderItemInHandBobEvent.BobView();
+            NeoForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                ci.cancel();
+            }
         } else {
-            cancel = MinecraftForge.EVENT_BUS.post(new RenderLevelBobEvent.BobView());
+            RenderLevelBobEvent.BobView event = new RenderLevelBobEvent.BobView();
+            NeoForge.EVENT_BUS.post(event);
+            if (event.isCanceled()) {
+                ci.cancel();
+            }
         }
-        if (cancel) {
-            ci.cancel();
-        }
-    }
-
-    /**
-     * 是一个 hack 实现。因为 getFov 这个方法只有在构建 投影矩阵 的时候调用。
-     * 因此可以根据 getFov 中的 pUseFovSetting 来判断当前准备渲染 Level 还是渲染 HandWithItem 。
-     * 至于为什么不直接对 renderItemInHand 这个方法 mixin ，是因为安装了 Optifine 之后，这个方法的内容被大幅度修改了。
-     */
-    @Inject(method = "getFov", at = @At("HEAD"))
-    public void switchRenderType(Camera pActiveRenderInfo, float pPartialTicks, boolean pUseFOVSetting, CallbackInfoReturnable<Double> cir) {
-        this.tacz$useFovSetting = pUseFOVSetting;
     }
 }

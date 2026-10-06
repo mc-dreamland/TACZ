@@ -162,7 +162,7 @@ public class AnimationController {
         if (runner.getTransitionTo() != null) {
             if (isSoundOnly) {
                 runner.getTransitionTo().updateSoundOnly();
-            }else {
+            } else {
                 runner.getTransitionTo().update(blend);
             }
             if (!runner.isTransitioning()) {

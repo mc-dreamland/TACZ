@@ -17,14 +17,18 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ServerboundCustomPayloadPacket;
+import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.network.event.RegisterClientPayloadHandlersEvent;
+import net.neoforged.neoforge.network.payload.MinecraftRegisterPayload;
+import com.tacz.guns.bridge.PaperBridgePayload;
+import com.tacz.guns.util.ItemNbtUtils;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import javax.annotation.Nullable;
 import java.util.EnumMap;
@@ -33,9 +37,9 @@ import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 
-@Mod.EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class PaperClientBridge {
-    private static final ResourceLocation CHANNEL = new ResourceLocation(BridgeProtocol.CHANNEL);
+    private static final ResourceLocation CHANNEL = ResourceLocation.parse(BridgeProtocol.CHANNEL);
     private static final PackTransfer.Receiver TRANSFER = new PackTransfer.Receiver();
     private static final Map<Integer, JsonObject> STATES = new HashMap<>();
     private static final Map<String, Set<String>> CATALOG = new HashMap<>();
@@ -47,26 +51,36 @@ public final class PaperClientBridge {
     private static int ticks;
 
     private PaperClientBridge() {}
+
+    @SubscribeEvent
+    public static void registerPayloadHandler(RegisterClientPayloadHandlersEvent event) {
+        event.register(PaperBridgePayload.TYPE, (payload, context) -> {
+            Minecraft minecraft = Minecraft.getInstance();
+            // Do not let an old connection's queued payload mutate a newly joined world.
+            if (minecraft.getConnection() == context.listener()) receive(payload.data());
+        });
+    }
     public static boolean active() { return active; }
     @Nullable public static JsonObject state(int entityId) { return STATES.get(entityId); }
 
     @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {
         reset();
-        connected = event.getConnection() != null && !event.getConnection().isMemoryConnection();
+        connected = event.getConnection() != null && !event.getConnection().isMemoryConnection()
+                && Minecraft.getInstance().getConnection() != null
+                && !Minecraft.getInstance().getConnection().getConnectionType().isNeoForge();
     }
 
     @SubscribeEvent public static void logout(ClientPlayerNetworkEvent.LoggingOut event) { reset(); }
 
-    @SubscribeEvent public static void tick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !connected || active) return;
+    @SubscribeEvent public static void tick(ClientTickEvent.Post event) {
+        if (!connected || active) return;
         // Retry after login because a Bukkit player may not yet have registered our channel.
         if (++ticks <= 600 && ticks % 40 == 1 && nonce.isEmpty()) {
             Minecraft minecraft = Minecraft.getInstance();
             if (minecraft.getConnection() == null) return;
-            minecraft.getConnection().send(new ServerboundCustomPayloadPacket(new ResourceLocation("minecraft", "register"),
-                    new FriendlyByteBuf(Unpooled.wrappedBuffer(BridgeProtocol.CHANNEL.getBytes(java.nio.charset.StandardCharsets.UTF_8)))));
+            minecraft.getConnection().send(new ServerboundCustomPayloadPacket(new MinecraftRegisterPayload(Set.of(CHANNEL))));
             JsonObject hello = new JsonObject();
-            hello.addProperty("client", "tacz-forge-1.20.1");
+            hello.addProperty("client", "tacz-neoforge-1.21.10");
             send("hello", hello);
         }
     }
@@ -133,7 +147,7 @@ public final class PaperClientBridge {
         for (Map.Entry<String, JsonElement> group : bundle.getAsJsonObject("data").entrySet()) {
             Map<ResourceLocation, String> entries = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : group.getValue().getAsJsonObject().entrySet())
-                entries.put(new ResourceLocation(entry.getKey()), entry.getValue().getAsString());
+                entries.put(ResourceLocation.parse(entry.getKey()), entry.getValue().getAsString());
             cache.put(DataType.valueOf(group.getKey()), entries);
             String kind = switch (group.getKey()) {
                 case "GUN_INDEX" -> "gun";
@@ -157,11 +171,11 @@ public final class PaperClientBridge {
 
     @Nullable public static JsonObject itemData(ItemStack stack) {
         if (!active || stack == null || stack.isEmpty()) return null;
-        CompoundTag tag = stack.getTag();
+        CompoundTag tag = ItemNbtUtils.getTag(stack);
         if (tag == null) return null;
-        CompoundTag pdc = tag.getCompound("PublicBukkitValues");
-        if (!pdc.contains(BridgeProtocol.ITEM_KEY, Tag.TAG_STRING)) return null;
-        return BridgeItemIdentity.parse(pdc.getString(BridgeProtocol.ITEM_KEY), BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
+        CompoundTag pdc = tag.getCompoundOrEmpty("PublicBukkitValues");
+        if (!pdc.getString(BridgeProtocol.ITEM_KEY).isPresent()) return null;
+        return BridgeItemIdentity.parse(pdc.getStringOr(BridgeProtocol.ITEM_KEY, ""), BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
                 (kind, id) -> CATALOG.getOrDefault(kind, Set.of()).contains(id));
     }
 
@@ -187,8 +201,7 @@ public final class PaperClientBridge {
 
     private static void send(String type, JsonObject data) {
         if (Minecraft.getInstance().getConnection() != null)
-            Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(CHANNEL,
-                    new FriendlyByteBuf(Unpooled.wrappedBuffer(BridgeProtocol.encode(type, data)))));
+            Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(new PaperBridgePayload(BridgeProtocol.encode(type, data))));
     }
 
     public static void reset() {

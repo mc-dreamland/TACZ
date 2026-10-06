@@ -1,8 +1,8 @@
 package com.tacz.guns.api.client.event;
 
+import net.neoforged.bus.api.Event;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.event.common.KubeJSGunEventPoster;
-import net.minecraftforge.eventbus.api.Event;
 
 /**
  * 在调用 ItemInHandRenderer#renderHandsWithItems 方法时触发该事件
@@ -10,6 +10,10 @@ import net.minecraftforge.eventbus.api.Event;
  */
 public class BeforeRenderHandEvent extends Event implements KubeJSGunEventPoster<BeforeRenderHandEvent> {
     private final PoseStack poseStack;
+
+    public interface Callback {
+        void post(BeforeRenderHandEvent event);
+    }
 
     public BeforeRenderHandEvent(PoseStack poseStack) {
         this.poseStack = poseStack;

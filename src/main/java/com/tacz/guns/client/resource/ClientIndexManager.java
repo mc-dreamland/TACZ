@@ -2,7 +2,6 @@ package com.tacz.guns.client.resource;
 
 import com.tacz.guns.api.item.ItemBehavior;
 
-import com.github.mcmodderanchor.simplebedrockmodel.v1.client.handler.FirstPersonRenderHandler;
 import com.google.common.collect.Maps;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.TimelessAPI;
@@ -23,13 +22,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Map;
 import java.util.Set;
 
-@OnlyIn(Dist.CLIENT)
 public class ClientIndexManager {
     private static final int HOTBAR_SLOT_COUNT = 9;
 
@@ -49,12 +45,14 @@ public class ClientIndexManager {
 
     public static void reload() {
         clear();
-
         loadGunDisplay();
         loadGunIndex();
         loadAmmoIndex();
         loadAttachmentIndex();
         loadBlockIndex();
+        GunMod.LOGGER.info("WP④ client gun pack loaded: displays={} guns={} ammo={} attachments={} blocks={} recipes={}",
+                GUN_DISPLAY.size(), GUN_INDEX.size(), AMMO_INDEX.size(), ATTACHMENT_INDEX.size(), BLOCK_INDEX.size(),
+                com.tacz.guns.resource.CommonAssetsManager.get().getAllTableRecipes().size());
         warmUpInventoryModels();
 
         LocalPlayer player = Minecraft.getInstance().player;
@@ -63,7 +61,8 @@ public class ClientIndexManager {
 
             // 自动切一次枪，以便刷新状态机
             IClientPlayerGunOperator.fromLocalPlayer(player).draw(ItemStack.EMPTY);
-            FirstPersonRenderHandler.reset();
+            // 26.2 已解决: FirstPersonRenderHandler.reset() 的功能已由
+            // AnimateGeoItemRenderer.needReInit()/tryInit() 自动重初始化机制取代。
         }
     }
 
@@ -181,7 +180,7 @@ public class ClientIndexManager {
     }
 
     private static void warmUpHotbarModels(LocalPlayer player) {
-        var items = player.getInventory().items;
+        var items = player.getInventory().getNonEquipmentItems();
         int hotbarSize = Math.min(HOTBAR_SLOT_COUNT, items.size());
         for (int i = 0; i < hotbarSize; i++) {
             warmUpItemModel(items.get(i));
@@ -189,7 +188,7 @@ public class ClientIndexManager {
     }
 
     private static void warmUpBackpackModels(LocalPlayer player) {
-        var items = player.getInventory().items;
+        var items = player.getInventory().getNonEquipmentItems();
         for (int i = Math.min(HOTBAR_SLOT_COUNT, items.size()); i < items.size(); i++) {
             warmUpItemModel(items.get(i));
         }

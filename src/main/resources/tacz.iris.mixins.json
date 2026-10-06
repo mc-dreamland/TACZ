@@ -1,0 +1,16 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.tacz.guns.mixin.client.iris",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.tacz.guns.mixin.client.iris.IrisCompatMixinPlugin",
+  "client": [
+    "IrisDepthRestoreShaderMixin",
+    "IrisHandRendererReticlePassMixin",
+    "IrisFinalScopeOverlayMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  },
+  "_comment": "阶段 9/R8-R11 Iris 集成（自姊妹 1.21.11 分支平移）。ShaderCreator.link 的第 5 次 createShader(ordinal=4)是 fragment；R8 为冻结 scope reticle 强制 HAND_TRANSLUCENT，R9 写 late foreground depth；Complementary 仍使用不可覆盖的 post-composite 雾深度后，R11 仅对经审计的 Iris 1.10.7 在 IrisRenderingPipeline.finalizeLevelRendering TAIL 重画同一份 3D 快照，使用 no-fog vanilla fragments。required=false + IrisCompatMixinPlugin 的 isModLoaded 双重兜底，未装 Iris 不受影响。"
+}

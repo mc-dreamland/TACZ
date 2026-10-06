@@ -37,9 +37,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
+import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
+import net.neoforged.neoforge.common.NeoForge;
+import com.tacz.guns.api.LogicalSide;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -78,7 +78,7 @@ public final class PaperClientGameplay {
         boolean valid(Minecraft mc) {
             var held = mc.player == null ? null : resolve(mc.player.getMainHandItem());
             return mc.level == level && mc.screen == screen && held != null && held.paper()
-                    && mc.player.getInventory().selected == slot && instance.equals(held.instance())
+                    && mc.player.getInventory().getSelectedSlot() == slot && instance.equals(held.instance())
                     && System.currentTimeMillis() < expiresAt;
         }
     }
@@ -173,8 +173,8 @@ public final class PaperClientGameplay {
             IGun data = (IGun) render.getItem();
             boolean empty = !data.hasBulletInBarrel(render) && data.getCurrentAmmoCount(render) == 0;
             boolean local = entity == mc.player;
-            if (local && IClientItemExtensions.of(render).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) {
-                if (renderer.needReInit(render)) renderer.tryInit(render, mc.player, mc.getFrameTime());
+            if (local && BuiltinItemRendererRegistry.INSTANCE.get(render.getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) {
+                if (renderer.needReInit(render)) renderer.tryInit(render, mc.player, mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
                 String input = switch (op) {
                     case "shoot" -> null; // Local shot presentation handles its own context and event ordering.
                     case "reload" -> GunAnimationConstant.INPUT_RELOAD;
@@ -198,12 +198,12 @@ public final class PaperClientGameplay {
                     } else {
                         int distance = Math.max(1, integer(message, "soundDistance", silenced ? GunConfig.DEFAULT_GUN_SILENCE_SOUND_DISTANCE.get() : GunConfig.DEFAULT_GUN_FIRE_SOUND_DISTANCE.get()));
                         SoundPlayManager.playRemoteShootSound(entity, display, silenced, distance);
-                        if (integer(message, "shotIndex", 0) == 0) MinecraftForge.EVENT_BUS.post(new GunShootEvent(entity, render, LogicalSide.CLIENT));
-                        MinecraftForge.EVENT_BUS.post(new GunFireEvent(entity, render, LogicalSide.CLIENT));
+                        if (integer(message, "shotIndex", 0) == 0) NeoForge.EVENT_BUS.post(new GunShootEvent(entity, render, LogicalSide.CLIENT));
+                        NeoForge.EVENT_BUS.post(new GunFireEvent(entity, render, LogicalSide.CLIENT));
                     }
                 }
                 case "reload" -> {
-                    MinecraftForge.EVENT_BUS.post(new GunReloadEvent(entity, render, LogicalSide.CLIENT));
+                    NeoForge.EVENT_BUS.post(new GunReloadEvent(entity, render, LogicalSide.CLIENT));
                     if (local) SoundPlayManager.playReloadSound(entity, display, empty);
                     else SoundPlayManager.playClientSound(entity, display.getSounds(empty ? SoundManager.RELOAD_EMPTY_SOUND : SoundManager.RELOAD_TACTICAL_SOUND), 1, 1, GunConfig.DEFAULT_GUN_OTHER_SOUND_DISTANCE.get());
                 }
@@ -212,17 +212,17 @@ public final class PaperClientGameplay {
                     else SoundPlayManager.playClientSound(entity, display.getSounds(SoundManager.BOLT_SOUND), 1, 1, GunConfig.DEFAULT_GUN_OTHER_SOUND_DISTANCE.get());
                 }
                 case "draw" -> {
-                    MinecraftForge.EVENT_BUS.post(new GunDrawEvent(entity, LAST_GUNS.getOrDefault(entityId, ItemStack.EMPTY), render, LogicalSide.CLIENT));
+                    NeoForge.EVENT_BUS.post(new GunDrawEvent(entity, LAST_GUNS.getOrDefault(entityId, ItemStack.EMPTY), render, LogicalSide.CLIENT));
                     if (local) SoundPlayManager.playDrawSound(entity, display);
                     else SoundPlayManager.playClientSound(entity, display.getSounds(SoundManager.DRAW_SOUND), 1, 1, GunConfig.DEFAULT_GUN_OTHER_SOUND_DISTANCE.get());
                 }
                 case "fire_select" -> {
-                    MinecraftForge.EVENT_BUS.post(new GunFireSelectEvent(entity, render, LogicalSide.CLIENT));
+                    NeoForge.EVENT_BUS.post(new GunFireSelectEvent(entity, render, LogicalSide.CLIENT));
                     SoundPlayManager.playFireSelectSound(entity, display);
                 }
                 case "inspect" -> { if (local) SoundPlayManager.playInspectSound(entity, display, empty); }
                 case "melee" -> {
-                    MinecraftForge.EVENT_BUS.post(new GunMeleeEvent(entity, render, LogicalSide.CLIENT));
+                    NeoForge.EVENT_BUS.post(new GunMeleeEvent(entity, render, LogicalSide.CLIENT));
                     SoundPlayManager.playMeleePushSound(entity, display);
                 }
                 case "cancel_reload" -> { if (local) SoundPlayManager.stopPlayGunSound(); }
@@ -267,7 +267,7 @@ public final class PaperClientGameplay {
         JsonObject state = menu.has("state") && menu.get("state").isJsonObject()
                 ? menu.getAsJsonObject("state") : new JsonObject();
         var held = mc.player == null ? null : resolve(mc.player.getMainHandItem());
-        if (held == null || !held.paper() || mc.player.getInventory().selected != integer(menu, "slot", -1)
+        if (held == null || !held.paper() || mc.player.getInventory().getSelectedSlot() != integer(menu, "slot", -1)
                 || !held.instance().equals(string(state, "instance", ""))) {
             discardRefitMenu(menu);
             return;
@@ -331,7 +331,7 @@ public final class PaperClientGameplay {
         if (!PaperClientBridge.active() || held == null || !held.paper() || mc.screen != screen) return;
         if (mc.gameMode != null) mc.gameMode.ensureHasSentCarriedItem();
         PendingRefitOpen pending = new PendingRefitOpen(UUID.randomUUID().toString(),
-                mc.player.getInventory().selected, held.instance(), mc.level, screen, System.currentTimeMillis() + 10_000);
+                mc.player.getInventory().getSelectedSlot(), held.instance(), mc.level, screen, System.currentTimeMillis() + 10_000);
         pendingRefitOpen = pending;
         JsonObject request = new JsonObject();
         request.addProperty("op", "open_refit");
@@ -418,9 +418,9 @@ public final class PaperClientGameplay {
         var gunData = index.get().getGunData();
         if (PaperShotPresentation.available(gun, gunData) <= 0) return ShootResult.NO_AMMO;
         FireMode fireMode = gun.data().getFireMode(gun.realStack());
-        if (MinecraftForge.EVENT_BUS.post(new GunShootEvent(player, gun.renderStack().copy(), LogicalSide.CLIENT))) return ShootResult.FORGE_EVENT_CANCEL;
+        if (NeoForge.EVENT_BUS.post(new GunShootEvent(player, gun.renderStack().copy(), LogicalSide.CLIENT)).isCanceled()) return ShootResult.FORGE_EVENT_CANCEL;
         if (!SHOT_SCHEDULE.prepare(shotClock())) return ShootResult.COOL_DOWN;
-        pendingShot = new PendingShot(mc.level, mc.getConnection(), player, player.getInventory().selected, gun.instance(),
+        pendingShot = new PendingShot(mc.level, mc.getConnection(), player, player.getInventory().getSelectedSlot(), gun.instance(),
                 gun.data().getGunId(gun.realStack()), fireMode, IClientPlayerGunOperator.fromLocalPlayer(player).getChargeProgress());
         var charge = gunData.getChargeData(fireMode);
         if (charge != null) {
@@ -440,7 +440,7 @@ public final class PaperClientGameplay {
         LocalPlayer player = mc.player;
         if (!PaperClientBridge.active() || player != shot.player() || mc.level != shot.level() || mc.getConnection() != shot.connection()
                 || player == null || !player.isAlive() || player.isSpectator() || !InputExtraCheck.isInGame()
-                || player.getInventory().selected != shot.slot()) { cancelScheduledShot(); return; }
+                || player.getInventory().getSelectedSlot() != shot.slot()) { cancelScheduledShot(); return; }
         var gun = resolve(player.getMainHandItem());
         if (gun == null || !gun.paper() || !shot.instance().equals(gun.instance())
                 || !shot.gunId().equals(gun.data().getGunId(gun.realStack()))
@@ -539,7 +539,7 @@ public final class PaperClientGameplay {
         data.reset();
         data.clientDrawTimestamp = System.currentTimeMillis();
         ItemStack last = renderStack(lastItem);
-        if (IClientItemExtensions.of(last).getCustomRenderer() instanceof AnimateGeoItemRenderer<?, ?> renderer) renderer.tryExit(last, 0);
+        if (BuiltinItemRendererRegistry.INSTANCE.get(last.getItem()) instanceof AnimateGeoItemRenderer<?, ?> renderer) renderer.tryExit(last, 0);
         action("draw");
         if (isPaperGun(player.getMainHandItem())) AttachmentPropertyManager.postChangeEvent(player, player.getMainHandItem());
     }
@@ -551,9 +551,9 @@ public final class PaperClientGameplay {
             if (waiting != null && Minecraft.getInstance().screen == waiting) Minecraft.getInstance().setScreen(null);
         }
         ItemStack held = player.getMainHandItem();
-        if (selected != player.getInventory().selected || !sameIdentity(previous, held)) {
+        if (selected != player.getInventory().getSelectedSlot() || !sameIdentity(previous, held)) {
             draw(previous);
-            selected = player.getInventory().selected;
+            selected = player.getInventory().getSelectedSlot();
         }
         previous = held.copy();
     }

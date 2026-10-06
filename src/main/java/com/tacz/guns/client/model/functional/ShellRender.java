@@ -7,12 +7,13 @@ import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.model.BedrockAmmoModel;
 import com.tacz.guns.client.model.BedrockGunModel;
-import com.tacz.guns.client.model.IFunctionalRenderer;
+import com.tacz.guns.client.model.IFunctionalSubmitter;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.index.ClientGunIndex;
 import com.tacz.guns.client.resource.pojo.display.gun.ShellEjection;
-import com.tacz.guns.compat.oculus.OculusCompat;
+import com.tacz.guns.compat.iris.IrisCompat;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -23,7 +24,7 @@ import org.joml.Vector3f;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-public class ShellRender implements IFunctionalRenderer {
+public class ShellRender implements IFunctionalSubmitter {
     // 抛壳队列
     private final ConcurrentLinkedDeque<Data> SHELL_QUEUE = new ConcurrentLinkedDeque<>();
     public static boolean isSelf = false;
@@ -32,6 +33,18 @@ public class ShellRender implements IFunctionalRenderer {
 
     public ShellRender(BedrockGunModel bedrockGunModel) {
         this.bedrockGunModel = bedrockGunModel;
+    }
+
+    private static boolean shellContextMatchesCamera(ItemDisplayContext displayContext) {
+        boolean cameraFirstPerson = Minecraft.getInstance().options.getCameraType().isFirstPerson();
+        return cameraFirstPerson == displayContext.firstPerson();
+    }
+
+    private static RenderType shellRenderType(ItemDisplayContext displayContext, ResourceLocation texture) {
+        // 26.1.2 第一人称走 RenderType.itemCutout（26.1 才拆出的 ITEM_CUTOUT 管线），
+        // 1.21.11 没有该管线，手持物品与实体共用 ENTITY_CUTOUT，因此两分支合一。
+        // 保留 displayContext 形参与调用点不变，方便后续需要区分时再拆开。
+        return RenderType.entityCutout(texture);
     }
 
     public void addShell(Vector3f randomVelocity) {
@@ -45,79 +58,6 @@ public class ShellRender implements IFunctionalRenderer {
         SHELL_QUEUE.offerLast(new Data(System.currentTimeMillis(), vector3f));
     }
 
-    private void renderShell(GunDisplayInstance display, GunData gunData, PoseStack poseStack, BedrockGunModel gunModel) {
-        ShellEjection shellEjection = display.getShellEjection();
-        if (shellEjection == null) {
-            SHELL_QUEUE.clear();
-            return;
-        }
-        TimelessAPI.getClientAmmoIndex(gunData.getAmmoId()).ifPresent(ammoIndex -> {
-            BedrockAmmoModel model = ammoIndex.getShellModel();
-            if (model == null) {
-                return;
-            }
-            ResourceLocation location = ammoIndex.getShellTextureLocation();
-            if (location == null) {
-                return;
-            }
-            long lifeTime = (long) (shellEjection.getLivingTime() * 1000);
-
-            // 检查有没有需要踢出去的队列
-            checkShellQueue(lifeTime);
-
-            // 各种参数的获取
-            Vector3f initialVelocity = shellEjection.getInitialVelocity();
-            Vector3f acceleration = shellEjection.getAcceleration();
-            Vector3f angularVelocity = shellEjection.getAngularVelocity();
-
-            // 缓存一下 PoseStack
-            for (Data data : SHELL_QUEUE) {
-                if (data.normal == null && data.pose == null) {
-                    data.normal = new Matrix3f(poseStack.last().normal());
-                    data.pose = new Matrix4f(poseStack.last().pose());
-                }
-            }
-
-            // 渲染抛壳
-            gunModel.delegateRender((poseStack1, vertexConsumer1, transformType1, light, overlay) ->{
-                SHELL_QUEUE.forEach(data -> renderSingleShell(transformType1, light, overlay, data, initialVelocity, acceleration, angularVelocity, model, location));
-            });
-        });
-    }
-
-    private void renderSingleShell(ItemDisplayContext transformType1, int light, int overlay, Data data, Vector3f initialVelocity, Vector3f acceleration, Vector3f angularVelocity, BedrockAmmoModel model, ResourceLocation location) {
-        // 再检查一次
-        if (data.normal == null && data.pose == null) {
-            return;
-        }
-        // 先初始化到缓存位置和朝向
-        PoseStack poseStack2 = new PoseStack();
-        poseStack2.last().normal().mul(data.normal);
-        poseStack2.last().pose().mul(data.pose);
-
-        // 获取存留时间和各种参数
-        long remindTime = System.currentTimeMillis() - data.timeStamp;
-        double time = remindTime / 1000.0;
-        Vector3f randomOffset = data.randomOffset;
-
-        // 位移，满足标准的匀变速直线运动
-        double x = (initialVelocity.x() + randomOffset.x()) * time + 0.5 * acceleration.x() * time * time;
-        double y = (initialVelocity.y() + randomOffset.y()) * time + 0.5 * acceleration.y() * time * time;
-        double z = (initialVelocity.z() + randomOffset.z()) * time + 0.5 * acceleration.z() * time * time;
-        poseStack2.translate(-x, -y, z);
-
-        // 旋转
-        double xw = time * angularVelocity.x();
-        double yw = time * angularVelocity.y();
-        double zw = time * angularVelocity.z();
-        poseStack2.mulPose(Axis.XN.rotationDegrees((float) xw));
-        poseStack2.mulPose(Axis.YN.rotationDegrees((float) yw));
-        poseStack2.mulPose(Axis.ZP.rotationDegrees((float) zw));
-        poseStack2.translate(0, -1.5, 0);
-
-        model.render(poseStack2, transformType1, RenderType.entityCutout(location), light, overlay);
-    }
-
     private void checkShellQueue(long lifeTime) {
         if (!SHELL_QUEUE.isEmpty()) {
             Data data = SHELL_QUEUE.peekFirst();
@@ -129,11 +69,9 @@ public class ShellRender implements IFunctionalRenderer {
     }
 
     @Override
-    public void render(PoseStack poseStack, VertexConsumer vertexBuffer, ItemDisplayContext transformType, int light, int overlay) {
-        if (OculusCompat.isRenderShadow()) {
-            return;
-        }
-        if (!isSelf) {
+    public void extract(ExtractionContext context) {
+        ItemDisplayContext displayContext = context.displayContext();
+        if (IrisCompat.isRenderShadow() || !isSelf || !shellContextMatchesCamera(displayContext)) {
             return;
         }
         ItemStack currentGunItem = bedrockGunModel.getCurrentGunItem();
@@ -141,14 +79,58 @@ public class ShellRender implements IFunctionalRenderer {
         if (iGun == null) {
             return;
         }
-        GunData gunData = TimelessAPI.getClientGunIndex(iGun.getGunId(currentGunItem)).map(ClientGunIndex::getGunData).orElse(null);
-        if (gunData == null) {
+        GunData gunData = TimelessAPI.getClientGunIndex(iGun.getGunId(currentGunItem))
+                .map(ClientGunIndex::getGunData).orElse(null);
+        GunDisplayInstance display = TimelessAPI.getGunDisplay(currentGunItem).orElse(null);
+        if (gunData == null || display == null || display.getShellEjection() == null) {
             return;
         }
-        TimelessAPI.getGunDisplay(currentGunItem).ifPresent(display -> {
-            this.renderShell(display, gunData, poseStack, bedrockGunModel);
-        });
 
+        ShellEjection shellEjection = display.getShellEjection();
+        var ammoIndex = TimelessAPI.getClientAmmoIndex(gunData.getAmmoId()).orElse(null);
+        if (ammoIndex == null || ammoIndex.getShellModel() == null || ammoIndex.getShellTextureLocation() == null) {
+            return;
+        }
+        BedrockAmmoModel model = ammoIndex.getShellModel();
+        ResourceLocation texture = ammoIndex.getShellTextureLocation();
+        long lifeTime = (long) (shellEjection.getLivingTime() * 1000);
+        checkShellQueue(lifeTime);
+
+        Vector3f initialVelocity = shellEjection.getInitialVelocity();
+        Vector3f acceleration = shellEjection.getAcceleration();
+        Vector3f angularVelocity = shellEjection.getAngularVelocity();
+        PoseStack origin = context.poseStack();
+        int light = context.light();
+        int overlay = context.overlay();
+
+        for (Data data : SHELL_QUEUE) {
+            if (data.normal == null || data.pose == null) {
+                data.normal = new Matrix3f(origin.last().normal());
+                data.pose = new Matrix4f(origin.last().pose());
+            }
+            long ageMs = System.currentTimeMillis() - data.timeStamp;
+            double time = ageMs / 1000.0;
+            Vector3f randomOffset = data.randomOffset;
+
+            PoseStack frozenShellPose = new PoseStack();
+            frozenShellPose.last().normal().set(data.normal);
+            frozenShellPose.last().pose().set(data.pose);
+            double x = (initialVelocity.x() + randomOffset.x()) * time + 0.5 * acceleration.x() * time * time;
+            double y = (initialVelocity.y() + randomOffset.y()) * time + 0.5 * acceleration.y() * time * time;
+            double z = (initialVelocity.z() + randomOffset.z()) * time + 0.5 * acceleration.z() * time * time;
+            frozenShellPose.translate(-x, -y, z);
+            frozenShellPose.mulPose(Axis.XN.rotationDegrees((float) (time * angularVelocity.x())));
+            frozenShellPose.mulPose(Axis.YN.rotationDegrees((float) (time * angularVelocity.y())));
+            frozenShellPose.mulPose(Axis.ZP.rotationDegrees((float) (time * angularVelocity.z())));
+            frozenShellPose.translate(0, -1.5, 0);
+
+            context.add(collector -> {
+                PoseStack taskPose = new PoseStack();
+                taskPose.last().pose().set(frozenShellPose.last().pose());
+                taskPose.last().normal().set(frozenShellPose.last().normal());
+                model.submit(taskPose, displayContext, collector, shellRenderType(displayContext, texture), light, overlay);
+            });
+        }
     }
 
     public static class Data {

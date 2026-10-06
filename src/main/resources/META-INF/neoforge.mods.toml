@@ -1,0 +1,43 @@
+license = "GPL3 / CC BY-NC-ND 4.0"
+
+[[mods]]
+modId = "tacz"
+version = "${mod_version}"
+displayName = "Timeless & Classics Guns: Zero"
+logoFile = "logo.png"
+authors = "Serene Wave Studio | Timeless Squad"
+description = '''
+'''
+
+[[mixins]]
+config = "tacz.mixins.json"
+
+[[mixins]]
+config = "tacz.iris.mixins.json"
+
+[[mixins]]
+config = "tacz.carryon.mixins.json"
+
+[[dependencies.tacz]]
+modId = "neoforge"
+type = "required"
+versionRange = "[${neo_version},21.11)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.tacz]]
+modId = "minecraft"
+type = "required"
+versionRange = "${minecraft_version_range}"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.tacz]]
+modId = "shouldersurfing"
+type = "optional"
+versionRange = "[1.21.10-4.17.1,1.21.10-5.0)"
+ordering = "NONE"
+side = "CLIENT"
+
+[modproperties.tacz]
+catalogueItemIcon = "tacz:gun_smith_table"

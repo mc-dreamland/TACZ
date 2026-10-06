@@ -8,5 +8,6 @@ import net.minecraft.resources.FileToIdConverter;
  */
 public interface IDisplay {
     FileToIdConverter converter = new FileToIdConverter("textures", ".png");
+
     void init();
 }

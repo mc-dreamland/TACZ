@@ -25,9 +25,9 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
+import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
+import net.neoforged.neoforge.common.NeoForge;
+import com.tacz.guns.api.LogicalSide;
 
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -45,7 +45,7 @@ public final class PaperShotPresentation {
         boolean valid() {
             Minecraft mc = Minecraft.getInstance();
             if (!PaperClientBridge.active() || mc.level != level || mc.getConnection() != connection || mc.player != player
-                    || !player.isAlive() || player.isSpectator() || player.getInventory().selected != slot || !InputExtraCheck.isInGame()) return false;
+                    || !player.isAlive() || player.isSpectator() || player.getInventory().getSelectedSlot() != slot || !InputExtraCheck.isInGame()) return false;
             var gun = resolve(player.getMainHandItem());
             IGunOperator operator = IGunOperator.fromLivingEntity(player);
             if (operator.getSynReloadState().getStateType().isReloading() || operator.getSynIsBolting()) return false;
@@ -97,14 +97,14 @@ public final class PaperShotPresentation {
         LocalPlayer player = mc.player;
         if (player == null) return;
         int physical = mode == FireMode.BURST && data.getBurstData() != null ? Math.max(1, data.getBurstData().getCount()) : 1;
-        boolean doubleBarrel = mode == FireMode.BURST && new ResourceLocation("tacz:db_short_gun_logic").equals(data.getScript());
+        boolean doubleBarrel = mode == FireMode.BURST && ResourceLocation.parse("tacz:db_short_gun_logic").equals(data.getScript());
         if (doubleBarrel) physical = 2;
         physical = Math.min(16, Math.min(physical, available(gun, data)));
         ItemStack authoritative = GunResolver.authoritativeStack(gun.realStack()).copy();
         IGun accessor = (IGun) authoritative.getItem();
         boolean predicted = !accessor.useInventoryAmmo(authoritative);
         boolean consumes = !player.getAbilities().instabuild;
-        boolean automaticManualFeed = mode == FireMode.BURST && new ResourceLocation("tacz:spas_12_gun_logic").equals(data.getScript());
+        boolean automaticManualFeed = mode == FireMode.BURST && ResourceLocation.parse("tacz:spas_12_gun_logic").equals(data.getScript());
         if (consumes && data.getBolt() == Bolt.MANUAL_ACTION && !automaticManualFeed) physical = Math.min(physical, 1);
         if (data.hasHeatData() && data.getHeatData().getHeatPerShot() > 0) {
             ItemStack predictedView = GunResolver.renderStack(gun.realStack()).copy();
@@ -115,7 +115,7 @@ public final class PaperShotPresentation {
         boolean silenced = false;
         var cache = IGunOperator.fromLivingEntity(player).getCacheProperty();
         if (cache != null) { Pair<Integer, Boolean> silence = cache.getCache(SilenceModifier.ID); silenced = silence != null && silence.right(); }
-        Context context = new Context(mc.level, mc.getConnection(), player, player.getInventory().selected,
+        Context context = new Context(mc.level, mc.getConnection(), player, player.getInventory().getSelectedSlot(),
                 gun.instance(), accessor.getGunId(authoritative), mode, data, silenced, consumes);
         long interval = mode == FireMode.BURST ? Math.max(1, data.getBurstShootInterval()) : 0;
         TRACKER.begin(actionSeq, gun.instance(), physical, doubleBarrel ? 1 : physical, interval, now(), predicted, consumes);
@@ -145,14 +145,14 @@ public final class PaperShotPresentation {
             holder.clientShootTimestamp = System.currentTimeMillis();
         }
         // A cancelled visual is still recorded by the tracker and will not return through its ACK.
-        if (MinecraftForge.EVENT_BUS.post(new GunFireEvent(player, render, LogicalSide.CLIENT))) return;
+        if (NeoForge.EVENT_BUS.post(new GunFireEvent(player, render, LogicalSide.CLIENT)).isCanceled()) return;
         TimelessAPI.getGunDisplay(render).ifPresent(display -> {
             SoundPlayManager.stopPlayGunSound(display, SoundManager.INSPECT_SOUND);
-            if (IClientItemExtensions.of(render).getCustomRenderer() instanceof GunItemRendererWrapper renderer) {
+            if (BuiltinItemRendererRegistry.INSTANCE.get(render.getItem()) instanceof GunItemRendererWrapper renderer) {
                 Minecraft mc = Minecraft.getInstance();
-                if (renderer.needReInit(render)) renderer.tryInit(render, player, mc.getFrameTime());
+                if (renderer.needReInit(render)) renderer.tryInit(render, player, mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
                 var machine = renderer.getStateMachine(render);
-                if (machine != null && machine.getContext() != null) renderer.updateContext(machine.getContext(), render, player, mc.getFrameTime());
+                if (machine != null && machine.getContext() != null) renderer.updateContext(machine.getContext(), render, player, mc.getDeltaTracker().getGameTimeDeltaPartialTick(false));
                 renderer.triggerAnimation(render, GunAnimationConstant.INPUT_SHOOT);
             }
             if (silenced) SoundPlayManager.playSilenceSound(player, display, data);
@@ -162,14 +162,14 @@ public final class PaperShotPresentation {
 
     /** Applied to a freshly built TACZ view; the real PDC/NBT and synced state stay untouched. */
     public static void overlay(String instance, CompoundTag tag) {
-        PresentationAmmo ammo = new PresentationAmmo(tag.getInt("GunCurrentAmmoCount"), tag.getBoolean("HasBulletInBarrel"));
-        float heat = tag.getFloat("HeatAmount");
-        boolean overheated = tag.getBoolean("OverHeated");
+        PresentationAmmo ammo = new PresentationAmmo(tag.getIntOr("GunCurrentAmmoCount", 0), tag.getBooleanOr("HasBulletInBarrel", false));
+        float heat = tag.getFloatOr("HeatAmount", 0);
+        boolean overheated = tag.getBooleanOr("OverHeated", false);
         for (var shot : TRACKER.outstanding(instance, false)) {
             Context context = CONTEXTS.get(shot.actionSeq());
             if (context == null) continue;
             GunData data = context.data();
-            boolean spas = context.mode() == FireMode.BURST && new ResourceLocation("tacz:spas_12_gun_logic").equals(data.getScript());
+            boolean spas = context.mode() == FireMode.BURST && ResourceLocation.parse("tacz:spas_12_gun_logic").equals(data.getScript());
             if (context.consumesAmmo()) ammo = ammo.consume(data.getBolt().name().toLowerCase(Locale.ROOT), spas);
             if (data.hasHeatData()) {
                 heat = Math.min(data.getHeatData().getHeatMax(), heat + Math.max(0, data.getHeatData().getHeatPerShot()));

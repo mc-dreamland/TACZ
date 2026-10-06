@@ -10,7 +10,6 @@ import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.Ignite;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -27,7 +26,7 @@ public class IgniteModifier implements IAttachmentModifier<Ignite, Ignite> {
 
     @Override
     public JsonProperty<Ignite> readJson(String json) {
-        IgniteModifier.Data data = CommonAssetsManager.GSON.fromJson(json, IgniteModifier.Data.class);
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
         return new IgniteJsonProperty(data.getIgnite());
     }
 
@@ -65,10 +64,10 @@ public class IgniteModifier implements IAttachmentModifier<Ignite, Ignite> {
                 return;
             }
             if (value.isIgniteEntity()) {
-                components.add(Component.translatable("tooltip.tacz.attachment.ignite.entity").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.ignite.entity").withStyle(style -> style.withColor(0x55FF55)));
             }
             if (value.isIgniteBlock()) {
-                components.add(Component.translatable("tooltip.tacz.attachment.ignite.block").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.ignite.block").withStyle(style -> style.withColor(0x55FF55)));
             }
         }
     }

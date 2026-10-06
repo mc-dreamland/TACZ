@@ -86,7 +86,7 @@ public class RecipeFilter {
                         }
                     } else {
                         ResourceLocation rl = ResourceLocation.tryParse(entry);
-                        if (rl != null){
+                        if (rl != null) {
                             builder.add(rl);
                         }
                     }

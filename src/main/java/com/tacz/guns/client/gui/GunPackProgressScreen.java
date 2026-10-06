@@ -5,12 +5,14 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.ProgressListener;
-import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 
+/**
+ * 26.2: GUI system reworked - GuiGraphics → GuiGraphics, render → extractRenderState
+ * Implemented with 26.2 GUI API
+ */
 public class GunPackProgressScreen extends Screen implements ProgressListener {
     private @Nullable Component header;
     private @Nullable Component stage;
@@ -30,22 +32,21 @@ public class GunPackProgressScreen extends Screen implements ProgressListener {
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
+    public void render(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
         if (this.stop) {
-            this.getMinecraft().setScreen(null);
+            this.minecraft.setScreen(null);
         } else {
-            this.renderBackground(gui);
+            this.renderBackground(gui, mouseX, mouseY, partialTick);
             if (this.header != null) {
                 gui.drawCenteredString(this.font, this.header, this.width / 2, 70, 16777215);
             }
             if (this.stage != null && this.progress > 0) {
-                MutableComponent text = this.stage.copy().append(" " + this.progress + "%");
+                Component text = this.stage.copy().append(" " + this.progress + "%");
                 gui.drawCenteredString(this.font, text, this.width / 2, 90, 16777215);
             }
             super.render(gui, mouseX, mouseY, partialTick);
         }
     }
-
 
     @Override
     public void progressStartNoAbort(Component component) {

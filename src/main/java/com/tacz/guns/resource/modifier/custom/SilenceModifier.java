@@ -12,7 +12,6 @@ import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import it.unimi.dsi.fastutil.Pair;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -30,7 +29,7 @@ public class SilenceModifier implements IAttachmentModifier<Pair<Modifier, Boole
     @Override
     @SuppressWarnings("deprecation")
     public SilenceJsonProperty readJson(String json) {
-        SilenceModifier.Data data = CommonAssetsManager.GSON.fromJson(json, SilenceModifier.Data.class);
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
         Silence silence = data.getSilence();
         if (silence == null) {
             return new SilenceJsonProperty(Pair.of(new Modifier(), false));
@@ -77,12 +76,12 @@ public class SilenceModifier implements IAttachmentModifier<Pair<Modifier, Boole
                 double eval = AttachmentPropertyManager.eval(value.left(), defaultDistance);
                 int distance = (int) Math.round(eval);
                 if (distance > defaultDistance) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.sound_distance.increase").withStyle(ChatFormatting.RED));
+                    components.add(Component.translatable("tooltip.tacz.attachment.sound_distance.increase").withStyle(style -> style.withColor(0xFF5555)));
                 } else if (distance < defaultDistance) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.sound_distance.increase").withStyle(ChatFormatting.GREEN));
+                    components.add(Component.translatable("tooltip.tacz.attachment.sound_distance.increase").withStyle(style -> style.withColor(0x55FF55)));
                 }
                 if (value.right()) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.silence").withStyle(ChatFormatting.GREEN));
+                    components.add(Component.translatable("tooltip.tacz.attachment.silence").withStyle(style -> style.withColor(0x55FF55)));
                 }
             }
         }

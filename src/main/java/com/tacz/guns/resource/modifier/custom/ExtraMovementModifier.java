@@ -8,7 +8,6 @@ import com.tacz.guns.api.modifier.JsonProperty;
 import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.MoveSpeed;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -29,9 +28,9 @@ public class ExtraMovementModifier implements IAttachmentModifier<MoveSpeed, Mov
     @Override
     @SuppressWarnings("deprecation")
     public JsonProperty<MoveSpeed> readJson(String json) {
-        ExtraMovementModifier.Data data = CommonAssetsManager.GSON.fromJson(json, ExtraMovementModifier.Data.class);
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
         MoveSpeed moveSpeed = data.getMoveSpeed();
-        return  new ExtraSpeedJsonProperty(moveSpeed);
+        return new ExtraSpeedJsonProperty(moveSpeed);
     }
 
     @Override
@@ -52,7 +51,7 @@ public class ExtraMovementModifier implements IAttachmentModifier<MoveSpeed, Mov
         @Override
         public void initComponents() {
             MoveSpeed speed = getValue();
-            if(speed == null)return;
+            if (speed == null) return;
             resolveComponent(speed.getBaseMultiplier(), "movement_speed");
             resolveComponent(speed.getAimMultiplier(), "aim_speed");
             resolveComponent(speed.getReloadMultiplier(), "reload_speed");
@@ -60,9 +59,9 @@ public class ExtraMovementModifier implements IAttachmentModifier<MoveSpeed, Mov
 
         private void resolveComponent(float amount, String key) {
             if (amount > 0) {
-                components.add(Component.translatable(String.format("tooltip.tacz.attachment.%s.increase", key)).withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable(String.format("tooltip.tacz.attachment.%s.increase", key)).withStyle(style -> style.withColor(0x55FF55)));
             } else if (amount < 0) {
-                components.add(Component.translatable(String.format("tooltip.tacz.attachment.%s.decrease", key)).withStyle(ChatFormatting.RED));
+                components.add(Component.translatable(String.format("tooltip.tacz.attachment.%s.decrease", key)).withStyle(style -> style.withColor(0xFF5555)));
             }
         }
     }

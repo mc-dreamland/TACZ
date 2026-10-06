@@ -1,5 +1,6 @@
 package com.tacz.guns.entity.shooter;
 
+import com.tacz.guns.api.entity.ForcePose;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import net.minecraft.resources.ResourceLocation;
@@ -43,7 +44,7 @@ public class LivingEntityCrawl {
             return;
         }
         // 如果是观察者模型、骑乘、跳跃、在游泳、不在地上，取消
-        if (shooter.isSpectator() || shooter.isPassenger() || shooter.jumping || shooter.isSwimming() || !shooter.onGround()) {
+        if (shooter.isSpectator() || shooter.isPassenger() || shooter.isSwimming() || !shooter.onGround()) {
             data.isCrawling = false;
             this.setCrawlPose();
             return;
@@ -54,13 +55,13 @@ public class LivingEntityCrawl {
     private void setCrawlPose() {
         if (data.isCrawling) {
             if (shooter instanceof Player player) {
-                player.setForcedPose(Pose.SWIMMING);
+                ((ForcePose) player).tacz$setForcedPose(Pose.SWIMMING);
             } else {
                 this.shooter.setPose(Pose.SWIMMING);
             }
         } else {
             if (shooter instanceof Player player) {
-                player.setForcedPose(null);
+                ((ForcePose) player).tacz$setForcedPose(null);
             }
         }
     }

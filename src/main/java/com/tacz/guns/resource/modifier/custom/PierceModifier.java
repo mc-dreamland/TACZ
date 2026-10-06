@@ -10,11 +10,10 @@ import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -30,8 +29,8 @@ public class PierceModifier implements IAttachmentModifier<Modifier, Integer> {
 
     @Override
     public JsonProperty<Modifier> readJson(String json) {
-        PierceModifier.Data data = CommonAssetsManager.GSON.fromJson(json, PierceModifier.Data.class);
-        return new PierceModifier.PierceJsonProperty(data.getPierce());
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
+        return new PierceJsonProperty(data.getPierce());
     }
 
     @Override
@@ -84,9 +83,9 @@ public class PierceModifier implements IAttachmentModifier<Modifier, Integer> {
                 long eval = Math.round(AttachmentPropertyManager.eval(pierce, 5));
                 eval = Math.max(eval, 1);
                 if (eval > 5) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.pierce.increase").withStyle(ChatFormatting.GREEN));
+                    components.add(Component.translatable("tooltip.tacz.attachment.pierce.increase").withStyle(style -> style.withColor(0x55FF55)));
                 } else if (eval < 5) {
-                    components.add(Component.translatable("tooltip.tacz.attachment.pierce.decrease").withStyle(ChatFormatting.RED));
+                    components.add(Component.translatable("tooltip.tacz.attachment.pierce.decrease").withStyle(style -> style.withColor(0xFF5555)));
                 }
             }
         }

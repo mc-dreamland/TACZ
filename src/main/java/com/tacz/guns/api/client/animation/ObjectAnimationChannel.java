@@ -99,6 +99,10 @@ public class ObjectAnimationChannel {
         }
         float local = timeS - content.keyframeTimeS[indexFrom];
         float delta = content.keyframeTimeS[indexFrom + 1] - content.keyframeTimeS[indexFrom];
+        // 防御：两个关键帧时间戳相同时 delta=0，直接跳到下一帧
+        if (delta <= 0.0f) {
+            return 1.0f;
+        }
         return local / delta;
     }
 

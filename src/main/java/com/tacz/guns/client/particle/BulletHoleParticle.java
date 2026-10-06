@@ -1,6 +1,5 @@
 package com.tacz.guns.client.particle;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.init.ModBlocks;
@@ -10,30 +9,25 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.ParticleRenderType;
-import net.minecraft.client.particle.TextureSheetParticle;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.client.particle.SingleQuadParticle;
+import net.minecraft.client.renderer.state.QuadParticleRenderState;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Quaternionf;
-import org.joml.Vector3f;
 
 /**
  * Author: Forked from MrCrayfish, continued by Timeless devs
+ * 26.2: TextureSheetParticle → SingleQuadParticle, render → extract
  */
-public class BulletHoleParticle extends TextureSheetParticle {
+public class BulletHoleParticle extends SingleQuadParticle {
     private final Direction direction;
     private final BlockPos pos;
     private int uOffset;
@@ -41,8 +35,7 @@ public class BulletHoleParticle extends TextureSheetParticle {
     private float textureDensity;
 
     public BulletHoleParticle(ClientLevel world, double x, double y, double z, Direction direction, BlockPos pos, String ammoId, String gunId, String gunDisplayId) {
-        super(world, x, y, z);
-        this.setSprite(this.getSprite(pos));
+        super(world, x, y, z, getSpriteForPos(pos));
         this.direction = direction;
         this.pos = pos;
         this.lifetime = this.getLifetimeFromConfig(world);
@@ -51,17 +44,17 @@ public class BulletHoleParticle extends TextureSheetParticle {
         this.quadSize = 0.05F;
 
         BlockState state = world.getBlockState(pos);
-        if (state.is(ModBlocks.TARGET.get()) || shouldRemove()) {
+        if (state.is(ModBlocks.TARGET) || shouldRemove()) {
             this.remove();
         }
-        TimelessAPI.getGunDisplay(new ResourceLocation(gunDisplayId), new ResourceLocation(gunId)).ifPresent(gunIndex -> {
+        TimelessAPI.getGunDisplay(ResourceLocation.parse(gunDisplayId), ResourceLocation.parse(gunId)).ifPresent(gunIndex -> {
             float[] gunTracerColor = gunIndex.getTracerColor();
             if (gunTracerColor != null) {
                 this.rCol = gunTracerColor[0];
                 this.gCol = gunTracerColor[1];
                 this.bCol = gunTracerColor[2];
             } else {
-                TimelessAPI.getClientAmmoIndex(new ResourceLocation(ammoId)).ifPresent(ammoIndex -> {
+                TimelessAPI.getClientAmmoIndex(ResourceLocation.parse(ammoId)).ifPresent(ammoIndex -> {
                     float[] ammoTracerColor = ammoIndex.getTracerColor();
                     this.rCol = ammoTracerColor[0];
                     this.gCol = ammoTracerColor[1];
@@ -72,12 +65,23 @@ public class BulletHoleParticle extends TextureSheetParticle {
         this.alpha = 0.9F;
     }
 
+    private static TextureAtlasSprite getSpriteForPos(BlockPos pos) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Level world = minecraft.level;
+        if (world != null) {
+            BlockState state = world.getBlockState(pos);
+            return minecraft.getModelManager().getBlockModelShaper().getParticleIcon(state);
+        }
+        // Fallback: should not normally happen
+        return minecraft.getModelManager().getMissingBlockStateModel().particleIcon();
+    }
+
     private int getLifetimeFromConfig(ClientLevel world) {
         int configLife = RenderConfig.BULLET_HOLE_PARTICLE_LIFE.get();
         if (configLife <= 1) {
             return configLife;
         }
-        return configLife + world.random.nextInt(configLife / 2);
+        return configLife + world.getRandom().nextInt(configLife / 2);
     }
 
     @Override
@@ -87,16 +91,6 @@ public class BulletHoleParticle extends TextureSheetParticle {
         this.vOffset = this.random.nextInt(16);
         // 材质应该都是方形
         this.textureDensity = (sprite.getU1() - sprite.getU0()) / 16.0F;
-    }
-
-    private TextureAtlasSprite getSprite(BlockPos pos) {
-        Minecraft minecraft = Minecraft.getInstance();
-        Level world = minecraft.level;
-        if (world != null) {
-            BlockState state = world.getBlockState(pos);
-            return Minecraft.getInstance().getBlockRenderer().getBlockModelShaper().getTexture(state, world, pos);
-        }
-        return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MissingTextureAtlasSprite.getLocation());
     }
 
     @Override
@@ -127,59 +121,78 @@ public class BulletHoleParticle extends TextureSheetParticle {
         }
     }
 
+    /**
+     * <b>第 8 轮修复：击碎方块时天上出现会变大的怪异方片。</b>
+     *
+     * <p>原代码写的是：</p>
+     * <pre>
+     * this.extractRotatedQuad(state, quaternion, red, green, blue, alphaFade);
+     * </pre>
+     *
+     * <p>看起来像是"传旋转 + 颜色"，但 26.2 的 {@code SingleQuadParticle} 里<b>没有</b>
+     * 接收颜色的重载（反编译确认，只有三个）：</p>
+     * <pre>
+     * extractRotatedQuad(QuadParticleRenderState, Camera, Quaternionf, float partialTick)
+     * extractRotatedQuad(QuadParticleRenderState, Quaternionf, float x, float y, float z, float partialTick)
+     * </pre>
+     *
+     * <p>于是这次调用被静默绑定到了第二个重载 —— <b>把 r/g/b 当成了 x/y/z 坐标</b>，
+     * 把 alpha 当成了 partialTick。颜色是 0~1 的浮点，所以四边形被画在
+     * "相对摄像机 (r, g, b)"这个<b>固定偏移</b>处（+x 偏东、+z 偏南、+y 在上方），
+     * 与实际弹孔位置完全无关 —— 这就是你看到的"固定出现在西-西南方向屏幕上方"。</p>
+     *
+     * <p>而颜色取自枪械/弹药的 <b>tracerColor</b>，所以<b>不同枪械出现在不同位置</b>；
+     * 随着 {@code colorPercent} 衰减到 0，坐标也趋近摄像机原点，
+     * 视觉上就是"逐渐变大后消失"，生命周期约 60 tick ≈ 3 秒 —— 与反馈逐条吻合。</p>
+     *
+     * <p>正确做法：用带 Camera 的重载，让父类自己算出相机相对坐标；
+     * 颜色则通过 {@code rCol/gCol/bCol/alpha} 字段传递（父类 {@code extractRotatedQuad}
+     * 内部用 {@code ARGB.colorFromFloat(this.alpha, this.rCol, this.gCol, this.bCol)} 取值）。</p>
+     */
     @Override
-    public void render(VertexConsumer buffer, Camera renderInfo, float partialTicks) {
-        Vec3 view = renderInfo.getPosition();
-        float particleX = (float) (Mth.lerp(partialTicks, this.xo, this.x) - view.x());
-        float particleY = (float) (Mth.lerp(partialTicks, this.yo, this.y) - view.y());
-        float particleZ = (float) (Mth.lerp(partialTicks, this.zo, this.z) - view.z());
-        Quaternionf quaternion = this.direction.getRotation();
-        Vector3f[] points = new Vector3f[]{
-                // Y 值稍微大一点点，防止 z-fight
-                new Vector3f(-1.0F, 0.01F, -1.0F),
-                new Vector3f(-1.0F, 0.01F, 1.0F),
-                new Vector3f(1.0F, 0.01F, 1.0F),
-                new Vector3f(1.0F, 0.01F, -1.0F)
-        };
-        float scale = this.getQuadSize(partialTicks);
-
-        for (int i = 0; i < 4; ++i) {
-            Vector3f vector3f = points[i];
-            vector3f.rotate(quaternion);
-            vector3f.mul(scale);
-            vector3f.add(particleX, particleY, particleZ);
-        }
-
-        // UV 坐标
-        float u0 = this.getU0();
-        float u1 = this.getU1();
-        float v0 = this.getV0();
-        float v1 = this.getV1();
-
+    public void extract(QuadParticleRenderState state, Camera camera, float partialTicks) {
         // 0 - 30 tick 内，从 15 亮度到 0 亮度
         int light = Math.max(15 - this.age / 2, 0);
-        int lightColor = LightTexture.pack(light, light);
 
         // 颜色，逐渐渐变到 0 0 0，也就是黑色
         float colorPercent = light / 15.0f;
-        float red = this.rCol * colorPercent;
-        float green = this.gCol * colorPercent;
-        float blue = this.bCol * colorPercent;
 
         // 透明度，逐渐变成 0，也就是透明
         double threshold = RenderConfig.BULLET_HOLE_PARTICLE_FADE_THRESHOLD.get() * this.lifetime;
         float fade = 1.0f - (float) (Math.max(this.age - threshold, 0) / (this.lifetime - threshold));
-        float alphaFade = this.alpha * fade;
 
-        buffer.vertex(points[0].x(), points[0].y(), points[0].z()).uv(u1, v1).color(red, green, blue, alphaFade).uv2(lightColor).endVertex();
-        buffer.vertex(points[1].x(), points[1].y(), points[1].z()).uv(u1, v0).color(red, green, blue, alphaFade).uv2(lightColor).endVertex();
-        buffer.vertex(points[2].x(), points[2].y(), points[2].z()).uv(u0, v0).color(red, green, blue, alphaFade).uv2(lightColor).endVertex();
-        buffer.vertex(points[3].x(), points[3].y(), points[3].z()).uv(u0, v1).color(red, green, blue, alphaFade).uv2(lightColor).endVertex();
+        // 备份基色，渲染时临时写入父类字段（父类从这些字段取色），渲染完再还原，
+        // 避免把衰减后的颜色累积回基色。
+        float baseR = this.rCol;
+        float baseG = this.gCol;
+        float baseB = this.bCol;
+        float baseA = this.alpha;
+        this.rCol = baseR * colorPercent;
+        this.gCol = baseG * colorPercent;
+        this.bCol = baseB * colorPercent;
+        this.alpha = baseA * fade;
+        try {
+            // 使用方向四元数旋转四边形；位置交给带 Camera 的重载计算。
+            Quaternionf quaternion = this.direction.getRotation();
+            this.extractRotatedQuad(state, camera, quaternion, partialTicks);
+        } finally {
+            this.rCol = baseR;
+            this.gCol = baseG;
+            this.bCol = baseB;
+            this.alpha = baseA;
+        }
     }
 
     @Override
-    public ParticleRenderType getRenderType() {
-        return ParticleRenderType.TERRAIN_SHEET;
+    public ParticleRenderType getGroup() {
+        return ParticleRenderType.SINGLE_QUADS;
+    }
+
+    @Override
+    protected Layer getLayer() {
+        // 1.21.11：SingleQuadParticle$Layer 没有 TRANSLUCENT_TERRAIN；
+        // TERRAIN 的 translucent 标志为 true，弹孔在透明地形层渲染（姊妹实测对应关系）。
+        return Layer.TERRAIN;
     }
 
     private boolean shouldRemove() {
@@ -201,15 +214,13 @@ public class BulletHoleParticle extends TextureSheetParticle {
         }
     }
 
-    @OnlyIn(Dist.CLIENT)
-    public static class Provider implements ParticleProvider<BulletHoleOption> {
+        public static class Provider implements ParticleProvider<BulletHoleOption> {
         public Provider() {
         }
 
         @Override
-        public BulletHoleParticle createParticle(@NotNull BulletHoleOption option, @NotNull ClientLevel world, double x, double y, double z, double pXSpeed, double pYSpeed, double pZSpeed) {
-            BulletHoleParticle particle = new BulletHoleParticle(world, x, y, z, option.getDirection(), option.getPos(), option.getAmmoId(), option.getGunId(), option.getGunDisplayId());
-            return particle;
+        public BulletHoleParticle createParticle(@NotNull BulletHoleOption option, @NotNull ClientLevel world, double x, double y, double z, double pXSpeed, double pYSpeed, double pZSpeed, RandomSource random) {
+            return new BulletHoleParticle(world, x, y, z, option.getDirection(), option.getPos(), option.getAmmoId(), option.getGunId(), option.getGunDisplayId());
         }
     }
 }

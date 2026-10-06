@@ -4,10 +4,11 @@ import com.google.common.base.Preconditions;
 import com.tacz.guns.client.model.bedrock.BedrockModel;
 import com.tacz.guns.client.resource.ClientAssetsManager;
 import com.tacz.guns.client.resource.pojo.display.block.BlockDisplay;
+import com.tacz.guns.client.resource.pojo.display.block.BlockTransformParser;
+import net.minecraft.client.renderer.block.model.ItemTransforms;
 import com.tacz.guns.client.resource.pojo.model.BedrockModelPOJO;
 import com.tacz.guns.client.resource.pojo.model.BedrockVersion;
 import com.tacz.guns.resource.pojo.BlockIndexPOJO;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
 import net.minecraft.resources.ResourceLocation;
 import org.apache.commons.lang3.StringUtils;
 
@@ -15,7 +16,7 @@ public class ClientBlockIndex {
     private BedrockModel model;
     private ResourceLocation texture;
     private String name;
-    private ItemTransforms transforms;
+    private ItemTransforms transforms = ItemTransforms.NO_TRANSFORMS;
     private String tooltipKey;
 
     public static ClientBlockIndex getInstance(BlockIndexPOJO pojo) {
@@ -69,9 +70,21 @@ public class ClientBlockIndex {
         index.texture = display.getModelTexture();
     }
 
+    /**
+     * 26.2 修复：移植时这段被整体删除，导致工作台/装配台手持模型不缩放（默认包声明 scale 0.25，
+     * 实际按 1.0 渲染 => 大 4 倍）。这里恢复上游行为，只是把解析换成 26.2 可用的实现，
+     * 详见 {@link BlockTransformParser}。
+     *
+     * <p>与上游的一处刻意差异：上游用 {@code Preconditions.checkArgument(transforms != null)}
+     * 硬性要求枪包提供 transforms，缺失即抛异常导致整个 index 加载失败。这里改为回退到
+     * {@code NO_TRANSFORMS}，避免第三方枪包因缺该字段而整包加载不出来。</p>
+     */
     private static void checkTransforms(BlockDisplay display, ClientBlockIndex index) {
-        Preconditions.checkArgument(display.getTransforms() != null, "missing transforms");
-        index.transforms = display.getTransforms();
+        index.transforms = BlockTransformParser.parse(display.getTransforms());
+    }
+
+    public ItemTransforms getTransforms() {
+        return transforms;
     }
 
     public BedrockModel getModel() {
@@ -84,10 +97,6 @@ public class ClientBlockIndex {
 
     public String getName() {
         return name;
-    }
-
-    public ItemTransforms getTransforms() {
-        return transforms;
     }
 
     public String getTooltipKey() {

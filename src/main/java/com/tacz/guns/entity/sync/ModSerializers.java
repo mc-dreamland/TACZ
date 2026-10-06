@@ -34,8 +34,8 @@ public class ModSerializers {
         public ReloadState read(Tag nbt) {
             CompoundTag compound = (CompoundTag) nbt;
             try {
-                ReloadState.StateType stateType = ReloadState.StateType.valueOf(compound.getString("StateType"));
-                long countDown = compound.getLong("CountDown");
+                ReloadState.StateType stateType = ReloadState.StateType.valueOf(compound.getStringOr("StateType", ""));
+                long countDown = compound.getLongOr("CountDown", 0);
                 ReloadState reloadState = new ReloadState();
                 reloadState.setStateType(stateType);
                 reloadState.setCountDown(countDown);

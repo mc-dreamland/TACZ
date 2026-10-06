@@ -12,7 +12,6 @@ import com.tacz.guns.api.item.gun.GunItemManager;
 import com.tacz.guns.init.ModItems;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.RegistryObject;
 
 import java.util.EnumMap;
 
@@ -83,7 +82,7 @@ public final class GunItemBuilder {
             iGun.setFireMode(gun, this.fireMode);
             iGun.setCurrentAmmoCount(gun, this.ammoCount);
             iGun.setBulletInBarrel(gun, this.bulletInBarrel);
-            if(heatData) iGun.setHeatAmount(gun, 0f);
+            if (heatData) iGun.setHeatAmount(gun, 0f);
             this.attachments.forEach((type, id) -> {
                 ItemStack attachmentStack = AttachmentItemBuilder.create().setId(id).build();
                 iGun.installAttachment(gun, attachmentStack);
@@ -98,12 +97,12 @@ public final class GunItemBuilder {
             return ItemStack.EMPTY;
         }
 
-        RegistryObject<? extends AbstractGunItem> gunItemRegistryObject = GunItemManager.getGunItemRegistryObject(itemType);
+        AbstractGunItem gunItemRegistryObject = GunItemManager.getGunItemRegistryObject(itemType);
         if (gunItemRegistryObject == null) {
             return ItemStack.EMPTY;
         }
 
-        ItemStack gun = new ItemStack(gunItemRegistryObject.get(), this.count);
+        ItemStack gun = new ItemStack(gunItemRegistryObject, this.count);
         if (ItemBehavior.of(gun) instanceof IGun iGun) {
             iGun.setGunId(gun, this.gunId);
             iGun.setFireMode(gun, this.fireMode);

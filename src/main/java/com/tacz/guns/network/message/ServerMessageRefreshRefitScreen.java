@@ -1,39 +1,31 @@
 package com.tacz.guns.network.message;
 
-import com.tacz.guns.client.gui.GunRefitScreen;
+import com.tacz.guns.GunMod;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public class ServerMessageRefreshRefitScreen implements CustomPacketPayload {
+    public static final ServerMessageRefreshRefitScreen INSTANCE = new ServerMessageRefreshRefitScreen();
+    public static final CustomPacketPayload.Type<ServerMessageRefreshRefitScreen> TYPE = new CustomPacketPayload.Type<>(
+        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_refresh_refit_screen")
+    );
+    public static final StreamCodec<RegistryFriendlyByteBuf, ServerMessageRefreshRefitScreen> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 
-public class ServerMessageRefreshRefitScreen {
-    public static void encode(ServerMessageRefreshRefitScreen message, FriendlyByteBuf buf) {
+    private ServerMessageRefreshRefitScreen() { }
+
+    @Override
+    public @NotNull CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 
-    public static ServerMessageRefreshRefitScreen decode(FriendlyByteBuf buf) {
-        return new ServerMessageRefreshRefitScreen();
+    public static void handle(ServerMessageRefreshRefitScreen message, IPayloadContext context) {
+        context.enqueueWork(() -> com.tacz.guns.network.ClientPacketBridge.invoke("onRefreshRefit", new Class[]{com.tacz.guns.network.message.ServerMessageRefreshRefitScreen.class}, message));
     }
 
-    public static void handle(ServerMessageRefreshRefitScreen message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        if (context.getDirection().getReceptionSide().isClient()) {
-            context.enqueueWork(ServerMessageRefreshRefitScreen::updateScreen);
-        }
-        context.setPacketHandled(true);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private static void updateScreen() {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player != null && Minecraft.getInstance().screen instanceof GunRefitScreen screen) {
-            screen.init();
-            // 刷新配件数据，客户端的
-            AttachmentPropertyManager.postChangeEvent(player, player.getMainHandItem());
-        }
-    }
 }

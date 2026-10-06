@@ -2,6 +2,7 @@ package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.item.ItemBehavior;
 
+import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -15,7 +16,6 @@ import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.index.ClientGunIndex;
 import com.tacz.guns.client.sound.SoundPlayManager;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.network.message.ClientMessagePlayerShoot;
 import com.tacz.guns.resource.index.CommonGunIndex;
 import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
@@ -26,12 +26,11 @@ import com.tacz.guns.resource.pojo.data.gun.ChargeType;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.sound.SoundManager;
 import it.unimi.dsi.fastutil.Pair;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -41,13 +40,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 public class LocalPlayerShoot {
-    private static final Predicate<IGunOperator> SHOOT_LOCKED_CONDITION = operator -> operator.getSynShootCoolDown() > 0;
+    private static final Predicate<IGunOperator> SHOOT_LOCKED_CONDITION = LocalPlayerShoot::isShootLockActive;
     private final LocalPlayerDataHolder data;
     private final LocalPlayer player;
 
     public LocalPlayerShoot(LocalPlayerDataHolder data, LocalPlayer player) {
         this.data = data;
         this.player = player;
+    }
+
+    /**
+     * Stable target for the shoot state-lock predicate.
+     */
+    protected static boolean isShootLockActive(IGunOperator operator) {
+        return operator.getSynShootCoolDown() > 0;
+    }
+
+    /**
+     * Preserves the identity-based distinction between the shoot lock and other action locks.
+     */
+    protected boolean isShootLockCondition(Predicate<IGunOperator> condition) {
+        return condition == SHOOT_LOCKED_CONDITION;
     }
 
     public boolean chargeShoot(boolean isCharging) {
@@ -74,8 +87,8 @@ public class LocalPlayerShoot {
             return isCharging;
         }
 
-        boolean canChargeDuringCooldown = chargeData.isChargeDuringCooldown() || getCoolDown(iGun, mainHandItem, gunData) < 50;
-        boolean canCharge = canChargeDuringCooldown && preCheck(iGun, gunOperator, gunIndex, mainHandItem, display, gunData, isCharging) == null;
+        boolean canChargeDuringCooldown = chargeData.isChargeDuringCooldown() || calculateClientShootCooldown(iGun, mainHandItem, gunData) < 50;
+        boolean canCharge = canChargeDuringCooldown && validateClientShoot(iGun, gunOperator, gunIndex, mainHandItem, display, gunData, isCharging) == null;
         float chargeProgress = data.chargeProgress;
         ChargeType type = chargeData.getChargeType();
 
@@ -128,14 +141,14 @@ public class LocalPlayerShoot {
         }
         ClientGunIndex gunIndex = gunIndexOptional.get();
         GunData gunData = gunIndex.getGunData();
-        long coolDown = this.getCoolDown(iGun, mainHandItem, gunData);
+        long coolDown = this.calculateClientShootCooldown(iGun, mainHandItem, gunData);
 
         // 如果上一次异步开火的效果还未执行，则直接返回，等待异步开火效果执行
         if (!data.isShootRecorded) {
             return ShootResult.COOL_DOWN;
         }
         // 如果状态锁正在准备锁定，且不是开火的状态锁，则不允许开火(主要用于防止切枪后开火动作覆盖切枪动作)
-        if (data.clientStateLock && data.lockedCondition != SHOOT_LOCKED_CONDITION && data.lockedCondition != null) {
+        if (data.clientStateLock && data.lockedCondition != null && !isShootLockCondition(data.lockedCondition)) {
             data.isShootRecorded = true;
             // 因为这块主要目的是防止切枪后开火动作覆盖切枪动作，返回 IS_DRAWING
             return ShootResult.IS_DRAWING;
@@ -147,7 +160,7 @@ public class LocalPlayerShoot {
         }
 
         // 基础检查
-        ShootResult result = preCheck(iGun, gunOperator, gunIndex, mainHandItem, display, gunData, true);
+        ShootResult result = validateClientShoot(iGun, gunOperator, gunIndex, mainHandItem, display, gunData, true);
         if (result != null) {
             return result;
         }
@@ -157,7 +170,9 @@ public class LocalPlayerShoot {
             return ShootResult.IS_SPRINTING;
         }
         // 触发开火事件
-        if (MinecraftForge.EVENT_BUS.post(new GunShootEvent(player, mainHandItem, LogicalSide.CLIENT))) {
+        var event = new GunShootEvent(player, mainHandItem, LogicalSide.CLIENT);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(event);
+        if (event.isCanceled()) {
             return ShootResult.FORGE_EVENT_CANCEL;
         }
         // 切换状态锁，不允许换弹、检视等行为进行。
@@ -165,7 +180,7 @@ public class LocalPlayerShoot {
         data.isShootRecorded = false;
         // 调用开火逻辑
         float finalChargeProgress = data.chargeProgress;
-        this.doShoot(display, iGun, mainHandItem, gunData, coolDown, finalChargeProgress);
+        this.scheduleClientShootCycle(display, iGun, mainHandItem, gunData, coolDown, finalChargeProgress);
 
         FireMode fireMode = iGun.getFireMode(mainHandItem);
         ChargeData chargeData = gunData.getChargeData(fireMode);
@@ -180,7 +195,10 @@ public class LocalPlayerShoot {
         return ShootResult.SUCCESS;
     }
 
-    private @Nullable ShootResult preCheck(IGun iGun, IGunOperator gunOperator, ClientGunIndex gunIndex, ItemStack mainHandItem,
+    /**
+     * Stable client-side validation hook shared by charge prediction and firing.
+     */
+    protected @Nullable ShootResult validateClientShoot(IGun iGun, IGunOperator gunOperator, ClientGunIndex gunIndex, ItemStack mainHandItem,
                                            GunDisplayInstance display, GunData gunData, boolean playDrySound) {
         // 按钮冷却时间未到，防止点击按钮后误触开火
         // 默认设置为 50 ms
@@ -223,8 +241,8 @@ public class LocalPlayerShoot {
             return ShootResult.NO_AMMO;
         }
         //Handle Heat Data
-        if(gunData.hasHeatData()) {
-            if(iGun.isOverheatLocked(mainHandItem)) {
+        if (gunData.hasHeatData()) {
+            if (iGun.isOverheatLocked(mainHandItem)) {
                 if (playDrySound) {
                     SoundPlayManager.playDryFireSound(player, display);
                 }
@@ -239,7 +257,10 @@ public class LocalPlayerShoot {
         return null;
     }
 
-    private void doShoot(GunDisplayInstance display, IGun iGun, ItemStack mainHandItem, GunData gunData, long delay, float chargeProgress) {
+    /**
+     * Stable client-side hook for preparing and scheduling a burst cycle.
+     */
+    protected void scheduleClientShootCycle(GunDisplayInstance display, IGun iGun, ItemStack mainHandItem, GunData gunData, long delay, float chargeProgress) {
         FireMode fireMode = iGun.getFireMode(mainHandItem);
         Bolt boltType = gunData.getBolt();
         // 获取余弹数
@@ -253,68 +274,94 @@ public class LocalPlayerShoot {
         // 连发计数器
         AtomicInteger count = new AtomicInteger(0);
 
-        LocalPlayerDataHolder.SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(() -> {
+        LocalPlayerDataHolder.SCHEDULED_EXECUTOR_SERVICE.scheduleAtFixedRate(
+                () -> runClientShootCycle(display, iGun, mainHandItem, gunData, count, maxCount, chargeProgress),
+                delay, period, TimeUnit.MILLISECONDS);
+    }
 
-            if (count.get() == 0) {
-                // 转换 isRecord 状态，允许下一个tick的开火检测。
-                data.isShootRecorded = true;
-            }
-            //Handle Heat Data
-            if(gunData.hasHeatData()) {
-                if(iGun.isOverheatLocked(mainHandItem)) {
-                    ScheduledFuture<?> future = (ScheduledFuture<?>) Thread.currentThread();
-                    future.cancel(false); // 取消当前任务
-                    return;
-                }
-            }
-            // 如果达到最大连发次数，或者玩家已经死亡，取消任务
-            if (count.get() >= maxCount || player.isDeadOrDying()) {
+    /**
+     * Stable hook for one execution of the client burst scheduler.
+     */
+    protected void runClientShootCycle(GunDisplayInstance display, IGun iGun, ItemStack mainHandItem, GunData gunData,
+                                       AtomicInteger count, int maxCount, float chargeProgress) {
+        if (count.get() == 0) {
+            // 转换 isRecord 状态，允许下一个tick的开火检测。
+            data.isShootRecorded = true;
+        }
+        //Handle Heat Data
+        if (gunData.hasHeatData()) {
+            if (iGun.isOverheatLocked(mainHandItem)) {
                 ScheduledFuture<?> future = (ScheduledFuture<?>) Thread.currentThread();
                 future.cancel(false); // 取消当前任务
                 return;
             }
+        }
+        // 如果达到最大连发次数，或者玩家已经死亡，取消任务
+        if (count.get() >= maxCount || player.isDeadOrDying()) {
+            ScheduledFuture<?> future = (ScheduledFuture<?>) Thread.currentThread();
+            future.cancel(false); // 取消当前任务
+            return;
+        }
 
-            // 以下逻辑只需要执行一次
-            if (count.get() == 0) {
-                // 如果状态锁正在准备锁定，且不是开火的状态锁，则不允许开火(主要用于防止切枪后开火动作覆盖切枪动作)
-                if (data.clientStateLock && data.lockedCondition != SHOOT_LOCKED_CONDITION && data.lockedCondition != null) {
-                    return;
-                }
-                // 记录新的开火时间戳
-                data.clientLastShootTimestamp = data.clientShootTimestamp;
-                data.clientShootTimestamp = System.currentTimeMillis();
-                // 发送开火的数据包，通知服务器
-                NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerShoot(data.clientShootTimestamp - data.clientBaseTimestamp, chargeProgress));
+        // 以下逻辑只需要执行一次
+        if (count.get() == 0) {
+            // 如果状态锁正在准备锁定，且不是开火的状态锁，则不允许开火(主要用于防止切枪后开火动作覆盖切枪动作)
+            if (data.clientStateLock && data.lockedCondition != null && !isShootLockCondition(data.lockedCondition)) {
+                return;
             }
+            // 记录新的开火时间戳
+            data.clientLastShootTimestamp = data.clientShootTimestamp;
+            data.clientShootTimestamp = System.currentTimeMillis();
+            // Do not send a shoot packet before the server has synchronised the base
+            // timestamp (clientBaseTimestamp == -1).  Any such request would carry a
+            // multi-trillion-ms delta and always fail the server-side network check,
+            // wasting a round-trip resync cycle.
+            if (data.clientBaseTimestamp < 0) {
+                return;
+            }
+            // 发送开火的数据包，通知服务器
+            ClientPacketDistributor.sendToServer(new ClientMessagePlayerShoot(data.clientShootTimestamp - data.clientBaseTimestamp, chargeProgress));
+        }
 
-            // todo 需要检查
-            // 播放声音和状态机触发需要从异步线程上传到主线程执行，否则会引起cme
-            Minecraft.getInstance().submitAsync(() -> {
-                // 触发击发事件
-                boolean fire = !MinecraftForge.EVENT_BUS.post(new GunFireEvent(player, mainHandItem, LogicalSide.CLIENT));
-                if (fire) {
-                    // 动画和声音循环播放
-                    AnimationStateMachine<?> animationStateMachine = display.getAnimationStateMachine();
-                    if (animationStateMachine != null) {
-                        animationStateMachine.trigger(GunAnimationConstant.INPUT_SHOOT);
-                    }
-                    // 获取消音
-                    final boolean useSilenceSound = this.useSilenceSound();
-                    // 开火需要打断检视
-                    SoundPlayManager.stopPlayGunSound(display, SoundManager.INSPECT_SOUND);
-                    if (useSilenceSound) {
-                        SoundPlayManager.playSilenceSound(player, display, gunData);
-                    } else {
-                        SoundPlayManager.playShootSound(player, display, gunData);
-                    }
-                }
-            });
+        // The burst scheduler runs off-thread. Sound managers, animation state and Fabric event
+        // listeners are client-thread state, so hand them back to Minecraft's event loop to avoid CME.
+        // 播放声音和状态机触发需要从异步线程上传到主线程执行，否则会引起cme
+        Minecraft.getInstance().submit(
+                () -> applyClientFireEffects(display, mainHandItem, gunData));
 
-            count.getAndIncrement();
-        }, delay, period, TimeUnit.MILLISECONDS);
+        count.getAndIncrement();
     }
 
-    private boolean useSilenceSound() {
+    /**
+     * Stable hook for the main-thread animation, event and sound effects of a client shot.
+     */
+    protected void applyClientFireEffects(GunDisplayInstance display, ItemStack mainHandItem, GunData gunData) {
+        // 触发击发事件
+        var event = new GunFireEvent(player, mainHandItem, LogicalSide.CLIENT);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(event);
+        boolean fire = !event.isCanceled();
+        if (fire) {
+            // 动画和声音循环播放
+            AnimationStateMachine<?> animationStateMachine = display.getAnimationStateMachine();
+            if (animationStateMachine != null) {
+                animationStateMachine.trigger(GunAnimationConstant.INPUT_SHOOT);
+            }
+            // 获取消音
+            final boolean useSilenceSound = this.useSilenceSound();
+            // 开火需要打断检视
+            SoundPlayManager.stopPlayGunSound(display, SoundManager.INSPECT_SOUND);
+            if (useSilenceSound) {
+                SoundPlayManager.playSilenceSound(player, display, gunData);
+            } else {
+                SoundPlayManager.playShootSound(player, display, gunData);
+            }
+        }
+    }
+
+    /**
+     * Stable client-side decision hook for selecting suppressed fire audio.
+     */
+    protected boolean useSilenceSound() {
         AttachmentCacheProperty cacheProperty = IGunOperator.fromLivingEntity(player).getCacheProperty();
         if (cacheProperty != null) {
             Pair<Integer, Boolean> silence = cacheProperty.getCache(SilenceModifier.ID);
@@ -323,7 +370,10 @@ public class LocalPlayerShoot {
         return false;
     }
 
-    private long getCoolDown(IGun iGun, ItemStack mainHandItem, GunData gunData) {
+    /**
+     * Stable client-side cooldown calculation hook.
+     */
+    protected long calculateClientShootCooldown(IGun iGun, ItemStack mainHandItem, GunData gunData) {
         FireMode fireMode = iGun.getFireMode(mainHandItem);
         long coolDown;
         if (fireMode == FireMode.BURST) {
@@ -342,6 +392,6 @@ public class LocalPlayerShoot {
         }
         ResourceLocation gunId = iGun.getGunId(mainHandItem);
         Optional<CommonGunIndex> gunIndexOptional = TimelessAPI.getCommonGunIndex(gunId);
-        return gunIndexOptional.map(commonGunIndex -> getCoolDown(iGun, mainHandItem, commonGunIndex.getGunData())).orElse(-1L);
+        return gunIndexOptional.map(commonGunIndex -> calculateClientShootCooldown(iGun, mainHandItem, commonGunIndex.getGunData())).orElse(-1L);
     }
 }

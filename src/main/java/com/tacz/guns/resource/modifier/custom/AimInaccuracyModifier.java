@@ -10,20 +10,20 @@ import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.gun.InaccuracyType;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 
-/**@deprecated
- * 此类是一个意外和设计失误，其功能和{@link InaccuracyModifier}完全重复<br/>
+/**
+ * @deprecated 此类是一个意外和设计失误，其功能和{@link InaccuracyModifier}完全重复<br/>
  * 已不再使用，内部的所有方法实际不会执行，请使用 {@link InaccuracyModifier} <br/>
- *
+ * <p>
  * 同时，此Modifier的id也已经被重定向到 {@link InaccuracyModifier} <br/>
- * */
+ */
 @Deprecated
 public class AimInaccuracyModifier implements IAttachmentModifier<Map<InaccuracyType, Modifier>, Map<InaccuracyType, Float>> {
     public static final String ID = GunProperties.AIM_INACCURACY.name();

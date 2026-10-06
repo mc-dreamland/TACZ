@@ -1,5 +1,6 @@
 package com.tacz.guns.client.gameplay;
 
+import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ReloadState;
@@ -10,16 +11,14 @@ import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.index.ClientGunIndex;
 import com.tacz.guns.client.sound.SoundPlayManager;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.network.message.ClientMessagePlayerCancelReload;
 import com.tacz.guns.network.message.ClientMessagePlayerReloadGun;
 import com.tacz.guns.resource.pojo.data.gun.Bolt;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
 
 public class LocalPlayerReload {
     private final LocalPlayerDataHolder data;
@@ -40,18 +39,23 @@ public class LocalPlayerReload {
             return;
         }
 
-        TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
-            // 如果没在换弹，则返回
-            IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
-            ReloadState reloadState = gunOperator.getSynReloadState();
-            if (!reloadState.getStateType().isReloading()) {
-                return;
-            }
-            // 发包通知服务器
-            NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerCancelReload());
-            // 执行本地取消换弹逻辑
-            this.cancelReload(display);
-        });
+        TimelessAPI.getGunDisplay(mainHandItem).ifPresent(this::cancelReloadWithDisplay);
+    }
+
+    /**
+     * Stable client-side reload-cancellation hook after display data has been resolved.
+     */
+    protected void cancelReloadWithDisplay(GunDisplayInstance display) {
+        // 如果没在换弹，则返回
+        IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
+        ReloadState reloadState = gunOperator.getSynReloadState();
+        if (!reloadState.getStateType().isReloading()) {
+            return;
+        }
+        // 发包通知服务器
+        ClientPacketDistributor.sendToServer(ClientMessagePlayerCancelReload.INSTANCE);
+        // 执行本地取消换弹逻辑
+        this.triggerClientReloadCancelAnimation(display);
     }
 
     public void reload() {
@@ -65,38 +69,50 @@ public class LocalPlayerReload {
         if (gunData == null) {
             return;
         }
-        TimelessAPI.getGunDisplay(mainHandItem).ifPresent(display -> {
-            // 检查是否为背包直读
-            if (gunItem.useInventoryAmmo(mainHandItem)) {
-                return;
-            }
-            // 检查状态锁
-            if (data.clientStateLock) {
-                return;
-            }
-            if (System.currentTimeMillis() - data.clientShootTimestamp < 100) {
-                return;
-            }
-            // 弹药简单检查
-            boolean canReload = gunItem.canReload(player, mainHandItem);
-            if (IGunOperator.fromLivingEntity(player).needCheckAmmo() && !canReload) {
-                return;
-            }
-            // 锁上状态锁
-            data.lockState(operator -> operator.getSynReloadState().getStateType().isReloading());
-            data.chargeProgress = 0f;
-            // 触发换弹事件
-            if (MinecraftForge.EVENT_BUS.post(new GunReloadEvent(player, player.getMainHandItem(), LogicalSide.CLIENT))) {
-                return;
-            }
-            // 发包通知服务器
-            NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerReloadGun());
-            // 执行客户端 reload 相关内容
-            this.doReload(gunItem, display, gunData, mainHandItem);
-        });
+        TimelessAPI.getGunDisplay(mainHandItem)
+                .ifPresent(display -> reloadWithDisplay(gunItem, display, gunData, mainHandItem));
     }
 
-    private void doReload(IGun iGun, GunDisplayInstance display, GunData gunData, ItemStack mainHandItem) {
+    /**
+     * Stable client-side reload hook after display data has been resolved.
+     */
+    protected void reloadWithDisplay(AbstractGunItem gunItem, GunDisplayInstance display, GunData gunData, ItemStack mainHandItem) {
+        // 检查是否为背包直读
+        if (gunItem.useInventoryAmmo(mainHandItem)) {
+            return;
+        }
+        // 检查状态锁
+        if (data.clientStateLock) {
+            return;
+        }
+        if (System.currentTimeMillis() - data.clientShootTimestamp < 100) {
+            return;
+        }
+        // 弹药简单检查
+        boolean canReload = gunItem.canReload(player, mainHandItem);
+        if (IGunOperator.fromLivingEntity(player).needCheckAmmo() && !canReload) {
+            return;
+        }
+        // 锁上状态锁
+        data.lockState(this::isReloadLockActive);
+        data.chargeProgress = 0f;
+        // 触发换弹事件
+        GunReloadEvent gunReloadEvent = new GunReloadEvent(player, player.getMainHandItem(), LogicalSide.CLIENT);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(gunReloadEvent);
+        if (gunReloadEvent.isCanceled()) {
+            return;
+        }
+        // 发包通知服务器
+        ClientPacketDistributor.sendToServer(ClientMessagePlayerReloadGun.INSTANCE);
+        // 执行客户端 reload 相关内容
+        this.triggerClientReloadAnimation(gunItem, display, gunData, mainHandItem);
+    }
+
+    protected boolean isReloadLockActive(IGunOperator operator) {
+        return operator.getSynReloadState().getStateType().isReloading();
+    }
+
+    protected void triggerClientReloadAnimation(IGun iGun, GunDisplayInstance display, GunData gunData, ItemStack mainHandItem) {
         var animationStateMachine = display.getAnimationStateMachine();
         if (animationStateMachine != null) {
             Bolt boltType = gunData.getBolt();
@@ -113,7 +129,7 @@ public class LocalPlayerReload {
         }
     }
 
-    private void cancelReload(GunDisplayInstance display) {
+    protected void triggerClientReloadCancelAnimation(GunDisplayInstance display) {
         var animationStateMachine = display.getAnimationStateMachine();
         if (animationStateMachine != null) {
             animationStateMachine.trigger(GunAnimationConstant.INPUT_CANCEL_RELOAD);

@@ -3,15 +3,16 @@ package com.tacz.guns.entity.sync.core;
 import com.google.common.collect.ImmutableSet;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.init.CommonRegistry;
-import com.tacz.guns.network.message.handshake.ServerMessageSyncedEntityDataMapping;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceMap;
 import it.unimi.dsi.fastutil.ints.Int2ReferenceOpenHashMap;
 import it.unimi.dsi.fastutil.objects.*;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.ModList;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -24,7 +25,7 @@ import java.util.stream.Collectors;
  * Open source at <a href="https://github.com/MrCrayfish/Framework">Github</a> under LGPL License.
  */
 public class SyncedEntityData {
-    private static final Marker SYNCED_ENTITY_DATA_MARKER = MarkerManager.getMarker("SYNCED_ENTITY_DATA_TAC_COPY");
+    private static final Marker SYNCED_ENTITY_DATA_MARKER = MarkerFactory.getMarker("SYNCED_ENTITY_DATA_TAC_COPY");
     private static SyncedEntityData INSTANCE;
 
     private final Set<SyncedClassKey<?>> registeredClassKeys = new HashSet<>();
@@ -152,7 +153,10 @@ public class SyncedEntityData {
 
     @Nullable
     public DataHolder getDataHolder(Entity entity) {
-        return entity.getCapability(DataHolderCapabilityProvider.CAPABILITY, null).resolve().orElse(null);
+        if (!this.hasSyncedDataKey(entity.getClass())) {
+            return null;
+        }
+        return entity.getData(com.tacz.guns.init.CapabilityRegistry.DATA_HOLDER);
     }
 
 //    public boolean hasSyncedDataKey(Class<? extends Entity> entityClass) {
@@ -175,37 +179,34 @@ public class SyncedEntityData {
 //        });
 //    }
 
-    public boolean hasSyncedDataKey(Entity entity)
-    {
+    public boolean hasSyncedDataKey(Class<? extends Entity> entityClass) {
         /* It's possible that the entity doesn't have a key, but it's superclass or subsequent does
          * have a synced data key. In order to prevent checking this every time we attach the
          * capability, a simple one time check can be performed then cache the result. */
-        Class<? extends Entity> entityClass = entity.getClass();
-        return this.getClassNameCapabilityCache(entity.level().isClientSide).computeIfAbsent(entityClass.getName(), c ->
-        {
-            Class<?> targetClass = entityClass;
-            while(!targetClass.isAssignableFrom(Entity.class)) // Should be good enough
-            {
-                if(this.classNameToClassKey.containsKey(targetClass.getName()))
+        return this.getClassNameCapabilityCache(net.neoforged.fml.loading.FMLEnvironment.getDist() == Dist.CLIENT)
+                .computeIfAbsent(entityClass.getName(), c ->
                 {
-                    return true;
-                }
-                targetClass = targetClass.getSuperclass();
-            }
-            return false;
-        });
+                    Class<?> targetClass = entityClass;
+                    while (!targetClass.isAssignableFrom(Entity.class)) // Should be good enough
+                    {
+                        if (this.classNameToClassKey.containsKey(targetClass.getName())) {
+                            return true;
+                        }
+                        targetClass = targetClass.getSuperclass();
+                    }
+                    return false;
+                });
     }
 
-    private Map<String, Boolean> getClassNameCapabilityCache(boolean client)
-    {
+    private Map<String, Boolean> getClassNameCapabilityCache(boolean client) {
         return client ? this.clientClassNameCapabilityCache : this.serverClassNameCapabilityCache;
     }
 
-    public boolean updateMappings(ServerMessageSyncedEntityDataMapping message) {
+    public boolean updateMappings(Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap) {
         this.syncedIdToKey.clear();
 
         List<Pair<ResourceLocation, ResourceLocation>> missingKeys = new ArrayList<>();
-        message.getKeyMap().forEach((classId, list) -> {
+        keyMap.forEach((classId, list) -> {
             SyncedClassKey<?> classKey = this.idToClassKey.get(classId);
             if (classKey == null || !this.classToKeys.containsKey(classKey)) {
                 list.forEach(pair -> missingKeys.add(Pair.of(classId, pair.getLeft())));

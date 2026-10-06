@@ -9,16 +9,16 @@ import com.tacz.guns.resource.pojo.data.gun.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.lib.jse.CoerceJavaToLua;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.util.Arrays;
 import java.util.Map;
 
 public class CommonGunIndex {
-    private static final Marker MARKER = MarkerManager.getMarker("CommonGunIndex");
+    private static final Marker MARKER = MarkerFactory.getMarker("CommonGunIndex");
     private GunData gunData;
     private String type;
     private GunIndexPOJO pojo;

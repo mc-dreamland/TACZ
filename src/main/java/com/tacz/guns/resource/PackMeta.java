@@ -1,6 +1,5 @@
 package com.tacz.guns.resource;
 
-import com.google.common.collect.Maps;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.HashMap;
@@ -10,7 +9,7 @@ public class PackMeta {
     private String name;
 
     @SerializedName("dependencies")
-    private HashMap<String, String> dependencies = Maps.newHashMap();
+    private HashMap<String, String> dependencies;
 
     public PackMeta(String name, HashMap<String, String> dependencies) {
         this.name = name;

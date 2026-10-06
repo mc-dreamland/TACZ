@@ -2,7 +2,6 @@ package com.tacz.guns.client.model;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.AnimationListener;
@@ -14,19 +13,15 @@ import com.tacz.guns.client.model.bedrock.BedrockPart;
 import com.tacz.guns.client.model.bedrock.ModelRendererWrapper;
 import com.tacz.guns.client.model.functional.*;
 import com.tacz.guns.client.model.listener.model.ModelAdditionalMagazineListener;
-import com.tacz.guns.client.resource.index.ClientAttachmentIndex;
+import com.tacz.guns.client.render.scope.ScopeRenderTypes;
 import com.tacz.guns.client.resource.pojo.display.gun.TextShow;
 import com.tacz.guns.client.resource.pojo.model.BedrockModelPOJO;
 import com.tacz.guns.client.resource.pojo.model.BedrockVersion;
-import com.tacz.guns.compat.ar.ARCompat;
-import com.tacz.guns.util.RenderHelper;
-import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.NotNull;
-import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -218,22 +213,28 @@ public class BedrockGunModel extends BedrockAnimatedModel {
         return null;
     }
 
-    @NotNull
+    /**
+     * {@code additional_magazine} 节点 —— 换弹动画中<b>留在枪身上</b>的那一个弹匣。
+     *
+     * <p><b>第 8 轮修复：撤销第 2 轮的错误改动。</b></p>
+     *
+     * <p>模型里两个弹匣节点语义不同：{@code magazine} 是换弹时<b>跟着手走</b>的那一个，
+     * {@code additional_magazine} 是<b>留在枪上</b>的那一个。上游 1.21.1 的做法是
+     * 在本节点的变换下，把 {@code magazine} 的网格<b>再画一遍</b>（同一份几何渲染两次）。
+     * 默认枪包的 {@code reload_tactical}/{@code reload_empty}/{@code inspect}
+     * 等动画同时驱动这两个节点，正依赖该行为。</p>
+     *
+     * <p>第 2 轮我改成了 {@code return null}，理由是"{@code magazine} 本来就在模型树里
+     * 会被遍历到"—— <b>那个判断是错的</b>：树里那份是跟手的，留在枪上的那份只能靠这里补画。
+     * 症状即你反馈的：换弹/空仓换弹时<b>枪上的弹匣不渲染，只剩手里那个</b>。</p>
+     *
+     * <p>现改为返回 {@link IMirrorGeometry}，由 {@code BedrockRenderSnapshot} 原生处理：
+     * 在本节点变换下先画自己、再画 {@code magazine}，且与枪身共用同一 RenderType
+     * 与 DrawCommand 批次，保证材质与渲染顺序正确。</p>
+     */
+    @Nullable
     private IFunctionalRenderer renderAdditionalMagazine(BedrockPart bedrockPart) {
-        return (poseStack, vertexBuffer, transformType, light, overlay) -> {
-            if (bedrockPart.visible) {
-                bedrockPart.compile(poseStack.last(), vertexBuffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-                for (BedrockPart part : bedrockPart.children) {
-                    part.render(poseStack, transformType, vertexBuffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-                }
-                if (magazineNode != null && magazineNode.visible) {
-                    magazineNode.compile(poseStack.last(), vertexBuffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-                    for (BedrockPart part : magazineNode.children) {
-                        part.render(poseStack, transformType, vertexBuffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F);
-                    }
-                }
-            }
-        };
+        return (IMirrorGeometry) () -> magazineNode;
     }
 
     /**
@@ -243,10 +244,11 @@ public class BedrockGunModel extends BedrockAnimatedModel {
         textShowList.forEach((name, textShow) -> this.setFunctionalRenderer(name, bedrockPart -> new TextShowRender(this, textShow, currentGunItem)));
     }
 
-    public void render(PoseStack matrixStack, ItemStack gunItem, ItemDisplayContext transformType, RenderType renderType, int light, int overlay) {
+    /** Prepares all stack-dependent visibility state before an immediate render or snapshot extraction. */
+    private boolean prepareRenderState(ItemStack gunItem) {
         IGun iGun = IGun.getIGunOrNull(gunItem);
         if (iGun == null) {
-            return;
+            return false;
         }
         currentGunItem = gunItem;
         currentExtendMagLevel = 0;
@@ -264,129 +266,77 @@ public class BedrockGunModel extends BedrockAnimatedModel {
             IAttachment attachment = IAttachment.getIAttachmentOrNull(attachmentItem);
             if (attachment != null) {
                 TimelessAPI.getClientAttachmentIndex(attachment.getAttachmentId(attachmentItem)).ifPresent(index -> {
-                    // 读取扩容等级，为扩容弹匣渲染做准备
                     if (type == AttachmentType.EXTENDED_MAG) {
                         currentExtendMagLevel = index.getData().getExtendedMagLevel();
                     }
-                    // 读取瞄具 Mount 的渲染需求
                     if (type == AttachmentType.SCOPE) {
                         renderMount = index.isShowMount();
                     }
-                    // 添加需要渲染的转接口
                     if (index.getAdapterNodeName() != null) {
                         adapterToRender.add(index.getAdapterNodeName());
                     }
                 });
             }
         }
-        if (laserBeamPaths != null) {
-            BeamRenderer.renderLaserBeam(gunItem, matrixStack, transformType, laserBeamPaths);
-        }
-
-		if (ARCompat.shouldAccelerate()) {
-			renderAccelerated(matrixStack, gunItem, transformType, renderType, light, overlay);
-			return;
-		}
-
-        // 镜子需要先渲染，写入模板值
-        ItemStack attachmentItem = currentAttachmentItem.get(AttachmentType.SCOPE);
-        IAttachment iAttachment = IAttachment.getIAttachmentOrNull(attachmentItem);
-        if (scopePosPath != null && attachmentItem != null && !attachmentItem.isEmpty()) {
-            matrixStack.pushPose();
-            for (BedrockPart bedrockPart : scopePosPath) {
-                bedrockPart.translateAndRotateAndScale(matrixStack);
-            }
-            AttachmentRender.renderAttachment(attachmentItem, currentGunItem, matrixStack, transformType, light, overlay);
-            matrixStack.popPose();
-            // 开启模板测试，因为镜内不渲染枪体
-            if (iAttachment != null) {
-                Optional<ClientAttachmentIndex> attachmentIndex = TimelessAPI.getClientAttachmentIndex(iAttachment.getAttachmentId(attachmentItem));
-                attachmentIndex.ifPresent(index -> {
-                    if (index.isScope() && index.isSight()) { // 组合镜
-                        RenderHelper.enableItemEntityStencilTest();
-                        RenderSystem.stencilFunc(GL11.GL_GREATER, 127, 0xFF);
-                    } else if (index.isScope()) { // 长筒镜
-                        RenderHelper.enableItemEntityStencilTest();
-                        RenderSystem.stencilFunc(GL11.GL_EQUAL, 0, 0xFF);
-                    }
-                });
-            }
-        }
-        RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
-        super.render(matrixStack, transformType, renderType, light, overlay);
-        RenderHelper.disableItemEntityStencilTest();
-        RenderSystem.clearStencil(0);
-        RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT, Minecraft.ON_OSX);
+        return true;
     }
 
-	public void renderAccelerated(PoseStack matrixStack, ItemStack gunItem, ItemDisplayContext transformType, RenderType renderType, int light, int overlay) {
-		// 镜子需要先渲染，写入模板值
-		var attachmentItem = currentAttachmentItem.get(AttachmentType.SCOPE);
-		var iAttachment = IAttachment.getIAttachmentOrNull(attachmentItem);
-		var useStencil = false;
 
-		if (scopePosPath != null && attachmentItem != null && !attachmentItem.isEmpty()) {
-			matrixStack.pushPose();
+    /**
+     * Backend-neutral 26.2 submission path. Stack-dependent state is prepared before the parent
+     * class freezes all part matrices into an immutable BedrockRenderSnapshot.
+     */
+    public void submit(PoseStack poseStack,
+                       ItemStack gunItem,
+                       ItemDisplayContext transformType,
+                       SubmitNodeCollector collector,
+                       RenderType renderType,
+                       int light,
+                       int overlay) {
+        submit(poseStack, gunItem, transformType, collector, renderType, null, light, overlay);
+    }
 
-			for (BedrockPart bedrockPart : scopePosPath) {
-				bedrockPart.translateAndRotateAndScale(matrixStack);
-			}
+    /**
+     * First-person overload carrying the gun texture so the body can switch to an aperture-clipped
+     * clone after (and only after) the scope attachment has queued this frame's depth mask.
+     */
+    public void submit(PoseStack poseStack,
+                       ItemStack gunItem,
+                       ItemDisplayContext transformType,
+                       SubmitNodeCollector collector,
+                       RenderType renderType,
+                       @Nullable ResourceLocation gunTexture,
+                       int light,
+                       int overlay) {
+        if (!prepareRenderState(gunItem)) {
+            return;
+        }
+        if (laserBeamPaths != null) {
+            BeamRenderer.renderLaserBeam(gunItem, poseStack, transformType, laserBeamPaths, collector);
+        }
 
-			AttachmentRender.renderAttachment(attachmentItem, currentGunItem, matrixStack, transformType, light, overlay);
-			matrixStack.popPose();
+        // The scope must submit first: depthAperture() marks whether this exact viewmodel has an
+        // active ocular. Gun body and later functional attachments can then select the outside-mask
+        // pipeline without importing the unrelated 26.2 off-screen-mask architecture.
+        ItemStack scope = currentAttachmentItem.get(AttachmentType.SCOPE);
+        if (scopePosPath != null && scope != null && !scope.isEmpty()) {
+            PoseStack scopePose = new PoseStack();
+            scopePose.last().pose().set(poseStack.last().pose());
+            scopePose.last().normal().set(poseStack.last().normal());
+            for (BedrockPart part : scopePosPath) {
+                part.translateAndRotateAndScale(scopePose);
+            }
+            AttachmentRender.submitAttachment(scope.copy(), gunItem.copy(), scopePose,
+                    transformType, collector, light, overlay);
+        }
 
-			// 开启模板测试，因为镜内不渲染枪体
-			if (iAttachment != null) {
-				var attachmentIndex = TimelessAPI.getClientAttachmentIndex(iAttachment.getAttachmentId(attachmentItem));
+        RenderType bodyType = gunTexture == null
+                ? renderType
+                : ScopeRenderTypes.clipForViewmodel(renderType, gunTexture,
+                        transformType != null && transformType.firstPerson());
+        super.submit(poseStack, transformType, collector, bodyType, light, overlay);
+    }
 
-				// 这里不用ifPresent是因为需要设置useStencil, lambda无法设置局部变量
-				if (attachmentIndex.isPresent()) {
-					// 如果有attachment, 则设置层前任务开启模板缓冲区设置对应的模板函数
-					ARCompat.setRenderBeforeFunction(() -> {
-						// 获取实际的attachmentIndex
-						var index = attachmentIndex.get();
-
-						if (index.isScope() && index.isSight()) { // 组合镜
-							RenderHelper.enableItemEntityStencilTest();
-							RenderSystem.stencilFunc(GL11.GL_GREATER, 127, 0xFF);
-						} else if (index.isScope()) { // 长筒镜
-							RenderHelper.enableItemEntityStencilTest();
-							RenderSystem.stencilFunc(GL11.GL_EQUAL, 0, 0xFF);
-						}
-
-						// 设置不改变任何模板值, 这里本来是无论是否有attachment都要执行的, 但是如果不执行到这里模板测试自然不会开启
-						// 也就无论如何都不会改变模板值, 所以一同在此处设置应该也没有问题
-						RenderSystem.stencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
-					});
-
-					// 确认使用层前行为, 应在渲染完毕后重置层前行为
-					useStencil = true;
-				}
-			}
-		}
-
-		ARCompat.setRenderLayer(-943 + 3);
-
-		// 设置层后任务
-		ARCompat.setRenderAfterFunction(() -> {
-			// 关闭模板测试
-			RenderHelper.disableItemEntityStencilTest();
-			// 重置模板缓冲区
-			RenderSystem.clearStencil(0);
-			RenderSystem.clear(GL11.GL_STENCIL_BUFFER_BIT, Minecraft.ON_OSX);
-		});
-
-		super.render(matrixStack, transformType, renderType, light, overlay);
-
-		// 重置层和层后任务, 还原现场
-		ARCompat.resetRenderLayer();
-		ARCompat.resetRenderAfterFunction();
-
-		// 如果使用了层前行为, 则进行重置, 还原现场
-		if (useStencil) {
-			ARCompat.resetRenderBeforeFunction();
-		}
-	}
 
     @Nullable
     private IFunctionalRenderer ammoHiddenRender(BedrockPart bedrockPart, Predicate<IGun> predicate) {

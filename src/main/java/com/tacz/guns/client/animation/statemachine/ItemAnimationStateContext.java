@@ -8,6 +8,7 @@ public class ItemAnimationStateContext extends AnimationStateContext {
 
     /**
      * 获取收起物品动画的建议时长，它只是计算结果，具体如何生效依赖于状态机实现。
+     *
      * @return 收起物品动画的建议时长
      */
     public float getPutAwayTime() {
@@ -23,6 +24,7 @@ public class ItemAnimationStateContext extends AnimationStateContext {
 
     /**
      * 获取最后一次更新时的 partialTicks
+     *
      * @return 状态机最后一次更新的 partialTicks.
      */
     public float getPartialTicks() {

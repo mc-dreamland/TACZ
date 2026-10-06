@@ -73,7 +73,16 @@ public enum InaccuracyType {
     }
 
     private static boolean isMove(LivingEntity livingEntity) {
-        double distance = Math.abs(livingEntity.walkDist - livingEntity.walkDistO);
+        // 26.2 对齐：上游 1.21.1 用的是 Math.abs(walkDist - walkDistO)，即“本 tick 的水平位移 * 0.6”。
+        // 移植时换成了 walkAnimation.speed()，两者量纲不同：
+        //   walkDist 增量        = 位移 * 0.6
+        //   walkAnimation.speed  = min(位移 * 4.0, 1.0)   （见 LivingEntity#updateWalkAnimation）
+        // 后者约为前者的 6.7 倍，会让 0.05 阈值被显著放大 —— 极慢速移动也判定为“移动中”。
+        //
+        // 26.2 中 walkDist 已更名 moveDist，但<b>没有</b>保留 moveDistO（javap 确认），
+        // 无法直接算增量。改用与“本 tick 水平位移”等价的速度量并乘回 0.6 还原量纲。
+        // （玩家分支下面会用实际速度覆盖，所以本行主要影响非玩家实体。）
+        double distance = livingEntity.getDeltaMovement().horizontalDistance() * 0.6;
         if (livingEntity instanceof Player player) {
             distance = HitboxHelper.getPlayerVelocity(player).length();
         }

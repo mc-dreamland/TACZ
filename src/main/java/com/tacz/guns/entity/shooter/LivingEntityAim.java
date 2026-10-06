@@ -48,6 +48,16 @@ public class LivingEntityAim {
                 zoomNumber = zoomNumber % (Integer.MAX_VALUE - 1);
                 AttachmentItemDataAccessor.setZoomNumberToTag(scopeTag, zoomNumber);
             });
+            // 第 18 轮修复：必须把修改后的 tag <b>写回枪械 NBT</b>。
+            //
+            // getAttachmentTag() 返回的是 CustomData.copyTag() 的<b>副本</b>，
+            // 上面 setZoomNumberToTag 改的只是这份副本，不写回就等于什么都没做 ——
+            // 表现就是「可变倍瞄具按键切换倍率完全没反应」。
+            //
+            // 上游 1.21.1 的 LivingEntityAim#zoom 第 52 行有这一句，我们移植时漏了。
+            // setAttachmentTag 本身是第 16 轮才补回来的（当时也整个丢失），
+            // 补回后一直没有调用方，这里就是它唯一的用武之地。
+            iGun.setAttachmentTag(currentGunItem, AttachmentType.SCOPE, scopeTag);
         }
     }
 

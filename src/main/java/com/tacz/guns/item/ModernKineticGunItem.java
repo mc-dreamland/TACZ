@@ -21,9 +21,9 @@ import com.tacz.guns.resource.pojo.data.attachment.MeleeData;
 import com.tacz.guns.resource.pojo.data.gun.*;
 import com.tacz.guns.util.AllowAttachmentTagMatcher;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -32,18 +32,16 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
-import org.apache.logging.log4j.MarkerManager;
 import org.joml.Vector2d;
 import org.luaj.vm2.*;
 import org.luaj.vm2.lib.jse.CoerceJavaToLua;
 import org.luaj.vm2.lib.jse.CoerceLuaToJava;
+import org.slf4j.MarkerFactory;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.DoubleFunction;
 import java.util.function.Supplier;
 
@@ -54,12 +52,12 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
     public static final String TYPE_NAME = "modern_kinetic";
 
     private static final DoubleFunction<AttributeModifier> AM_FACTORY = amount -> new AttributeModifier(
-            UUID.randomUUID(), "TACZ Melee Damage",
-            amount, AttributeModifier.Operation.ADDITION
+            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_damage"),
+            amount, AttributeModifier.Operation.ADD_VALUE
     );
 
-    public ModernKineticGunItem() {
-        super(new Properties().stacksTo(1));
+    public ModernKineticGunItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override
@@ -73,8 +71,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return false;
         }
-        return Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("start_bolt")))
+        return resolveScriptFunction(gunIndex, "start_bolt")
                 .map(func -> func.call(CoerceJavaToLua.coerce(api)).checkboolean())
                 .orElse(true);
     }
@@ -90,8 +87,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return false;
         }
-        return Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("tick_bolt")))
+        return resolveScriptFunction(gunIndex, "tick_bolt")
                 .map(func -> func.call(CoerceJavaToLua.coerce(api)).checkboolean())
                 .orElseGet(() -> defaultTickBolt(api));
     }
@@ -110,15 +106,14 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
             return;
         }
 
-        Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("shoot")))
+        resolveScriptFunction(gunIndex, "shoot")
                 .ifPresentOrElse(
                         func -> func.call(CoerceJavaToLua.coerce(api)),
-                        ()   -> api.shootOnce(api.isShootingNeedConsumeAmmo()));
+                        () -> api.shootOnce(api.isShootingNeedConsumeAmmo()));
     }
 
     @Override
-    public boolean startReload(ShooterDataHolder dataHolder, ItemStack gunItem, LivingEntity shooter){
+    public boolean startReload(ShooterDataHolder dataHolder, ItemStack gunItem, LivingEntity shooter) {
         ModernKineticGunScriptAPI api = new ModernKineticGunScriptAPI();
         api.setItemStack(gunItem);
         api.setShooter(shooter);
@@ -128,8 +123,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return false;
         }
-        return Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("start_reload")))
+        return resolveScriptFunction(gunIndex, "start_reload")
                 .map(func -> func.call(CoerceJavaToLua.coerce(api)).checkboolean())
                 .orElse(true);
     }
@@ -145,8 +139,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return new ReloadState();
         }
-        return Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("tick_reload")))
+        return resolveScriptFunction(gunIndex, "tick_reload")
                 .map(func -> {
                     ReloadState reloadState = new ReloadState();
                     Varargs varargs = func.invoke(CoerceJavaToLua.coerce(api));
@@ -170,8 +163,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return;
         }
-        Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("interrupt_reload")))
+        resolveScriptFunction(gunIndex, "interrupt_reload")
                 .ifPresent(func -> func.call(CoerceJavaToLua.coerce(api)));
     }
 
@@ -217,17 +209,22 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return;
         }
-        Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("tick_heat")))
+        resolveScriptFunction(gunIndex, "tick_heat")
                 .ifPresentOrElse(
                         func -> func.call(CoerceJavaToLua.coerce(api), LuaValue.valueOf(heatTimestamp)),
                         () -> defaultTickHeat(heatTimestamp, gunItem)
                 );
     }
 
-    private void defaultTickHeat(long heatTimestamp, ItemStack gunItem) {
+    /**
+     * Advances the built-in heat cooldown when the gun script does not define {@code tick_heat}.
+     *
+     * <p>Overrides must preserve the distinction between locked and normal cooling, including their
+     * timing checks and heat/lock side effects, unless they intentionally replace that gameplay contract.</p>
+     */
+    protected void defaultTickHeat(long heatTimestamp, ItemStack gunItem) {
         var iGun = IGun.getIGunOrNull(gunItem);
-        if(iGun == null) return;
+        if (iGun == null) return;
         TimelessAPI.getCommonGunIndex(iGun.getGunId(gunItem))
                 .map(index -> index.getGunData().getHeatData())
                 .ifPresent(heatData -> {
@@ -241,9 +238,9 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
     }
 
     public void tickLocked(IGun iGun, ItemStack gunStack, GunHeatData heatData, long heatTimestamp) {
-        if(System.currentTimeMillis() - heatTimestamp >= heatData.getOverHeatTime()) {
+        if (System.currentTimeMillis() - heatTimestamp >= heatData.getOverHeatTime()) {
             float heatAmount = iGun.getHeatAmount(gunStack)
-                    - ((float)(System.currentTimeMillis() - heatTimestamp) / 10000f)
+                    - ((float) (System.currentTimeMillis() - heatTimestamp) / 10000f)
                     * heatData.getCoolingMultiplier();
 
             iGun.setHeatAmount(gunStack, heatAmount);
@@ -254,9 +251,9 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
     }
 
     public void tickNormal(IGun iGun, ItemStack gunStack, GunHeatData heatData, long heatTimestamp) {
-        if(System.currentTimeMillis() - heatTimestamp >= heatData.getCoolingDelay()) {
+        if (System.currentTimeMillis() - heatTimestamp >= heatData.getCoolingDelay()) {
             float heatAmount = iGun.getHeatAmount(gunStack)
-                    - ((float)(System.currentTimeMillis() - heatTimestamp) / 10000f)
+                    - ((float) (System.currentTimeMillis() - heatTimestamp) / 10000f)
                     * heatData.getCoolingMultiplier();
 
             iGun.setHeatAmount(gunStack, heatAmount);
@@ -278,13 +275,12 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         var afterDefaultModification = defaultPropertyModification.modify(gunItem, shooter, gunIndex, id, original);
 
         try {
-            return Optional.ofNullable(gunIndex.getScript())
-                    .map(script -> checkFunction(script.get(luaMethodName)))
+            return resolveScriptFunction(gunIndex, luaMethodName)
                     .map(func -> func.call(CoerceJavaToLua.coerce(api), LuaValue.valueOf(id), CoerceJavaToLua.coerce(afterDefaultModification)))
                     .map(luaValue -> type.cast(CoerceLuaToJava.coerce(luaValue, type)))
                     .orElse(afterDefaultModification);
         } catch (Exception exception) {
-            GunMod.LOGGER.warn(MarkerManager.getMarker("Gun Script"), "Failed to modify gun property {}", id, exception);
+            GunMod.LOGGER.warn(MarkerFactory.getMarker("Gun Script"), "Failed to modify gun property {}", id, exception);
             return afterDefaultModification;
         }
     }
@@ -292,7 +288,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
     public final DefaultPropertyModification defaultPropertyModification = new DefaultPropertyModification();
 
     public class DefaultPropertyModification {
-        public static final ResourceLocation SLUGS = new ResourceLocation(GunMod.MOD_ID, "intrinsic/slug");
+        public static final ResourceLocation SLUGS = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "intrinsic/slug");
 
         @SuppressWarnings("unchecked")
         public <T> T modify(ItemStack gunItem, LivingEntity shooter, CommonGunIndex gunIndex,
@@ -321,23 +317,22 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (gunIndex == null) {
             return;
         }
-        Optional.ofNullable(gunIndex.getScript())
-                .map(script -> checkFunction(script.get("calcSpread")))
-                .map(func -> func.call(CoerceJavaToLua.coerce(api) , LuaValue.valueOf(bulletCnt), LuaValue.valueOf(inaccuracy)))
+        resolveScriptFunction(gunIndex, "calcSpread")
+                .map(func -> func.call(CoerceJavaToLua.coerce(api), LuaValue.valueOf(bulletCnt), LuaValue.valueOf(inaccuracy)))
                 .map(luaValue -> {
-                    if (luaValue.istable()){
+                    if (luaValue.istable()) {
                         LuaTable table = luaValue.checktable();
                         return new Vector2d(table.get(1).checkdouble(), table.get(2).checkdouble());
                     }
                     return null;
                 }).ifPresentOrElse(vector2d -> {
                     bullet.shootFromRotation(shooter, pitch, yaw, 0.0F, processedSpeed, vector2d);
-                },() -> {
+                }, () -> {
                     bullet.shootFromRotation(shooter, pitch, yaw, 0.0F, processedSpeed, inaccuracy);
                 });
     }
 
-    private boolean defaultTickBolt(ModernKineticGunScriptAPI api) {
+    protected boolean defaultTickBolt(ModernKineticGunScriptAPI api) {
         GunData gunData = api.getGunIndex().getGunData();
         long boltActionTime = (long) (gunData.getBoltActionTime() * 1000);
         float rawBoltFeedTime = gunData.getBoltFeedTime();
@@ -358,7 +353,14 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         return api.getBoltTime() < boltActionTime;
     }
 
-    private ReloadState defaultTickReload(ModernKineticGunScriptAPI api) {
+    /**
+     * Advances the built-in reload state machine when the gun script does not define {@code tick_reload}.
+     *
+     * <p>The returned state/countdown and the feeding/finishing transitions are coupled to ammunition
+     * side effects. Overrides must keep those boundaries consistent unless they intentionally replace
+     * the complete default reload contract.</p>
+     */
+    protected ReloadState defaultTickReload(ModernKineticGunScriptAPI api) {
         CommonGunIndex gunIndex = api.getGunIndex();
         // 获取 ReloadData
         GunData gunData = gunIndex.getGunData();
@@ -412,7 +414,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         return reloadState;
     }
 
-    private void defaultReloadFinishing(ModernKineticGunScriptAPI api, boolean isTactical) {
+    protected void defaultReloadFinishing(ModernKineticGunScriptAPI api, boolean isTactical) {
         GunData data = api.getGunIndex().getGunData();
         int needAmmoCount = api.getNeededAmmoAmount();
         boolean needConsumeAmmo = api.isReloadingNeedConsumeAmmo();
@@ -435,8 +437,23 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
                     api.putAmmoInMagazine(needAmmoCount);
                 }
             }
+            case INVENTORY -> {
+                // 背包直读：换弹时从背包消耗弹药填入弹匣（与 MAGAZINE 行为一致）
+                if (needConsumeAmmo) {
+                    int consumedAmount = api.consumeAmmoFromPlayer(needAmmoCount);
+                    api.putAmmoInMagazine(consumedAmount);
+                } else {
+                    api.putAmmoInMagazine(needAmmoCount);
+                }
+            }
             default -> {
-                // 未实现
+                // 未知类型，按 MAGAZINE 逻辑兜底
+                if (needConsumeAmmo) {
+                    int consumedAmount = api.consumeAmmoFromPlayer(needAmmoCount);
+                    api.putAmmoInMagazine(consumedAmount);
+                } else {
+                    api.putAmmoInMagazine(needAmmoCount);
+                }
             }
         }
         // 如果不是战术换弹，需要将弹匣中的一枚子弹放到枪膛中
@@ -470,7 +487,7 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
             try {
                 instance.setBaseValue(0);
                 instance.addTransientModifier(modifier);
-                return (float)instance.getValue();
+                return (float) instance.getValue();
             } finally {
                 instance.setBaseValue(oldBase);
                 instance.removeModifier(modifier);
@@ -512,26 +529,25 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         if (target.equals(user)) {
             return;
         }
-        target.knockback(knockback, (float) Math.sin(Math.toRadians(user.getYRot())), (float) -Math.cos(Math.toRadians(user.getYRot())));
-        if (user instanceof Player player) {
-            target.hurt(user.damageSources().playerAttack(player), damage);
-        } else {
-            target.hurt(user.damageSources().mobAttack(user), damage);
+        target.push(-(float) Math.sin(Math.toRadians(user.getYRot())) * knockback, 0, (float) Math.cos(Math.toRadians(user.getYRot())) * knockback);
+        net.minecraft.world.damagesource.DamageSource source = user instanceof Player player
+                ? user.damageSources().playerAttack(player) : user.damageSources().mobAttack(user);
+        if (user.level() instanceof ServerLevel serverLevel) {
+            target.hurtServer(serverLevel, source, damage);
+            net.minecraft.world.item.enchantment.EnchantmentHelper.doPostAttackEffects(serverLevel, target, source);
         }
-        // 修复近战枪械不触发神化词条/宝石的bug
-        user.doEnchantDamageEffects(user, target);
 
         if (!target.isAlive()) {
             return;
         }
         for (EffectData data : effects) {
-            MobEffect mobEffect = ForgeRegistries.MOB_EFFECTS.getValue(data.getEffectId());
-            if (mobEffect == null) {
+            var effectHolder = BuiltInRegistries.MOB_EFFECT.get(data.getEffectId());
+            if (effectHolder.isEmpty()) {
                 continue;
             }
             int time = Math.max(0, data.getTime() * 20);
             int amplifier = Math.max(0, data.getAmplifier());
-            MobEffectInstance effectInstance = new MobEffectInstance(mobEffect, time, amplifier, false, data.isHideParticles());
+            MobEffectInstance effectInstance = new MobEffectInstance(effectHolder.get(), time, amplifier, false, data.isHideParticles());
             target.addEffect(effectInstance);
         }
         if (user.level() instanceof ServerLevel serverLevel) {
@@ -546,6 +562,18 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
             return null;
         }
         return TimelessAPI.getCommonAttachmentIndex(attachmentId).map(index -> index.getData().getMeleeData()).orElse(null);
+    }
+
+    /**
+     * Resolves a named Lua function without changing the caller-specific invocation or fallback.
+     *
+     * @param gunIndex gun index whose script is queried; callers already reject {@code null}
+     * @param methodName Lua method name
+     * @return the function, or an empty optional when the script or method is absent
+     */
+    protected Optional<LuaFunction> resolveScriptFunction(CommonGunIndex gunIndex, String methodName) {
+        return Optional.ofNullable(gunIndex.getScript())
+                .map(script -> checkFunction(script.get(methodName)));
     }
 
     private LuaFunction checkFunction(LuaValue luaValue) {
@@ -572,6 +600,12 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
         });
     }
 
+    /*
+     * Weapon leveling is only a reserved API in TACZ 1.1.8: the official 1.20.1 tree and the
+     * Refabricated 1.21.1 tree both return zero here, never write GunLevelExp, and never send the
+     * level-up packet. A max level of zero is therefore the explicit "progression disabled" value,
+     * not a missing piece of this 1.21.10 port.
+     */
     @Override
     public int getLevel(int exp) {
         return 0;

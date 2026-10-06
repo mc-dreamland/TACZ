@@ -6,8 +6,8 @@ import com.tacz.guns.api.item.nbt.BlockItemDataAccessor;
 import com.tacz.guns.client.renderer.item.GunSmithTableItemRenderer;
 import com.tacz.guns.client.resource.index.ClientBlockIndex;
 import com.tacz.guns.inventory.tooltip.BlockItemTooltip;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -16,34 +16,14 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.Optional;
-import java.util.function.Consumer;
 
 public class GunSmithTableItem extends BlockItem implements BlockItemDataAccessor {
-    public GunSmithTableItem(Block block) {
-        super(block, (new Item.Properties()).stacksTo(1));
-    }
-
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            GunSmithTableItemRenderer renderer;
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    Minecraft minecraft = Minecraft.getInstance();
-                    renderer = new GunSmithTableItemRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
-                }
-
-                return renderer;
-            }
-        });
+    public GunSmithTableItem(Block block, Item.Properties properties) {
+        super(block, properties.stacksTo(1));
     }
 
     public static NonNullList<ItemStack> fillItemCategory() {
@@ -57,12 +37,14 @@ public class GunSmithTableItem extends BlockItem implements BlockItemDataAccesso
 
     @Override
     @Nonnull
-    @OnlyIn(Dist.CLIENT)
+    // 双端公共方法，禁用 client 索引（26.1 不剥 @OnlyIn 成员，dedicated 必崩——
+    // 本文件即 2026-08-21 专服 /give 崩溃的第一现场）。
+    // 详见 AbstractGunItem#getName 注释与 records/SERVER_TEST_20260821_DEDICATED.md。
     public Component getName(@Nonnull ItemStack stack) {
         ResourceLocation blockId = this.getBlockId(stack);
-        Optional<ClientBlockIndex> blockIndex = TimelessAPI.getClientBlockIndex(blockId);
-        if (blockIndex.isPresent()) {
-            return Component.translatable(blockIndex.get().getName());
+        var blockIndex = TimelessAPI.getCommonBlockIndex(blockId);
+        if (blockIndex.isPresent() && blockIndex.get().getPojo().getName() != null) {
+            return Component.translatable(blockIndex.get().getPojo().getName());
         }
         return super.getName(stack);
     }
@@ -74,13 +56,13 @@ public class GunSmithTableItem extends BlockItem implements BlockItemDataAccesso
 //        TimelessAPI.getClientBlockIndex(blockId).ifPresent(index -> {
 //            String tooltipKey = index.getTooltipKey();
 //            if (tooltipKey != null) {
-//                components.add(Component.translatable(tooltipKey).withStyle(ChatFormatting.GRAY));
+//                components.add(Component.translatable(tooltipKey).withStyle(style -> style.withColor(0xAAAAAA)));
 //            }
 //        });
 //
 //        PackInfo packInfoObject = ClientAssetsManager.INSTANCE.getPackInfo(blockId);
 //        if (packInfoObject != null) {
-//            MutableComponent component = Component.translatable(packInfoObject.getName()).withStyle(ChatFormatting.BLUE).withStyle(ChatFormatting.ITALIC);
+//            MutableComponent component = Component.translatable(packInfoObject.getName()).withStyle(style -> style.withColor(0x5555FF)).withStyle(style -> style.withItalic(true));
 //            components.add(component);
 //        }
 //    }

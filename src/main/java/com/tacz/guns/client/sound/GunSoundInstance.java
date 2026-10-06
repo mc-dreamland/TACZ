@@ -3,6 +3,7 @@ package com.tacz.guns.client.sound;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.sounds.AbstractSoundInstance;
+import net.minecraft.client.resources.sounds.EntityBoundSoundInstance;
 import net.minecraft.client.resources.sounds.Sound;
 import net.minecraft.client.sounds.SoundManager;
 import net.minecraft.client.sounds.WeighedSoundEvents;
@@ -82,7 +83,7 @@ public class GunSoundInstance extends AbstractSoundInstance {
         private final ResourceLocation path;
 
         private TaczSound(ResourceLocation location, ResourceLocation path, Sound template) {
-            super(location.toString(), template.getVolume(), template.getPitch(), template.getWeight(), Type.FILE,
+            super(location, template.getVolume(), template.getPitch(), template.getWeight(), Type.FILE,
                     template.shouldStream(), false, template.getAttenuationDistance());
             this.location = location;
             this.path = path;

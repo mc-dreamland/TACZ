@@ -58,7 +58,17 @@ public final class GunPropertyDiagrams {
             int barPositivelyColor = 0xFF_55FF55;
             int barNegativeColor = 0xFF_FF5555;
 
-            int fontColor = 0xCCCCCC;
+            // 【必须带 alpha】26.2 的 GuiGraphics#text 第一行就是
+            //     if (ARGB.alpha(color) == 0) return;
+            // （字节码偏移 0-8 确认），alpha 为 0 的文本会被【整段静默丢弃】。
+            //
+            // 1.21.1 的 GuiGraphics#drawString 没有这个短路：它把 0xCCCCCC 当作
+            // 不透明的浅灰直接画出来，所以上游写六位色是可行的。移植时原样搬过来，
+            // 结果就是改装界面「图表」里所有文字（弹匣容量/伤害/射速…）全部消失，
+            // 而同一个方法里用 graphics.fill() 画的进度条因为写的是 0xFF000000 /
+            // 0xFFFFFFFF 这类带 alpha 的值，照常显示 —— 于是呈现出
+            // 「只有一排排空白进度条、没有任何文字」的现象。
+            int fontColor = 0xFFCCCCCC;
             int nameTextStartX = x + 5;
             int valueTextStartX = x + 210;
 
@@ -76,7 +86,7 @@ public final class GunPropertyDiagrams {
                 fireModeText.append(Component.translatable("gui.tacz.gun_refit.property_diagrams.unknown"));
             }
 
-            graphics.drawString(font, fireModeText, nameTextStartX+12, yOffset[0], fontColor, false);
+            graphics.drawString(font, fireModeText, nameTextStartX + 12, yOffset[0], fontColor, false);
 
             yOffset[0] += 10;
 

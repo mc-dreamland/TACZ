@@ -163,7 +163,7 @@ public class CustomInterpolator implements Interpolator {
         Quaternionf mLogSum = m0Log.add(m1Log.mul(-1f));
         Quaternionf exp = exp(mLogSum.mul(0.25f));
         Quaternionf result = q1.mul(exp);
-        return new float[]{result.x, result.y, result.z ,result.w};
+        return new float[]{result.x, result.y, result.z, result.w};
     }
 
     private static Quaternionf log(Quaternionf q) {
@@ -181,7 +181,7 @@ public class CustomInterpolator implements Interpolator {
         double theta = Math.sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
         double cos = Math.cos(theta);
         Quaternionf result = new Quaternionf(q);
-        if (cos < 0.9995){
+        if (cos < 0.9995) {
             result.mul((float) (Math.sin(theta) / theta));
         }
         result.w = (float) cos;

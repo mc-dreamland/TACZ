@@ -84,7 +84,7 @@ public class AmmoDisplay implements IDisplay {
         if (ammoEntity != null && ammoEntity.modelTexture != null) {
             ammoEntity.modelTexture = converter.idToFile(ammoEntity.modelTexture);
         }
-        if (shellDisplay != null&& shellDisplay.modelTexture != null) {
+        if (shellDisplay != null && shellDisplay.modelTexture != null) {
             shellDisplay.modelTexture = converter.idToFile(shellDisplay.modelTexture);
         }
     }

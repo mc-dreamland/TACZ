@@ -6,11 +6,11 @@ import java.lang.annotation.*;
 
 /**
  * 文档性质的注解。被注解的枪械属性生效时的值可以被逻辑脚本修改。
- * 
+ *
+ * @author ChloePrime
  * @see com.tacz.guns.entity.EntityKineticBullet
  * @see com.tacz.guns.entity.EntityKineticBullet#getDamage(Vec3)
  * @see com.tacz.guns.item.ModernKineticGunScriptAPI#shootOnce(boolean)
- * @author ChloePrime
  * @since 1.1.7
  */
 @Target(ElementType.FIELD)

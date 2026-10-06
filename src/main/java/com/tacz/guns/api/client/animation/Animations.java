@@ -256,14 +256,14 @@ public class Animations {
                     animationChannel.content.values[index][5] = post.z();
                 } else if (keyframe.pre() != null) {
                     animationChannel.content.values[index] = new float[3];
-                    Vector3f pre =  new Vector3f(keyframe.pre());
+                    Vector3f pre = new Vector3f(keyframe.pre());
                     toAngle(pre);
                     animationChannel.content.values[index][0] = pre.x();
                     animationChannel.content.values[index][1] = pre.y();
                     animationChannel.content.values[index][2] = pre.z();
                 } else {
                     animationChannel.content.values[index] = new float[3];
-                    Vector3f post =  new Vector3f(keyframe.post());
+                    Vector3f post = new Vector3f(keyframe.post());
                     toAngle(post);
                     animationChannel.content.values[index][0] = post.x();
                     animationChannel.content.values[index][1] = post.y();
@@ -271,7 +271,7 @@ public class Animations {
                 }
             } else if (keyframe.data() != null) {
                 animationChannel.content.values[index] = new float[3];
-                Vector3f data =  new Vector3f(keyframe.data());
+                Vector3f data = new Vector3f(keyframe.data());
                 toAngle(data);
                 animationChannel.content.values[index][0] = data.x();
                 animationChannel.content.values[index][1] = data.y();

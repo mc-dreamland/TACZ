@@ -1,24 +1,25 @@
 package com.tacz.guns.client.paper;
 
 import com.tacz.guns.GunMod;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.RenderFrameEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 /** Both callbacks execute on the client thread; charge/input processing stays in ShootKey. */
-@Mod.EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
+@EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class PaperShotPump {
     private PaperShotPump() { }
 
     @SubscribeEvent
-    public static void renderTick(TickEvent.RenderTickEvent event) {
-        if (event.phase == TickEvent.Phase.START) { PaperClientGameplay.pumpShot(); PaperShotPresentation.pump(); }
+    public static void renderTick(RenderFrameEvent.Pre event) {
+        { PaperClientGameplay.pumpShot(); PaperShotPresentation.pump(); }
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void clientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase == TickEvent.Phase.END) { PaperClientGameplay.pumpShot(); PaperShotPresentation.pump(); }
+    public static void clientTick(ClientTickEvent.Post event) {
+        { PaperClientGameplay.pumpShot(); PaperShotPresentation.pump(); }
     }
 }

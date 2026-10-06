@@ -1,14 +1,22 @@
 package com.tacz.guns.mixin.client;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.client.event.BeforeRenderHandEvent;
 import com.tacz.guns.api.client.other.KeepingItemRenderer;
+import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
+import com.tacz.guns.compat.firstperson.FirstPersonAnimationCompat;
+import com.tacz.guns.compat.shader.ShaderCompat;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,32 +39,106 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
     @Unique
     private long tacz$KeepTimestamp;
 
+    /**
+     * 26.1.2 兼容: renderHandsWithItems 在 26.2 被重命名为 submitHandsWithItems
+     * 新签名 (26.1.2): renderHandsWithItems(float, PoseStack, SubmitNodeCollector, LocalPlayer, int)
+     */
     @Inject(method = "renderHandsWithItems", at = @At("HEAD"))
-    public void beforeHandRender(float pPartialTicks, PoseStack pMatrixStack, MultiBufferSource.BufferSource pBuffer, LocalPlayer pPlayerEntity, int pCombinedLight, CallbackInfo ci) {
-        MinecraftForge.EVENT_BUS.post(new BeforeRenderHandEvent(pMatrixStack));
+    public void beforeHandRender(float pPartialTicks, PoseStack pMatrixStack, net.minecraft.client.renderer.SubmitNodeCollector pCollector, LocalPlayer pPlayerEntity, int pCombinedLight, CallbackInfo ci) {
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new BeforeRenderHandEvent(pMatrixStack));
     }
 
-    @Inject(method = "tick", at = @At("HEAD"))
-    public void cancelEquippedProgress(CallbackInfo ci) {
-//        if (Minecraft.getInstance().player == null) {
-//            return;
-//        }
-//        if (tacz$KeepItem != null) {
-//            long time = System.currentTimeMillis() - tacz$KeepTimestamp;
-//            if (time < tacz$KeepTimeMs) {
-//                mainHandHeight = 1.0f;
-//                oMainHandHeight = 1.0f;
-//                mainHandItem = tacz$KeepItem;
-//                return;
-//            }
-//        }
-//        ItemStack itemStack = Minecraft.getInstance().player.getMainHandItem();
-//        IGun iGun = IGun.getIGunOrNull(itemStack);
-//        if (iGun != null) {
-//            mainHandHeight = 1.0f;
-//            oMainHandHeight = 1.0f;
-//            mainHandItem = itemStack;
-//        }
+    /**
+     * 第一人称枪械渲染入口。<b>这是修复"枪相对摄像机位置/大小不对 + 移动时抖动"的关键。</b>
+     *
+     * <p><b>问题背景</b></p>
+     *
+     * <p>上游 1.21.1 依赖 SimpleBedrockModel 的 {@code RenderHandEvent}，而 SBM 的 mixin
+     * （已核对 {@code Sh1roCu/SimpleBedrockModel-Fabric} 源码）注入在
+     * {@code ItemInHandRenderer#renderArmWithItem} 的 <b>HEAD</b> 并 {@code ci.cancel()}，
+     * 也就是说 TACZ 拿到的 PoseStack 是<b>只经过 renderHandsWithItems 的视角回摆</b>、
+     * <b>尚未经过任何手臂变换</b>的干净矩阵。</p>
+     *
+     * <p>26.1.2 移植时改走客户端 ItemModel（{@code tacz:dynamic_item}）路径，
+     * 渲染发生在 {@code renderItem(...)} 内部 —— 那时 vanilla 已经额外施加了：</p>
+     * <ol>
+     *   <li>{@code applyItemArmTransform}：{@code translate(±0.56, -0.52 + 装备高度*-0.6, -0.72)}
+     *       —— 这就是"位置偏了"和 ADS 尤其明显的直接来源；</li>
+     *   <li>{@code swingArm(...)} / {@code SpearAnimations.firstPersonAttack(...)}
+     *       挥动动画 —— 与 TACZ 自己的动画状态机叠加，表现为<b>移动/奔跑时手与枪抖动、动画不连贯</b>；</li>
+     *   <li>装备切换的 {@code inverseArmHeight} 抬手动画 —— 同样与 TACZ 的收放枪动画打架。</li>
+     * </ol>
+     *
+     * <p><b>修复</b>：在 {@code renderArmWithItem} 的 HEAD 拦截并取消，改为在这里直接调用
+     * TACZ 的第一人称渲染 —— 与 SBM 的注入点、取消语义完全一致，从而拿到与 1.21.1
+     * 相同语义的干净 PoseStack。</p>
+     *
+     * <p>注意：{@code renderHandsWithItems} 里的
+     * {@code mulPose(XP(viewXRot - xBob) * 0.1)} / {@code mulPose(YP(viewYRot - yBob) * 0.1)}
+     * 视角回摆<b>仍然保留</b>（它在本方法之前执行），这正是
+     * {@code GunItemRendererWrapper#renderFirstPerson} 开头那段"逆转原版延滞效果"所预期的输入。</p>
+     */
+    @WrapOperation(
+            method = "renderHandsWithItems",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderArmWithItem(Lnet/minecraft/client/player/AbstractClientPlayer;FFLnet/minecraft/world/InteractionHand;FLnet/minecraft/world/item/ItemStack;FLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;I)V"
+            )
+    )
+    private void tacz$submitArmWithAnimatedItem(ItemInHandRenderer instance,
+                                                AbstractClientPlayer player,
+                                                float frameInterp,
+                                                float xRot,
+                                                InteractionHand hand,
+                                                float attack,
+                                                ItemStack itemStack,
+                                                float inverseArmHeight,
+                                                PoseStack poseStack,
+                                                SubmitNodeCollector collector,
+                                                int lightCoords,
+                                                Operation<Void> original) {
+        if (!(player instanceof LocalPlayer localPlayer)
+                || !Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
+            original.call(instance, player, frameInterp, xRot, hand, attack, itemStack,
+                    inverseArmHeight, poseStack, collector, lightCoords);
+            return;
+        }
+
+        ItemStack mainRenderStack = FirstPersonAnimationCompat.getMainRenderStack(localPlayer);
+        boolean mainHandOwnedByTacz = FirstPersonAnimationCompat.isTaczViewmodel(mainRenderStack);
+
+        if (hand == InteractionHand.OFF_HAND && mainHandOwnedByTacz) {
+            return;
+        }
+
+        ItemStack renderStack = hand == InteractionHand.MAIN_HAND ? mainRenderStack : itemStack;
+        var renderer = com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry.INSTANCE
+                .get(renderStack.getItem());
+        if (!(renderer instanceof AnimateGeoItemRenderer<?, ?> geoRenderer)
+                || geoRenderer.getModel(renderStack) == null) {
+            original.call(instance, player, frameInterp, xRot, hand, attack, itemStack,
+                    inverseArmHeight, poseStack, collector, lightCoords);
+            return;
+        }
+
+        if (!ShaderCompat.shouldRenderInCurrentHandPhase(renderStack)) {
+            return;
+        }
+
+        if (hand == InteractionHand.OFF_HAND) {
+            return;
+        }
+
+        ItemDisplayContext context = player.getMainArm() == HumanoidArm.RIGHT
+                ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
+                : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
+        if (geoRenderer.needReInit(renderStack)) {
+            geoRenderer.tryInit(renderStack, localPlayer, frameInterp);
+        }
+        poseStack.pushPose();
+        geoRenderer.renderFirstPerson(localPlayer, renderStack, context, poseStack,
+                collector, lightCoords, frameInterp);
+        poseStack.popPose();
     }
 
     @Unique

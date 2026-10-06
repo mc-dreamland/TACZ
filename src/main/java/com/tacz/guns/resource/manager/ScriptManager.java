@@ -10,15 +10,17 @@ import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
-import org.apache.logging.log4j.Marker;
-import org.apache.logging.log4j.MarkerManager;
 import org.jetbrains.annotations.NotNull;
 import org.luaj.vm2.*;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.Bit32Lib;
 import org.luaj.vm2.lib.PackageLib;
 import org.luaj.vm2.lib.TableLib;
-import org.luaj.vm2.lib.jse.*;
+import org.luaj.vm2.lib.jse.JseBaseLib;
+import org.luaj.vm2.lib.jse.JseMathLib;
+import org.luaj.vm2.lib.jse.JseStringLib;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -28,8 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
-public class ScriptManager extends SimplePreparableReloadListener< List<Map.Entry<String, Supplier<LuaTable>>> > {
-    private static final Marker MARKER = MarkerManager.getMarker("ScriptLoader");
+public class ScriptManager extends SimplePreparableReloadListener<List<Map.Entry<String, Supplier<LuaTable>>>>  {
+    private static final Marker MARKER = MarkerFactory.getMarker("ScriptLoader");
     private Globals globals;
     private final Map<String, LuaTable> scriptMap = Maps.newHashMap();
     private final FileToIdConverter filetoidconverter;
@@ -47,7 +49,7 @@ public class ScriptManager extends SimplePreparableReloadListener< List<Map.Entr
         initGlobals();
         // 打包加载函数，设置 globals 的 preload
         List<Map.Entry<String, Supplier<LuaTable>>> output = new ArrayList<>();
-        for(Map.Entry<ResourceLocation, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
+        for (Map.Entry<ResourceLocation, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
             var wrappedEntry = wrapLoadingFunction(entry.getKey(), entry.getValue());
             output.add(wrappedEntry);
             globals.get("package").get("preload").set(wrappedEntry.getKey(), new LuaFunction() {
@@ -71,6 +73,7 @@ public class ScriptManager extends SimplePreparableReloadListener< List<Map.Entr
         String moduleName = getModuleName(resourceLocation);
         return new AbstractMap.SimpleEntry<>(moduleName, new Supplier<>() {
             private LuaTable loaded = null;
+
             @Override
             public LuaTable get() {
                 if (loaded != null) {
@@ -120,4 +123,6 @@ public class ScriptManager extends SimplePreparableReloadListener< List<Map.Entr
         LuaC.install(globals);
         return globals;
     }
+
+    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "script_manager");
 }

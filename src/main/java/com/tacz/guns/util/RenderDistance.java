@@ -2,32 +2,30 @@ package com.tacz.guns.util;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.config.client.RenderConfig;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.joml.Matrix4f;
 
-@OnlyIn(Dist.CLIENT)
 public final class RenderDistance {
-    private static long GUI_RENDER_TIMESTAMP = -1L;
+    private static long guiRenderTimestamp;
 
-    public static boolean inRenderHighPolyModelDistance(PoseStack poseStack) {
-        if (isGuiRender()) {
-            return true;
-        }
-        int distance = RenderConfig.GUN_LOD_RENDER_DISTANCE.get();
-        if (distance <= 0) {
-            return false;
-        }
-        Matrix4f matrix4f = poseStack.last().pose();
-        float viewDistance = matrix4f.m30() * matrix4f.m30() + matrix4f.m31() * matrix4f.m31() + matrix4f.m32() * matrix4f.m32();
-        return viewDistance < distance * distance;
+    private RenderDistance() {
     }
 
     public static void markGuiRenderTimestamp() {
-        GUI_RENDER_TIMESTAMP = System.currentTimeMillis();
+        guiRenderTimestamp = System.currentTimeMillis();
     }
 
-    private static boolean isGuiRender() {
-        return System.currentTimeMillis() - GUI_RENDER_TIMESTAMP < 100;
+    public static boolean inRenderHighPolyModelDistance(PoseStack poseStack) {
+        if (System.currentTimeMillis() - guiRenderTimestamp < 500L) {
+            return true;
+        }
+        int dist = RenderConfig.GUN_LOD_RENDER_DISTANCE.get();
+        if (dist <= 0) {
+            return true;
+        }
+        Matrix4f m = poseStack.last().pose();
+        float x = m.m30();
+        float y = m.m31();
+        float z = m.m32();
+        return (x * x + y * y + z * z) < (float) dist * dist;
     }
 }

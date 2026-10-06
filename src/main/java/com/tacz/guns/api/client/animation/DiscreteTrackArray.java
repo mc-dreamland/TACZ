@@ -7,7 +7,7 @@ import org.jetbrains.annotations.UnmodifiableView;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-public class DiscreteTrackArray implements Iterable<Integer>{
+public class DiscreteTrackArray implements Iterable<Integer> {
     private int top = 0;
     private final ArrayList<LinkedList<Integer>> tracks;
     private int modCount = 0;
@@ -64,7 +64,7 @@ public class DiscreteTrackArray implements Iterable<Integer>{
     @UnmodifiableView
     public @Nonnull List<Integer> getByIndex(int index) {
         LinkedList<Integer> list = tracks.get(index);
-        if(list == null) {
+        if (list == null) {
             return Collections.emptyList();
         } else {
             return Collections.unmodifiableList(list);
@@ -123,7 +123,7 @@ public class DiscreteTrackArray implements Iterable<Integer>{
             }
         }
 
-        private int findNextNotEmptyList(int index){
+        private int findNextNotEmptyList(int index) {
             int i = index + 1;
             while (i < tracks.size()) {
                 LinkedList<Integer> list = tracks.get(i);

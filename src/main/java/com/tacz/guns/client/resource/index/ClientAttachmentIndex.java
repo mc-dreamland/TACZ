@@ -41,7 +41,7 @@ public class ClientAttachmentIndex {
     private AttachmentData data;
     private float[] viewsFov;
     private float @Nullable [] zoom;
-    private int [] views;
+    private int[] views;
     private boolean isScope;
     private boolean isSight;
     private boolean showMuzzle;
@@ -89,7 +89,7 @@ public class ClientAttachmentIndex {
             Preconditions.checkArgument(display.getFov() > 0, "fov must > 0");
             index.viewsFov = new float[]{display.getFov()};
         } else {
-            for(float fov : index.viewsFov) {
+            for (float fov : index.viewsFov) {
                 Preconditions.checkArgument(fov > 0, "fov must > 0");
             }
         }

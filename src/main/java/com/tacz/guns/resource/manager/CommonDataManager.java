@@ -3,31 +3,38 @@ package com.tacz.guns.resource.manager;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.tacz.guns.GunMod;
 import com.tacz.guns.resource.network.DataType;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
  * 服务端侧数据管理器<br>
  * 该类型的数据管理器用于服务端数据加载并向客户端同步
+ *
  * @param <T> 数据类型
  */
 public class CommonDataManager<T> extends JsonDataManager<T> implements INetworkCacheReloadListener {
     private final DataType type;
     protected Map<ResourceLocation, String> networkCache;
 
+    public final ResourceLocation ID;
+
     public CommonDataManager(DataType type, Class<T> dataClass, Gson pGson, String directory, String marker) {
         super(dataClass, pGson, directory, marker);
         this.type = type;
+        this.ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
     }
 
     public CommonDataManager(DataType type, Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker) {
         super(dataClass, pGson, fileToIdConverter, marker);
         this.type = type;
+        this.ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
     }
 
     @Override

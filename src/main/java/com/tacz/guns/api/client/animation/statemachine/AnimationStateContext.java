@@ -16,6 +16,7 @@ public class AnimationStateContext {
 
     /**
      * 状态机脚本不要调用此方法。
+     *
      * @return 上下文绑定的状态机。
      */
     public @Nullable AnimationStateMachine<?> getStateMachine() {
@@ -24,6 +25,7 @@ public class AnimationStateContext {
 
     /**
      * 状态机脚本不要调用此方法。
+     *
      * @return 上下文的离散轨道序列。
      */
     public DiscreteTrackArray getTrackArray() {
@@ -32,6 +34,7 @@ public class AnimationStateContext {
 
     /**
      * 分配一个新的轨道行，返回新的轨道行下标。
+     *
      * @return 新的轨道行下标
      * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
      */
@@ -42,6 +45,7 @@ public class AnimationStateContext {
 
     /**
      * 确保轨道行的数量
+     *
      * @param size 需要确保的轨道行数量。
      * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
      */
@@ -52,6 +56,7 @@ public class AnimationStateContext {
 
     /**
      * 获取轨道行的数量
+     *
      * @return 轨道行的数量
      * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
      */
@@ -62,6 +67,7 @@ public class AnimationStateContext {
 
     /**
      * 为指定轨道行分配一个新的轨道，返回新的轨道的下标
+     *
      * @param index 轨道行的下标
      * @return 新的轨道下标
      * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
@@ -73,7 +79,8 @@ public class AnimationStateContext {
 
     /**
      * 优先返回轨道行中的空闲轨道，如果没有空闲轨道则会开辟一个新的轨道
-     * @param index 轨道行的下标
+     *
+     * @param index            轨道行的下标
      * @param interruptHolding 是否将处于 holding 状态的轨道视为空闲轨道
      * @return 轨道在控制器中的指针
      * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
@@ -96,7 +103,8 @@ public class AnimationStateContext {
 
     /**
      * 保证指定的轨道行有足够的轨道数量
-     * @param index 轨道行下标
+     *
+     * @param index  轨道行下标
      * @param amount 需要的轨道数量
      */
     public void ensureTracksAmount(int index, int amount) {
@@ -106,8 +114,9 @@ public class AnimationStateContext {
 
     /**
      * 获取轨道指针
+     *
      * @param trackLineIndex 轨道行的下标
-     * @param trackIndex 轨道的下标
+     * @param trackIndex     轨道的下标
      * @return 轨道在控制器中的指针，或者 -1 当轨道不存在
      */
     public int getTrack(int trackLineIndex, int trackIndex) {
@@ -126,9 +135,10 @@ public class AnimationStateContext {
     /**
      * 用于只需要一个轨道的轨道行，如果目标轨道行没有轨道，则会分配一个轨道，
      * 如果已经有多个轨道，多余的轨道不会舍弃，会返回其中的第一个轨道。
+     *
      * @param index 轨道行的下标
-     * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
      * @return 轨道的下标
+     * @throws TrackArrayMismatchException 当状态机对应的 track array 不是当前 context 指定的实例，抛出此异常。
      */
     public int getAsSingletonTrack(int index) {
         checkTrackArray();
@@ -144,14 +154,15 @@ public class AnimationStateContext {
     /**
      * 在指定轨道上运行动画。如果轨道已经有动画在运行，将会打断，并根据输入的过渡时间开始过渡。
      * 新动画在播放的瞬间就开始运行，并不会因为过渡而停止。旧动画则在播放开始的瞬间停止。
-     * @param name 动画的名称
-     * @param track 轨道在控制器中的指针
-     * @param blending 动画是否向下混合
-     * @param playType 动画的播放状态，为枚举的 ordinal 值。
+     *
+     * @param name           动画的名称
+     * @param track          轨道在控制器中的指针
+     * @param blending       动画是否向下混合
+     * @param playType       动画的播放状态，为枚举的 ordinal 值。
      * @param transitionTime 过渡时长
      * @see AnimationConstant
      */
-    public void runAnimation(String name, int track, boolean blending, int playType, float transitionTime){
+    public void runAnimation(String name, int track, boolean blending, int playType, float transitionTime) {
         var stateMachine = checkStateMachine();
         ObjectAnimation.PlayType pt = ObjectAnimation.PlayType.values()[playType];
         stateMachine.getAnimationController().runAnimation(track, name, pt, transitionTime);
@@ -160,6 +171,7 @@ public class AnimationStateContext {
 
     /**
      * 将动画停止。停止后的动画关键帧不会再影响模型。
+     *
      * @param track 轨道在控制器中的指针
      */
     public void stopAnimation(int track) {
@@ -172,6 +184,7 @@ public class AnimationStateContext {
 
     /**
      * 将动画进度拖至动画末尾并挂起。挂起的动画将定格在动画的最后一帧。
+     *
      * @param track 轨道在控制器中的指针
      */
     public void holdAnimation(int track) {
@@ -184,6 +197,7 @@ public class AnimationStateContext {
 
     /**
      * 暂停动画。动画将会定格，关键帧仍然影响模型。
+     *
      * @param track 轨道在控制器中的指针
      */
     public void pauseAnimation(int track) {
@@ -196,6 +210,7 @@ public class AnimationStateContext {
 
     /**
      * 恢复动画运行。如果动画已经在运行，则什么都不会发生
+     *
      * @param track 轨道在控制器中的指针
      */
     public void resumeAnimation(int track) {
@@ -210,8 +225,9 @@ public class AnimationStateContext {
      * 设置动画播放的绝对进度。
      * 如果启用归一化 (normalization 设为 true)，则 progress 可取值 0 ~ 1，0 代表动画开头，1 代表动画结尾。
      * 否则，progress 代表时长，单位：秒
-     * @param track 轨道在控制器中的指针
-     * @param progress 动画的绝对进度，如果 normalization 为 true，则可取值 0 ~ 1，0 代表动画开头，1 代表动画结尾。否则代表时长，单位为秒
+     *
+     * @param track         轨道在控制器中的指针
+     * @param progress      动画的绝对进度，如果 normalization 为 true，则可取值 0 ~ 1，0 代表动画开头，1 代表动画结尾。否则代表时长，单位为秒
      * @param normalization 是否启用归一化
      */
     public void setAnimationProgress(int track, float progress, boolean normalization) {
@@ -239,9 +255,10 @@ public class AnimationStateContext {
      * 在当前动画进度的基础上移动一段进度，比如前进 10s、后退 10s。
      * 如果启用归一化 (normalization 设为 true)，则 progress 可取值 -1 ~ 1，-1 代表后退动画全长，1 代表前进动画全长。
      * 否则，progress 代表时长，单位：秒
-     * @param track 轨道在控制器中的指针
-     * @param progress 相对进度，可为负值。如果 normalization 为 true，则可取值 -1 ~ 1，-1 代表后退动画全长，1 代表前进动画全长。
-     *                 否则代表时长，单位为秒。
+     *
+     * @param track         轨道在控制器中的指针
+     * @param progress      相对进度，可为负值。如果 normalization 为 true，则可取值 -1 ~ 1，-1 代表后退动画全长，1 代表前进动画全长。
+     *                      否则代表时长，单位为秒。
      * @param normalization 是否启用归一化
      */
     public void adjustAnimationProgress(int track, float progress, boolean normalization) {
@@ -267,6 +284,7 @@ public class AnimationStateContext {
 
     /**
      * 获取指定轨道是否被挂起
+     *
      * @return 返回对应轨道的动画是否挂起。轨道为空时此方法返回 false，因为轨道没有动画的时候视为轨道停止，而非挂起。
      */
     public boolean isHolding(int track) {
@@ -281,6 +299,7 @@ public class AnimationStateContext {
 
     /**
      * 获取指定轨道是否停止
+     *
      * @return 返回对应轨道的动画是否停止。轨道为空时此方法返回 true，因为轨道没有动画的时候视为轨道停止。
      */
     public boolean isStopped(int track) {
@@ -295,6 +314,7 @@ public class AnimationStateContext {
 
     /**
      * 获取指定轨道是否暂停
+     *
      * @return 返回对应轨道的动画是否暂停。轨道为空时此方法返回 false，因为轨道没有动画的时候视为轨道停止，而非暂停。
      */
     public boolean isPause(int track) {
@@ -309,6 +329,7 @@ public class AnimationStateContext {
 
     /**
      * 获取动画文件中是否存在某个动画
+     *
      * @param name 动画名称
      * @return 动画是否存在
      */
@@ -320,6 +341,7 @@ public class AnimationStateContext {
 
     /**
      * 手动触发一次状态转移
+     *
      * @param input 状态转移的输入
      */
     public void trigger(String input) {
@@ -329,6 +351,7 @@ public class AnimationStateContext {
 
     /**
      * 动画有时会有剧烈的视角运动，因此可能需要隐藏准心减少眩晕感。
+     *
      * @return 渲染时是否需要隐藏准心
      */
     public boolean shouldHideCrossHair() {
@@ -337,7 +360,8 @@ public class AnimationStateContext {
 
     /**
      * 动画有时会有剧烈的视角运动，因此可能需要隐藏准心减少眩晕感。
-     * @param shouldHideCrossHair  渲染时是否需要隐藏准心
+     *
+     * @param shouldHideCrossHair 渲染时是否需要隐藏准心
      */
     public void setShouldHideCrossHair(boolean shouldHideCrossHair) {
         this.shouldHideCrossHair = shouldHideCrossHair;

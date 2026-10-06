@@ -26,12 +26,7 @@ public class AttachmentDataManager extends CommonDataManager<AttachmentData> {
                     return;
                 }
                 JsonObject jsonObject = element.getAsJsonObject();
-                if (jsonObject.has(key)) {
-                    JsonProperty<?> property = value.readJson(json);
-                    property.initComponents();
-                    data.addModifier(key, property);
-                } else if (jsonObject.has(value.getOptionalFields())) {
-                    // 为了兼容旧版本，读取可选字段名
+                if (value.hasJsonField(jsonObject)) {
                     JsonProperty<?> property = value.readJson(json);
                     property.initComponents();
                     data.addModifier(key, property);

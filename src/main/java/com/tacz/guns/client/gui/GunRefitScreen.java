@@ -3,6 +3,7 @@ package com.tacz.guns.client.gui;
 import com.google.gson.JsonObject;
 import com.tacz.guns.api.item.ItemBehavior;
 
+import com.tacz.guns.mixin.client.ScreenAccessor;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
@@ -26,6 +27,7 @@ import com.tacz.guns.network.message.ClientMessageUnloadAttachment;
 import com.tacz.guns.sound.SoundManager;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.util.LaserColorUtil;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphics;
@@ -37,9 +39,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.common.Mod;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -48,13 +47,11 @@ import java.util.Locale;
 
 import static com.tacz.guns.client.paper.GunResolver.integer;
 import static com.tacz.guns.client.paper.GunResolver.string;
-
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = GunMod.MOD_ID)
 public class GunRefitScreen extends Screen {
-    public static final ResourceLocation SLOT_TEXTURE = new ResourceLocation(GunMod.MOD_ID, "textures/gui/refit_slot.png");
-    public static final ResourceLocation TURN_PAGE_TEXTURE = new ResourceLocation(GunMod.MOD_ID, "textures/gui/refit_turn_page.png");
-    public static final ResourceLocation UNLOAD_TEXTURE = new ResourceLocation(GunMod.MOD_ID, "textures/gui/refit_unload.png");
-    public static final ResourceLocation ICONS_TEXTURE = new ResourceLocation(GunMod.MOD_ID, "textures/gui/refit_slot_icons.png");
+    public static final ResourceLocation SLOT_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot.png");
+    public static final ResourceLocation TURN_PAGE_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_turn_page.png");
+    public static final ResourceLocation UNLOAD_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_unload.png");
+    public static final ResourceLocation ICONS_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot_icons.png");
 
     public static final int ICON_UV_SIZE = 32;
     public static final int SLOT_SIZE = 18;
@@ -147,8 +144,12 @@ public class GunRefitScreen extends Screen {
         for (var entry : paperColorDraft.entrySet()) {
             if (entry.getKey() == AttachmentType.NONE) renderTag.putInt("LaserColor", entry.getValue());
             else {
-                CompoundTag attachment = renderTag.getCompound("Attachment" + entry.getKey().name());
-                if (attachment.contains("tag")) attachment.getCompound("tag").putInt("LaserColor", entry.getValue());
+                String key = "Attachment" + entry.getKey().name();
+                ItemStack attachment = com.tacz.guns.util.ItemNbtUtils.loadItemStack(renderTag.getCompoundOrEmpty(key));
+                if (!attachment.isEmpty()) {
+                    com.tacz.guns.util.ItemNbtUtils.updateTag(attachment, tag -> tag.putInt("LaserColor", entry.getValue()));
+                    renderTag.put(key, com.tacz.guns.util.ItemNbtUtils.saveItemStack(attachment));
+                }
             }
         }
     }
@@ -221,19 +222,54 @@ public class GunRefitScreen extends Screen {
     }
 
     @Override
-    public void render(@NotNull GuiGraphics graphics, int mouseX, int mouseY, float pPartialTick) {
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float pPartialTick) {
         super.render(graphics, mouseX, mouseY, pPartialTick);
 
         if (!HIDE_GUN_PROPERTY_DIAGRAMS) {
             GunPropertyDiagrams.draw(graphics, font, 11, 11);
         }
 
-        this.renderables.stream().filter(w -> w instanceof IComponentTooltip).forEach(w -> ((IComponentTooltip) w)
-                .renderTooltip(component -> graphics.renderComponentTooltip(font, component, mouseX, mouseY)));
-        this.renderables.stream().filter(w -> w instanceof IStackTooltip).forEach(w -> ((IStackTooltip) w)
-                .renderTooltip(stack -> graphics.renderTooltip(font, stack, mouseX, mouseY)));
-        if (isPaperRefit() && paperPending) graphics.drawCenteredString(font,
-                Component.literal("等待服务器确认…"), width / 2, height - 16, 0xEEEEEE);
+        // 26.2 tooltip API: widgets push tooltip contents through their existing consumer hooks.
+        ((ScreenAccessor) this).tacz$getRenderables().stream().filter(w -> w instanceof IComponentTooltip).forEach(w -> {
+            IComponentTooltip tooltipWidget = (IComponentTooltip) w;
+            tooltipWidget.renderTooltip(lines -> graphics.setTooltipForNextFrame(font, lines, java.util.Optional.empty(), mouseX, mouseY));
+        });
+        ((ScreenAccessor) this).tacz$getRenderables().stream().filter(w -> w instanceof IStackTooltip).forEach(w -> {
+            IStackTooltip tooltipWidget = (IStackTooltip) w;
+            tooltipWidget.renderTooltip(stack -> {
+                if (!stack.isEmpty()) {
+                    graphics.setTooltipForNextFrame(font, Screen.getTooltipFromItem(Minecraft.getInstance(), stack), stack.getTooltipImage(), mouseX, mouseY);
+                }
+            });
+        });
+        if (isPaperRefit() && paperPending) graphics.drawCenteredString(font, Component.literal("等待服务器确认…"), width / 2, height - 16, 0xEEEEEE);
+    }
+
+    /**
+     * 改装界面<b>不要</b>全屏模糊 —— 与上游 1.21.1 行为一致。
+     *
+     * <p>上游 {@code GunRefitScreen} 里有一个空实现的
+     * <pre>
+     * &#64;Override protected void renderBlurredBackground(float partialTick) { }
+     * </pre>
+     * 移植时漏掉了，于是走 vanilla 默认实现，改装界面糊上一层背景模糊。
+     *
+     * <p>26.2 的对应方法改名为 {@code renderBlurredBackground(GuiGraphics)}，
+     * 调用链（字节码确认）：
+     * <pre>
+     * Screen#extractBackground
+     *   -> Screen#extractBlurredBackground
+     *        -> if (options.getMenuBackgroundBlurriness() != 0)
+     *               graphics.blurBeforeThisStratum();
+     * </pre>
+     * 覆写为空即可精确复刻上游「不模糊」的效果。
+     *
+     * <p>这里必须留空而不是不覆写：玩家一边看着枪模型一边装配件，
+     * 背景模糊会把枪身也一起糊掉（模糊是整个 stratum 之前的全屏后处理），
+     * 严重影响观察配件外观 —— 这正是上游特意关掉它的原因。
+     */
+    @Override
+    protected void renderBlurredBackground(GuiGraphics graphics) {
     }
 
     @Override
@@ -242,7 +278,7 @@ public class GunRefitScreen extends Screen {
     }
 
     private void addInventoryAttachmentButtons() {
-        LocalPlayer player = getMinecraft().player;
+        LocalPlayer player = this.minecraft.player;
         if (RefitTransform.getCurrentTransformType() == AttachmentType.NONE || player == null) {
             return;
         }
@@ -271,8 +307,8 @@ public class GunRefitScreen extends Screen {
                 InventoryAttachmentSlot button = new InventoryAttachmentSlot(startX, currentY, i, inventory, b -> {
                     int slotIndex = ((InventoryAttachmentSlot) b).getSlotIndex();
                     SoundPlayManager.playerRefitSound(inventory.getItem(slotIndex), player, SoundManager.INSTALL_SOUND);
-                    ClientMessageRefitGun message = new ClientMessageRefitGun(slotIndex, inventory.selected, RefitTransform.getCurrentTransformType());
-                    NetworkHandler.CHANNEL.sendToServer(message);
+                    ClientMessageRefitGun message = new ClientMessageRefitGun(slotIndex, inventory.getSelectedSlot(), RefitTransform.getCurrentTransformType());
+                    ClientPacketDistributor.sendToServer(message);
                 });
                 this.addRenderableWidget(button);
                 currentY = currentY + SLOT_SIZE;
@@ -322,7 +358,7 @@ public class GunRefitScreen extends Screen {
             JsonObject entry = candidates.get(i);
             int slot = integer(entry, "slot", -1);
             ItemStack icon = new ItemStack(ModItems.ATTACHMENT.get());
-            icon.getOrCreateTag().putString("AttachmentId", string(entry, "id", ""));
+            ((com.tacz.guns.api.item.IAttachment) icon.getItem()).setAttachmentId(icon, ResourceLocation.parse(string(entry, "id", "")));
             InventoryAttachmentSlot button = new InventoryAttachmentSlot(startX, startY + (i - pageStart) * SLOT_SIZE, slot, icon, ignored -> {
                 JsonObject request = new JsonObject();
                 request.addProperty("attachmentSlot", slot);
@@ -337,7 +373,7 @@ public class GunRefitScreen extends Screen {
     }
 
     private HSVSliderGroup laserSliders(Inventory inventory, AttachmentType type) {
-        if (!isPaperRefit()) return new HSVSliderGroup(width - 140, height - 64, 120, 16, inventory, inventory.selected, type);
+        if (!isPaperRefit()) return new HSVSliderGroup(width - 140, height - 64, 120, 16, inventory, inventory.getSelectedSlot(), type);
         ItemStack gun = inventory.getItem(paperSlot);
         IGun iGun = IGun.getIGunOrNull(gun);
         ItemStack target = type == AttachmentType.NONE || iGun == null ? gun : iGun.getAttachment(gun, type);
@@ -396,7 +432,7 @@ public class GunRefitScreen extends Screen {
         LocalPlayer player = Minecraft.getInstance().player;
         if (!PaperClientBridge.active() || player == null || !player.isAlive() || player.isSpectator()
                 || Minecraft.getInstance().level != paperLevel || paperSlot < 0 || paperSlot > 8
-                || player.getInventory().selected != paperSlot || paperInstance.isEmpty()) return false;
+                || player.getInventory().getSelectedSlot() != paperSlot || paperInstance.isEmpty()) return false;
         JsonObject item = PaperClientBridge.itemData(player.getMainHandItem());
         return item != null && string(item, "kind", "").equals("gun") && paperInstance.equals(string(item, "instance", ""));
     }
@@ -442,7 +478,7 @@ public class GunRefitScreen extends Screen {
     }
 
     private void addAttachmentTypeButtons() {
-        LocalPlayer player = getMinecraft().player;
+        LocalPlayer player = this.minecraft.player;
         if (player == null) {
             return;
         }
@@ -464,11 +500,12 @@ public class GunRefitScreen extends Screen {
                                     HSVSliderGroup hsvSliderGroup = laserSliders(inventory, AttachmentType.NONE);
                                     this.addRenderableWidget(hsvSliderGroup.getHueSlider());
                                     this.addRenderableWidget(hsvSliderGroup.getSaturationSlider());
-                                }});
+                                }
+                            });
                 }
                 continue;
             }
-            GunAttachmentSlot button = new GunAttachmentSlot(startX, startY, type, inventory.selected, inventory, b -> {
+            GunAttachmentSlot button = new GunAttachmentSlot(startX, startY, type, inventory.getSelectedSlot(), inventory, b -> {
                 AttachmentType buttonType = ((GunAttachmentSlot) b).getType();
                 // 如果这个槽位不允许安装配件，则默认退回概览，不选中槽位。
                 if (!((GunAttachmentSlot) b).isAllow()) {
@@ -507,10 +544,10 @@ public class GunRefitScreen extends Screen {
                         int freeSlot = inventory.getFreeSlot();
                         if (freeSlot != -1) {
                             SoundPlayManager.playerRefitSound(attachmentItem, player, SoundManager.UNINSTALL_SOUND);
-                            ClientMessageUnloadAttachment message = new ClientMessageUnloadAttachment(inventory.selected, RefitTransform.getCurrentTransformType());
-                            NetworkHandler.CHANNEL.sendToServer(message);
+                            ClientMessageUnloadAttachment message = new ClientMessageUnloadAttachment(inventory.getSelectedSlot(), RefitTransform.getCurrentTransformType());
+                            ClientPacketDistributor.sendToServer(message);
                         } else {
-                            player.sendSystemMessage(Component.translatable("gui.tacz.gun_refit.unload.no_space"));
+                            player.displayClientMessage(Component.translatable("gui.tacz.gun_refit.unload.no_space"), false);
                         }
                     }
                 });
@@ -526,7 +563,8 @@ public class GunRefitScreen extends Screen {
                                         HSVSliderGroup hsvSliderGroup = laserSliders(inventory, type);
                                         this.addRenderableWidget(hsvSliderGroup.getHueSlider());
                                         this.addRenderableWidget(hsvSliderGroup.getSaturationSlider());
-                                    }});
+                                    }
+                                });
                     }
                 }
             }
@@ -551,15 +589,21 @@ public class GunRefitScreen extends Screen {
             return;
         }
         // 关闭界面时，一次性上传所有的染色数据
-        LocalPlayer player = getMinecraft().player;
+        LocalPlayer player = this.minecraft.player;
         if (player != null) {
             ItemStack gun = player.getMainHandItem();
             if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun) {
-                ClientMessageLaserColor message = new ClientMessageLaserColor(gun, player.getInventory().selected);
-                NetworkHandler.CHANNEL.sendToServer(message);
+                ClientMessageLaserColor message = new ClientMessageLaserColor(gun, player.getInventory().getSelectedSlot());
+                ClientPacketDistributor.sendToServer(message);
             }
         }
         super.onClose();
+    }
+
+    public static void refresh() {
+        if (net.minecraft.client.Minecraft.getInstance().screen instanceof GunRefitScreen screen) {
+            screen.init();
+        }
     }
 
     private void switchHideButton() {

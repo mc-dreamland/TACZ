@@ -29,10 +29,9 @@ import com.tacz.guns.util.ColorHex;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.commands.arguments.ParticleArgument;
+import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +46,6 @@ import java.util.function.BiFunction;
 /**
  * 经过处理和校验的枪械显示数据
  */
-@OnlyIn(Dist.CLIENT)
 public class GunDisplayInstance {
     private final ResourceLocation displayId;
     private final GunDisplay display;
@@ -75,7 +73,7 @@ public class GunDisplayInstance {
     private LuaAnimationStateMachine<GunAnimationStateContext> animationStateMachine;
     private @Nullable LuaTable stateMachineParam;
 
-    private @Nullable ResourceLocation playerAnimator3rd = new ResourceLocation(GunMod.MOD_ID, "rifle_default.player_animation");
+    private @Nullable ResourceLocation playerAnimator3rd = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "rifle_default.player_animation");
     private boolean is3rdFixedHand = false;
     private Map<String, ResourceLocation> sounds = Maps.newHashMap();
     private List<ResourceLocation> preloadSounds = Lists.newArrayList();
@@ -110,7 +108,7 @@ public class GunDisplayInstance {
         }
     }
 
-    public static GunDisplayInstance create(ResourceLocation displayId, GunDisplay display)  throws IllegalArgumentException {
+    public static GunDisplayInstance create(ResourceLocation displayId, GunDisplay display) throws IllegalArgumentException {
         return new GunDisplayInstance(displayId, display);
     }
 
@@ -411,11 +409,32 @@ public class GunDisplayInstance {
         ResourceLocation modelLocation = display.getModelLocation();
         Preconditions.checkArgument(modelLocation != null, "display object missing model field");
         BedrockModelPOJO modelPOJO = ClientAssetsManager.INSTANCE.getBedrockModelPOJO(modelLocation);
-        Preconditions.checkArgument(modelPOJO != null, "there is no corresponding model file");
+
+        // FALLBACK: 如果高模不存在，尝试加载 LOD 模型作为替代
+        if (modelPOJO == null) {
+            GunLod gunLod = display.getGunLod();
+            if (gunLod != null && gunLod.getModelLocation() != null) {
+                BedrockModelPOJO lodPOJO = ClientAssetsManager.INSTANCE.getBedrockModelPOJO(gunLod.getModelLocation());
+                if (lodPOJO != null) {
+                    GunMod.LOGGER.warn("High-poly model not found for {}, falling back to LOD model", modelLocation);
+                    modelPOJO = lodPOJO;
+                    // 使用 LOD 模型的材质
+                    if (gunLod.getModelTexture() != null) {
+                        modelTexture = gunLod.getModelTexture();
+                    }
+                }
+            }
+            if (modelPOJO == null) {
+                throw new IllegalArgumentException("there is no corresponding model file: " + modelLocation);
+            }
+        }
+
         // 检查默认材质是否存在
-        ResourceLocation textureLocation = display.getModelTexture();
-        Preconditions.checkArgument(textureLocation != null, "missing default texture");
-        modelTexture = textureLocation;
+        if (modelTexture == null) {
+            ResourceLocation textureLocation = display.getModelTexture();
+            Preconditions.checkArgument(textureLocation != null, "missing default texture");
+            modelTexture = textureLocation;
+        }
         // 先判断是不是 1.10.0 版本基岩版模型文件
         if (BedrockVersion.isLegacyVersion(modelPOJO) && modelPOJO.getGeometryModelLegacy() != null) {
             gunModel = constructor.apply(modelPOJO, BedrockVersion.LEGACY);
@@ -424,7 +443,7 @@ public class GunDisplayInstance {
         if (BedrockVersion.isNewVersion(modelPOJO) && modelPOJO.getGeometryModelNew() != null) {
             gunModel = constructor.apply(modelPOJO, BedrockVersion.NEW);
         }
-        Preconditions.checkArgument(gunModel != null, "there is no model data in the model file");
+        Preconditions.checkArgument(gunModel != null, "there is no model data in the model file: " + modelLocation);
     }
 
     private void checkLod(GunDisplay display) {
@@ -469,18 +488,21 @@ public class GunDisplayInstance {
                 // 用 gltf 动画资源创建动画控制器
                 controller = Animations.createControllerFromGltf(gltfAnimations, gunModel);
             } else {
-                throw new IllegalArgumentException("animation not found: " + location);
+                // FALLBACK: 动画文件缺失时创建空控制器，而不是崩溃
+                GunMod.LOGGER.warn("Animation not found for {}: {}, using empty controller", displayId, location);
+                controller = new AnimationController(Lists.newArrayList(), gunModel);
             }
             // 将默认动画填入动画控制器
             ResourceLocation defaultAnimation = display.getDefaultAnimation();
             if (defaultAnimation != null) {
                 BedrockAnimationFile animationFile = ClientAssetsManager.INSTANCE.getBedrockAnimations(defaultAnimation);
-                if (animationFile == null) {
-                    throw new IllegalArgumentException("animation not found: " + defaultAnimation);
-                }
-                List<ObjectAnimation> animations = Animations.createAnimationFromBedrock(animationFile);
-                for (ObjectAnimation animation : animations) {
-                    controller.providePrototypeIfAbsent(animation.name, () -> new ObjectAnimation(animation));
+                if (animationFile != null) {
+                    List<ObjectAnimation> animations = Animations.createAnimationFromBedrock(animationFile);
+                    for (ObjectAnimation animation : animations) {
+                        controller.providePrototypeIfAbsent(animation.name, () -> new ObjectAnimation(animation));
+                    }
+                } else {
+                    GunMod.LOGGER.warn("Default animation not found for {}: {}", displayId, defaultAnimation);
                 }
             } else {
                 DefaultAnimationType defaultAnimationType = display.getDefaultAnimationType();
@@ -504,7 +526,7 @@ public class GunDisplayInstance {
         ResourceLocation stateMachineLocation = display.getStateMachineLocation();
         if (stateMachineLocation == null) {
             // 如果没指定状态机，则使用默认状态机
-            stateMachineLocation = new ResourceLocation("tacz", "default_state_machine");
+            stateMachineLocation = ResourceLocation.fromNamespaceAndPath("tacz", "default_state_machine");
         }
         LuaTable script = ClientAssetsManager.INSTANCE.getScript(stateMachineLocation);
         if (script != null) {
@@ -513,7 +535,8 @@ public class GunDisplayInstance {
                     .setLuaScripts(script)
                     .build();
         } else {
-            throw new IllegalArgumentException("statemachine not found: " + stateMachineLocation);
+            // FALLBACK: 状态机脚本缺失时记录警告，而不是崩溃
+            GunMod.LOGGER.warn("State machine script not found for {}: {}", displayId, stateMachineLocation);
         }
         // 加载状态机参数
         Map<String, Object> params = display.getStateMachineParam();
@@ -533,14 +556,14 @@ public class GunDisplayInstance {
             return;
         }
         // 部分音效为默认音效，不存在则需要添加默认音效
-        soundMaps.putIfAbsent(SoundManager.DRY_FIRE_SOUND, new ResourceLocation(GunMod.MOD_ID, SoundManager.DRY_FIRE_SOUND));
-        soundMaps.putIfAbsent(SoundManager.FIRE_SELECT, new ResourceLocation(GunMod.MOD_ID, SoundManager.FIRE_SELECT));
-        soundMaps.putIfAbsent(SoundManager.HEAD_HIT_SOUND, new ResourceLocation(GunMod.MOD_ID, SoundManager.HEAD_HIT_SOUND));
-        soundMaps.putIfAbsent(SoundManager.FLESH_HIT_SOUND, new ResourceLocation(GunMod.MOD_ID, SoundManager.FLESH_HIT_SOUND));
-        soundMaps.putIfAbsent(SoundManager.KILL_SOUND, new ResourceLocation(GunMod.MOD_ID, SoundManager.KILL_SOUND));
-        soundMaps.putIfAbsent(SoundManager.MELEE_BAYONET, new ResourceLocation(GunMod.MOD_ID, "melee_bayonet/melee_bayonet_01"));
-        soundMaps.putIfAbsent(SoundManager.MELEE_STOCK, new ResourceLocation(GunMod.MOD_ID, "melee_stock/melee_stock_01"));
-        soundMaps.putIfAbsent(SoundManager.MELEE_PUSH, new ResourceLocation(GunMod.MOD_ID, "melee_stock/melee_stock_02"));
+        soundMaps.putIfAbsent(SoundManager.DRY_FIRE_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.DRY_FIRE_SOUND));
+        soundMaps.putIfAbsent(SoundManager.FIRE_SELECT, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FIRE_SELECT));
+        soundMaps.putIfAbsent(SoundManager.HEAD_HIT_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.HEAD_HIT_SOUND));
+        soundMaps.putIfAbsent(SoundManager.FLESH_HIT_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FLESH_HIT_SOUND));
+        soundMaps.putIfAbsent(SoundManager.KILL_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.KILL_SOUND));
+        soundMaps.putIfAbsent(SoundManager.MELEE_BAYONET, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_bayonet/melee_bayonet_01"));
+        soundMaps.putIfAbsent(SoundManager.MELEE_STOCK, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_01"));
+        soundMaps.putIfAbsent(SoundManager.MELEE_PUSH, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_02"));
         sounds.putAll(soundMaps);
 
         Set<ResourceLocation> preloadSet = new LinkedHashSet<>();
@@ -603,7 +626,7 @@ public class GunDisplayInstance {
             try {
                 String name = particle.getName();
                 if (StringUtils.isNoneBlank()) {
-                    particle.setParticleOptions(ParticleArgument.readParticle(new StringReader(name), BuiltInRegistries.PARTICLE_TYPE.asLookup()));
+                    particle.setParticleOptions(ParticleArgument.readParticle(new StringReader(name), RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)));
                     Preconditions.checkArgument(particle.getCount() > 0, "particle count must be greater than 0");
                     Preconditions.checkArgument(particle.getLifeTime() > 0, "particle life time must be greater than 0");
                     this.particle = particle;
@@ -738,6 +761,11 @@ public class GunDisplayInstance {
 
     public @Nullable ResourceLocation getPlayerAnimator3rd() {
         return playerAnimator3rd;
+    }
+
+    /** 诊断/日志用：该 display 的注册 id。 */
+    public ResourceLocation getDisplayId() {
+        return displayId;
     }
 
     public boolean is3rdFixedHand() {

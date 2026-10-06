@@ -5,8 +5,8 @@ import java.util.List;
 import java.util.function.BooleanSupplier;
 
 public final class CycleTaskHelper {
-    private static final List<CycleTaskHelper.CycleTaskTicker> CYCLE_TASKS = new LinkedList<>();
-    private static final List<CycleTaskHelper.CycleTaskTicker> TEMP_CYCLE_TASKS = new LinkedList<>();
+    private static final List<CycleTaskTicker> CYCLE_TASKS = new LinkedList<>();
+    private static final List<CycleTaskTicker> TEMP_CYCLE_TASKS = new LinkedList<>();
 
     /**
      * 根据提供的时间间隔循环执行任务。会立刻调用一次。
@@ -16,7 +16,7 @@ public final class CycleTaskHelper {
      * @param cycles   最大循环次数。-1 代表无限次。
      */
     public static void addCycleTask(BooleanSupplier task, long periodMs, int cycles) {
-        CycleTaskHelper.CycleTaskTicker ticker = new CycleTaskHelper.CycleTaskTicker(task, periodMs, cycles);
+        CycleTaskTicker ticker = new CycleTaskTicker(task, periodMs, cycles);
         if (ticker.tick()) {
             CYCLE_TASKS.add(ticker);
         }
@@ -27,7 +27,7 @@ public final class CycleTaskHelper {
             addCycleTask(task, periodMs, cycles);
             return;
         }
-        CycleTaskHelper.CycleTaskTicker ticker = new CycleTaskHelper.CycleTaskTicker(task, delayMs, periodMs, cycles);
+        CycleTaskTicker ticker = new CycleTaskTicker(task, delayMs, periodMs, cycles);
         CYCLE_TASKS.add(ticker);
     }
 

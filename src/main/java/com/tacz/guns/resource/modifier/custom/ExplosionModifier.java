@@ -11,7 +11,6 @@ import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.ExplosionData;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
-import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
@@ -28,8 +27,8 @@ public class ExplosionModifier implements IAttachmentModifier<ExplosionModifier.
 
     @Override
     public JsonProperty<ExplosionModifierValue> readJson(String json) {
-        ExplosionModifier.Data data = CommonAssetsManager.GSON.fromJson(json, ExplosionModifier.Data.class);
-        return new ExplosionModifier.ExplosionJsonProperty(data.getExplosion());
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
+        return new ExplosionJsonProperty(data.getExplosion());
     }
 
     @Override
@@ -79,7 +78,7 @@ public class ExplosionModifier implements IAttachmentModifier<ExplosionModifier.
     }
 
     public static class ExplosionJsonProperty extends JsonProperty<ExplosionModifierValue> {
-        public ExplosionJsonProperty(ExplosionModifier.ExplosionModifierValue value) {
+        public ExplosionJsonProperty(ExplosionModifierValue value) {
             super(value);
         }
 
@@ -87,7 +86,7 @@ public class ExplosionModifier implements IAttachmentModifier<ExplosionModifier.
         public void initComponents() {
             ExplosionModifierValue modifierValue = getValue();
             if (modifierValue != null && modifierValue.explode) {
-                components.add(Component.translatable("tooltip.tacz.attachment.explosion").withStyle(ChatFormatting.GOLD));
+                components.add(Component.translatable("tooltip.tacz.attachment.explosion").withStyle(style -> style.withColor(0xFFAA00)));
             }
         }
     }

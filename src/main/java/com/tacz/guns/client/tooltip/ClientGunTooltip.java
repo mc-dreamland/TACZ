@@ -20,12 +20,10 @@ import com.tacz.guns.resource.pojo.data.gun.ExtraDamage;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.util.AllowAttachmentTagMatcher;
 import com.tacz.guns.util.AttachmentDataUtils;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
@@ -33,7 +31,6 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix4f;
 
 import java.text.DecimalFormat;
 import java.util.List;
@@ -61,7 +58,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
     private MutableComponent headShotMultiplier;
     private MutableComponent weight;
     private MutableComponent tips;
-    private MutableComponent levelInfo;
+    private @Nullable MutableComponent levelInfo;
     private @Nullable MutableComponent packInfo;
 
     private int maxWidth;
@@ -78,7 +75,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public int getHeight() {
+    public int getHeight(Font font) {
         int height = 0;
         if (shouldShow(GunTooltipPart.DESCRIPTION) && this.desc != null) {
             height += 10 * this.desc.size() + 2;
@@ -87,7 +84,8 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             height += 24;
         }
         if (shouldShow(GunTooltipPart.BASE_INFO)) {
-            height += 34;
+            // TACZ 1.1.8 reserves the level API but disables it with maxLevel == 0.
+            height += this.levelInfo == null ? 24 : 34;
         }
         if (shouldShow(GunTooltipPart.EXTRA_DAMAGE_INFO)) {
             height += 34;
@@ -136,14 +134,14 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             int currentAmmoCount = iGun.getCurrentAmmoCount(this.gun) + barrelBulletAmount;
 
             if (!iGun.useDummyAmmo(gun)) {
-                if (display != null && display.getAmmoCountStyle()== AmmoCountStyle.PERCENT) {
+                if (display != null && display.getAmmoCountStyle() == AmmoCountStyle.PERCENT) {
                     this.ammoCountText = Component.literal(CURRENT_AMMO_FORMAT_PERCENT.format((float) currentAmmoCount / (maxAmmoCount == 0 ? 1f : maxAmmoCount)));
                 } else {
                     this.ammoCountText = Component.literal("%d/%d".formatted(currentAmmoCount, maxAmmoCount));
                 }
             } else {
                 int dummyAmmoAmount = iGun.getDummyAmmoAmount(gun);
-                if (display != null && display.getAmmoCountStyle()== AmmoCountStyle.PERCENT) {
+                if (display != null && display.getAmmoCountStyle() == AmmoCountStyle.PERCENT) {
                     String p = CURRENT_AMMO_FORMAT_PERCENT.format((float) currentAmmoCount / (maxAmmoCount == 0 ? 1f : maxAmmoCount));
                     this.ammoCountText = Component.literal("%s (%d)".formatted(p, dummyAmmoAmount));
                 } else {
@@ -152,27 +150,32 @@ public class ClientGunTooltip implements ClientTooltipComponent {
 
             }
             if (iGun.useInventoryAmmo(gun)) {
-                this.ammoCountText = Component.translatable("tooltip.tacz.gun.inventory_mode").withStyle(ChatFormatting.YELLOW);
+                this.ammoCountText = Component.translatable("tooltip.tacz.gun.inventory_mode").withStyle(style -> style.withColor(0xFFFF55));
             }
             this.maxWidth = Math.max(font.width(this.ammoCountText) + 22, this.maxWidth);
         }
 
 
         if (shouldShow(GunTooltipPart.BASE_INFO)) {
-            int expToNextLevel = iGun.getExpToNextLevel(gun);
-            int expCurrentLevel = iGun.getExpCurrentLevel(gun);
-            int level = iGun.getLevel(gun);
-            if (level >= iGun.getMaxLevel()) {
-                String levelText = String.format("%d (MAX)", level);
-                this.levelInfo = Component.translatable("tooltip.tacz.gun.level").append(Component.literal(levelText).withStyle(ChatFormatting.DARK_PURPLE));
-            } else {
-                String levelText = String.format("%d (%.1f%%)", level, expCurrentLevel / (expToNextLevel + expCurrentLevel) * 100f);
-                this.levelInfo = Component.translatable("tooltip.tacz.gun.level").append(Component.literal(levelText).withStyle(ChatFormatting.YELLOW));
+            int maxLevel = iGun.getMaxLevel();
+            if (maxLevel > 0) {
+                int expToNextLevel = iGun.getExpToNextLevel(gun);
+                int expCurrentLevel = iGun.getExpCurrentLevel(gun);
+                int level = iGun.getLevel(gun);
+                if (level >= maxLevel) {
+                    String levelText = String.format("%d (MAX)", level);
+                    this.levelInfo = Component.translatable("tooltip.tacz.gun.level").append(Component.literal(levelText).withStyle(style -> style.withColor(0xAA00AA)));
+                } else {
+                    int levelSpan = expToNextLevel + expCurrentLevel;
+                    float progress = levelSpan > 0 ? expCurrentLevel * 100F / levelSpan : 0F;
+                    String levelText = String.format("%d (%.1f%%)", level, progress);
+                    this.levelInfo = Component.translatable("tooltip.tacz.gun.level").append(Component.literal(levelText).withStyle(style -> style.withColor(0xFFFF55)));
+                }
+                this.maxWidth = Math.max(font.width(this.levelInfo), this.maxWidth);
             }
-            this.maxWidth = Math.max(font.width(this.levelInfo), this.maxWidth);
 
             String tabKey = "tacz.type." + gunIndex.getType() + ".name";
-            this.gunType = Component.translatable("tooltip.tacz.gun.type").append(Component.translatable(tabKey).withStyle(ChatFormatting.AQUA));
+            this.gunType = Component.translatable("tooltip.tacz.gun.type").append(Component.translatable(tabKey).withStyle(style -> style.withColor(0x55FFFF)));
             this.maxWidth = Math.max(font.width(this.gunType), this.maxWidth);
 
             double damage = AttachmentDataUtils.getDamageWithAttachment(gun, gunData);
@@ -180,9 +183,9 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             int bulletAmount = hasSlugInstalled ? 1 : gunData.getBulletData().getBulletAmount();
             MutableComponent value;
             if (display != null && display.getDamageStyle() == DamageStyle.PER_PROJECTILE && bulletAmount > 1) {
-                value = Component.literal(DAMAGE_FORMAT.format(damage/bulletAmount) + "x" + bulletAmount).withStyle(ChatFormatting.AQUA);
+                value = Component.literal(DAMAGE_FORMAT.format(damage / bulletAmount) + "x" + bulletAmount).withStyle(style -> style.withColor(0x55FFFF));
             } else {
-                value = Component.literal(DAMAGE_FORMAT.format(damage)).withStyle(ChatFormatting.AQUA);
+                value = Component.literal(DAMAGE_FORMAT.format(damage)).withStyle(style -> style.withColor(0x55FFFF));
             }
             if (bulletData.getExplosionData() != null && (AttachmentDataUtils.isExplodeEnabled(gun, gunData) || bulletData.getExplosionData().isExplode())) {
                 value.append(" + ").append(DAMAGE_FORMAT.format(bulletData.getExplosionData().getDamage() * SyncConfig.DAMAGE_BASE_MULTIPLIER.get())).append(Component.translatable("tooltip.tacz.gun.explosion"));
@@ -209,7 +212,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
 
             double weightFactor = SyncConfig.WEIGHT_SPEED_MULTIPLIER.get();
             double weight = AttachmentDataUtils.getWightWithAttachment(gun, gunData);
-            this.weight = Component.translatable("tooltip.tacz.gun.movement_speed", FORMAT_P_D1.format(-weightFactor * weight)).withStyle(ChatFormatting.RED);
+            this.weight = Component.translatable("tooltip.tacz.gun.movement_speed", FORMAT_P_D1.format(-weightFactor * weight)).withStyle(style -> style.withColor(0xFF5555));
 
             this.maxWidth = Math.max(font.width(this.armorIgnore), this.maxWidth);
             this.maxWidth = Math.max(font.width(this.headShotMultiplier), this.maxWidth);
@@ -219,7 +222,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
 
         if (shouldShow(GunTooltipPart.UPGRADES_TIP)) {
             String keyName = Component.keybind(RefitKey.REFIT_KEY.getName()).getString().toUpperCase(Locale.ENGLISH);
-            this.tips = Component.translatable("tooltip.tacz.gun.tips", keyName).withStyle(ChatFormatting.YELLOW).withStyle(ChatFormatting.ITALIC);
+            this.tips = Component.translatable("tooltip.tacz.gun.tips", keyName).withStyle(style -> style.withColor(0xFFFF55)).withStyle(style -> style.withItalic(true));
             this.maxWidth = Math.max(font.width(this.tips), this.maxWidth);
         }
 
@@ -228,20 +231,20 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             ResourceLocation gunId = iGun.getGunId(gun);
             PackInfo packInfoObject = ClientAssetsManager.INSTANCE.getPackInfo(gunId);
             if (packInfoObject != null) {
-                packInfo = Component.translatable(packInfoObject.getName()).withStyle(ChatFormatting.BLUE).withStyle(ChatFormatting.ITALIC);
+                packInfo = Component.translatable(packInfoObject.getName()).withStyle(style -> style.withColor(0x5555FF)).withStyle(style -> style.withItalic(true));
                 this.maxWidth = Math.max(font.width(this.packInfo), this.maxWidth);
             }
         }
     }
 
     @Override
-    public void renderText(Font font, int pX, int pY, Matrix4f matrix4f, MultiBufferSource.BufferSource bufferSource) {
+    public void renderText(GuiGraphics graphics, Font font, int pX, int pY) {
         int yOffset = pY;
 
         if (shouldShow(GunTooltipPart.DESCRIPTION) && this.desc != null) {
             yOffset += 2;
             for (FormattedCharSequence sequence : this.desc) {
-                font.drawInBatch(sequence, pX, yOffset, 0xaaaaaa, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+                graphics.drawString(font, sequence, pX, yOffset, 0xFFaaaaaa);
                 yOffset += 10;
             }
         }
@@ -251,10 +254,10 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             yOffset += 4;
 
             // 弹药名
-            font.drawInBatch(this.ammoName, pX + 20, yOffset, 0xffaa00, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.ammoName, pX + 20, yOffset, 0xFFffaa00);
 
             // 弹药数
-            font.drawInBatch(this.ammoCountText, pX + 20, yOffset + 10, 0x777777, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.ammoCountText, pX + 20, yOffset + 10, 0xFF777777);
 
             yOffset += 20;
         }
@@ -263,18 +266,20 @@ public class ClientGunTooltip implements ClientTooltipComponent {
         if (shouldShow(GunTooltipPart.BASE_INFO)) {
             yOffset += 4;
 
-            // 等级信息
-            font.drawInBatch(this.levelInfo, pX, yOffset, 0x777777, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
-            yOffset += 10;
+            // 等级 API 在上游默认实现中处于禁用态（maxLevel == 0），不要显示误导性的 0 (MAX)。
+            if (this.levelInfo != null) {
+                graphics.drawString(font, this.levelInfo, pX, yOffset, 0xFF777777);
+                yOffset += 10;
+            }
 
             // 枪械类型
             if (this.gunType != null) {
-                font.drawInBatch(this.gunType, pX, yOffset, 0x777777, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+                graphics.drawString(font, this.gunType, pX, yOffset, 0xFF777777);
                 yOffset += 10;
             }
 
             // 伤害
-            font.drawInBatch(this.damage, pX, yOffset, 0x777777, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.damage, pX, yOffset, 0xFF777777);
             yOffset += 10;
         }
 
@@ -283,14 +288,14 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             yOffset += 4;
 
             // 穿甲伤害
-            font.drawInBatch(this.armorIgnore, pX, yOffset, 0xffaa00, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.armorIgnore, pX, yOffset, 0xFFffaa00);
             yOffset += 10;
 
             // 爆头伤害
-            font.drawInBatch(this.headShotMultiplier, pX, yOffset, 0xffaa00, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.headShotMultiplier, pX, yOffset, 0xFFffaa00);
             yOffset += 10;
 
-            font.drawInBatch(this.weight, pX, yOffset, 0xffffff, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.weight, pX, yOffset, 0xFFffffff);
             yOffset += 10;
         }
 
@@ -299,7 +304,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             yOffset += 4;
 
             // Z 键说明
-            font.drawInBatch(this.tips, pX, yOffset, 0xffffff, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+            graphics.drawString(font, this.tips, pX, yOffset, 0xFFffffff);
             yOffset += 10;
         }
 
@@ -308,13 +313,13 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             // 枪包名
             if (packInfo != null) {
                 yOffset += 4;
-                font.drawInBatch(this.packInfo, pX, yOffset, 0xffffff, false, matrix4f, bufferSource, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+                graphics.drawString(font, this.packInfo, pX, yOffset, 0xFFffffff);
             }
         }
     }
 
     @Override
-    public void renderImage(Font pFont, int pX, int pY, GuiGraphics guiGraphics) {
+    public void renderImage(Font pFont, int pX, int pY, int width, int height, GuiGraphics graphics) {
         IGun iGun = IGun.getIGunOrNull(this.gun);
         if (iGun == null) {
             return;
@@ -324,7 +329,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             if (shouldShow(GunTooltipPart.DESCRIPTION) && this.desc != null) {
                 yOffset += this.desc.size() * 10 + 2;
             }
-            guiGraphics.renderItem(ammo, pX, yOffset + 4);
+            graphics.renderItem(ammo, pX, yOffset + 4);
         }
     }
 

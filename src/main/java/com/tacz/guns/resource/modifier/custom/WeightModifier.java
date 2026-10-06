@@ -10,11 +10,10 @@ import com.tacz.guns.resource.modifier.AttachmentCacheProperty;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
-import net.minecraft.ChatFormatting;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -31,14 +30,14 @@ public class WeightModifier implements IAttachmentModifier<Modifier, Float> {
     @Override
     @SuppressWarnings("deprecation")
     public JsonProperty<Modifier> readJson(String json) {
-        WeightModifier.Data data = CommonAssetsManager.GSON.fromJson(json, WeightModifier.Data.class);
+        Data data = CommonAssetsManager.GSON.fromJson(json, Data.class);
         Modifier weightModifier = data.getWeightModifier();
         // 兼容旧版本写法
         if (weightModifier == null) {
             weightModifier = new Modifier();
             weightModifier.setAddend(data.getWeightAddend());
         }
-        return new WeightModifier.WeightJsonProperty(weightModifier);
+        return new WeightJsonProperty(weightModifier);
     }
 
     @Override
@@ -60,7 +59,7 @@ public class WeightModifier implements IAttachmentModifier<Modifier, Float> {
     @Override
     @OnlyIn(Dist.CLIENT)
     public List<DiagramsData> getPropertyDiagramsData(ItemStack gunItem, GunData gunData, AttachmentCacheProperty cacheProperty) {
-        float weight = gunData.getWeight() ;
+        float weight = gunData.getWeight();
         float modifiedValue = cacheProperty.<Float>getCache(WeightModifier.ID);
         float modifier = modifiedValue - weight;
 
@@ -99,9 +98,9 @@ public class WeightModifier implements IAttachmentModifier<Modifier, Float> {
             }
             // 添加文本提示
             if (adsAddendTime > 0) {
-                components.add(Component.translatable("tooltip.tacz.attachment.weight.increase").withStyle(ChatFormatting.RED));
+                components.add(Component.translatable("tooltip.tacz.attachment.weight.increase").withStyle(style -> style.withColor(0xFF5555)));
             } else if (adsAddendTime < 0) {
-                components.add(Component.translatable("tooltip.tacz.attachment.weight.decrease").withStyle(ChatFormatting.GREEN));
+                components.add(Component.translatable("tooltip.tacz.attachment.weight.decrease").withStyle(style -> style.withColor(0x55FF55)));
             }
         }
     }

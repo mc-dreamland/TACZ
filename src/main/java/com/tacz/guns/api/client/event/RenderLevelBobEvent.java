@@ -1,30 +1,30 @@
 package com.tacz.guns.api.client.event;
 
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.ICancellableEvent;
 import com.tacz.guns.api.event.common.KubeJSGunEventPoster;
-import net.minecraftforge.eventbus.api.Cancelable;
-import net.minecraftforge.eventbus.api.Event;
 
 /**
  * 当第一人称视角触发摇晃时，世界背景的摇晃
  */
 public class RenderLevelBobEvent extends Event implements KubeJSGunEventPoster<RenderLevelBobEvent> {
-    /**
-     * 使用注解也可以，但是热重载会导致游戏崩溃
-     */
-    @Override
-    public boolean isCancelable() {
-        return true;
+
+
+    public interface HurtCallback {
+        void post(BobHurt event);
     }
 
-    @Cancelable
-    public static class BobHurt extends RenderLevelBobEvent {
+    public interface ViewCallback {
+        void post(BobView event);
+    }
+
+    public static class BobHurt extends RenderLevelBobEvent implements ICancellableEvent {
         public BobHurt() {
             postClientEventToKubeJS(this);
         }
     }
 
-    @Cancelable
-    public static class BobView extends RenderLevelBobEvent {
+    public static class BobView extends RenderLevelBobEvent implements ICancellableEvent {
         public BobView() {
             postClientEventToKubeJS(this);
         }

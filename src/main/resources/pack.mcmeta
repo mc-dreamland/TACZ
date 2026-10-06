@@ -1,6 +1,5 @@
 {
-    "pack": {
-        "description": "tac resources",
-        "pack_format": 15
-    }
+  "pack": {
+    "description": "TACZ resources and data"
+  }
 }

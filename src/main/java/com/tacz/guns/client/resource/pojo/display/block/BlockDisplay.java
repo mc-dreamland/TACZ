@@ -1,8 +1,8 @@
 package com.tacz.guns.client.resource.pojo.display.block;
 
+import com.google.gson.JsonObject;
 import com.google.gson.annotations.SerializedName;
 import com.tacz.guns.client.resource.pojo.display.IDisplay;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
 import net.minecraft.resources.ResourceLocation;
 
 public class BlockDisplay implements IDisplay {
@@ -11,7 +11,7 @@ public class BlockDisplay implements IDisplay {
     @SerializedName("texture")
     private ResourceLocation modelTexture;
     @SerializedName("transforms")
-    private ItemTransforms transforms;
+    private JsonObject transforms;
 
     public ResourceLocation getModelLocation() {
         return modelLocation;
@@ -21,7 +21,7 @@ public class BlockDisplay implements IDisplay {
         return modelTexture;
     }
 
-    public ItemTransforms getTransforms() {
+    public JsonObject getTransforms() {
         return transforms;
     }
 

@@ -37,7 +37,7 @@ public final class ThirdPersonManager {
     private static final IThirdPersonAnimation MINI_GUN = new IThirdPersonAnimation() {
         @Override
         public void animateGunHold(LivingEntity entity, ModelPart rightArm, ModelPart leftArm, ModelPart body, ModelPart head) {
-            body.yRot = head.yRot+0.8f;
+            body.yRot = head.yRot + 0.8f;
 
             double cosTheta = Math.cos(-body.yRot);
             double sinTheta = Math.sin(-body.yRot);

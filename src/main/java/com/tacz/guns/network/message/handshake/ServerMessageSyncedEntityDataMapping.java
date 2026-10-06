@@ -5,32 +5,45 @@ import com.tacz.guns.entity.sync.core.SyncedDataKey;
 import com.tacz.guns.entity.sync.core.SyncedEntityData;
 import com.tacz.guns.network.IMessage;
 import com.tacz.guns.network.LoginIndexHolder;
-import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.MarkerManager;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.function.Supplier;
 
-public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder implements IMessage<ServerMessageSyncedEntityDataMapping> {
+public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder implements IMessage {
+    public static final CustomPacketPayload.Type<ServerMessageSyncedEntityDataMapping> TYPE = new CustomPacketPayload.Type<>(
+        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_synced_entity_data_mapping")
+    );
+    public static final StreamCodec<FriendlyByteBuf, ServerMessageSyncedEntityDataMapping> STREAM_CODEC = StreamCodec.of(
+        ServerMessageSyncedEntityDataMapping::encode,
+        ServerMessageSyncedEntityDataMapping::decode
+    );
+
+    @Override
+    public @NotNull CustomPacketPayload.Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
     public static final Marker HANDSHAKE = MarkerManager.getMarker("TACZ_HANDSHAKE");
-    private Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap;
+    public final Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap;
 
     public ServerMessageSyncedEntityDataMapping() {
+        this.keyMap = new HashMap<>();
     }
 
     private ServerMessageSyncedEntityDataMapping(Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap) {
         this.keyMap = keyMap;
     }
 
-    @Override
-    public void encode(ServerMessageSyncedEntityDataMapping message, FriendlyByteBuf buffer) {
+    public static void encode(FriendlyByteBuf buffer, ServerMessageSyncedEntityDataMapping message) {
         Set<SyncedDataKey<?, ?>> keys = SyncedEntityData.instance().getKeys();
         buffer.writeInt(keys.size());
         keys.forEach(key -> {
@@ -41,8 +54,7 @@ public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder imple
         });
     }
 
-    @Override
-    public ServerMessageSyncedEntityDataMapping decode(FriendlyByteBuf buffer) {
+    public static ServerMessageSyncedEntityDataMapping decode(FriendlyByteBuf buffer) {
         int size = buffer.readInt();
         Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap = new HashMap<>();
         for (int i = 0; i < size; i++) {
@@ -55,22 +67,19 @@ public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder imple
     }
 
     @Override
-    public void handle(ServerMessageSyncedEntityDataMapping message, Supplier<NetworkEvent.Context> supplier) {
-        GunMod.LOGGER.debug(HANDSHAKE, "Received synced key mappings from server");
-        CountDownLatch block = new CountDownLatch(1);
-        supplier.get().enqueueWork(() -> {
-            if (!SyncedEntityData.instance().updateMappings(message)) {
-                supplier.get().getNetworkManager().disconnect(Component.literal("Connection closed - [TacZ] Received unknown synced data keys."));
+    public void handle(IPayloadContext context) {
+        GunMod.LOGGER.debug("Received synced key mappings from server");
+        context.enqueueWork(() -> {
+            if (!SyncedEntityData.instance().updateMappings(this.keyMap)) {
+                context.disconnect(Component.literal("Connection closed - [TacZ] Received unknown synced data keys."));
+                return;
             }
-            block.countDown();
+            context.reply(Acknowledge.INSTANCE);
+        }).exceptionally(error -> {
+            GunMod.LOGGER.error("Could not apply TACZ synced entity mappings", error);
+            context.disconnect(Component.literal("Could not initialize TACZ entity synchronization."));
+            return null;
         });
-        try {
-            block.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        supplier.get().setPacketHandled(true);
-        NetworkHandler.HANDSHAKE_CHANNEL.reply(new Acknowledge(), supplier.get());
     }
 
     public Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> getKeyMap() {

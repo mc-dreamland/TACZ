@@ -1,6 +1,7 @@
 package com.tacz.guns.item;
 
-import com.tacz.guns.GunMod;
+import com.tacz.guns.util.ItemNbtUtils;
+
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAmmo;
@@ -10,88 +11,31 @@ import com.tacz.guns.api.item.nbt.AmmoBoxItemDataAccessor;
 import com.tacz.guns.config.sync.SyncConfig;
 import com.tacz.guns.init.ModItems;
 import com.tacz.guns.inventory.tooltip.AmmoBoxTooltip;
-import net.minecraft.ChatFormatting;
-import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.*;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-
-import javax.annotation.Nullable;
-import java.util.List;
+import net.minecraft.world.item.component.TooltipDisplay;
 import java.util.Optional;
+import java.util.function.Consumer;
 
-public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItemDataAccessor {
-    public static final ResourceLocation PROPERTY_NAME = new ResourceLocation(GunMod.MOD_ID, "ammo_statue");
+public class AmmoBoxItem extends Item implements AmmoBoxItemDataAccessor {
 
     public static final int IRON_LEVEL = 0;
     public static final int GOLD_LEVEL = 1;
     public static final int DIAMOND_LEVEL = 2;
 
-    private static final String DISPLAY_TAG = "display";
-    private static final String COLOR_TAG = "color";
-
-    private static final int OPEN = 0;
-    private static final int CLOSE = 1;
-
-    private static final int CREATIVE_INDEX = 6;
-    private static final int ALL_TYPE_CREATIVE_INDEX = 8;
-
-    public AmmoBoxItem() {
-        super(new Properties().stacksTo(1));
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static int getColor(ItemStack stack, int tintIndex) {
-        return tintIndex > 0 ? -1 : getTagColor(stack);
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static float getStatue(ItemStack stack, @Nullable ClientLevel level, @Nullable LivingEntity entity, int seed) {
-        int openStatue = OPEN;
-        int ammoLevel = IRON_LEVEL;
-        if (stack.getItem() instanceof IAmmoBox iAmmoBox) {
-            if (iAmmoBox.isAllTypeCreative(stack)) {
-                return ALL_TYPE_CREATIVE_INDEX;
-            }
-            openStatue = getOpenStatue(stack, iAmmoBox);
-            if (iAmmoBox.isCreative(stack)) {
-                return openStatue + CREATIVE_INDEX;
-            }
-            ammoLevel = getLevelStatue(stack, iAmmoBox);
-        }
-        return openStatue + 2 * ammoLevel;
-    }
-
-    private static int getOpenStatue(ItemStack stack, IAmmoBox iAmmoBox) {
-        boolean idIsEmpty = iAmmoBox.getAmmoId(stack).equals(DefaultAssets.EMPTY_AMMO_ID);
-        boolean countIsZero = iAmmoBox.getAmmoCount(stack) <= 0;
-        if (idIsEmpty || countIsZero) {
-            return OPEN;
-        }
-        return CLOSE;
-    }
-
-    private static int getLevelStatue(ItemStack stack, IAmmoBox iAmmoBox) {
-        return iAmmoBox.getAmmoLevel(stack);
-    }
-
-    private static int getTagColor(ItemStack stack) {
-        CompoundTag compoundtag = stack.getTagElement(DISPLAY_TAG);
-        return compoundtag != null && compoundtag.contains(COLOR_TAG, Tag.TAG_ANY_NUMERIC) ? compoundtag.getInt(COLOR_TAG) : 0x727d6b;
+    public AmmoBoxItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override
@@ -197,8 +141,8 @@ public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItem
 
     @Override
     public int getBarWidth(ItemStack stack) {
-        if (stack.hasTag() && stack.getTag().contains("PaperBoxCapacity")) {
-            int capacity = stack.getTag().getInt("PaperBoxCapacity");
+        if (ItemNbtUtils.getTag(stack).contains("PaperBoxCapacity")) {
+            int capacity = ItemNbtUtils.getTag(stack).getIntOr("PaperBoxCapacity", 0);
             return capacity <= 0 ? 0 : Math.min(13, Math.max(0, (int) Math.round(13d * this.getAmmoCount(stack) / capacity)));
         }
         ResourceLocation ammoId = this.getAmmoId(stack);
@@ -214,18 +158,18 @@ public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItem
     @Override
     public Component getName(ItemStack stack) {
         if (isAllTypeCreative(stack)) {
-            return Component.translatable("item.tacz.ammo_box.all_type_creative").withStyle(ChatFormatting.DARK_PURPLE);
+            return Component.translatable("item.tacz.ammo_box.all_type_creative").withStyle(style -> style.withColor(0xAA00AA));
         }
         if (isCreative(stack)) {
-            return Component.translatable("item.tacz.ammo_box.creative").withStyle(ChatFormatting.DARK_PURPLE);
+            return Component.translatable("item.tacz.ammo_box.creative").withStyle(style -> style.withColor(0xAA00AA));
         }
         int ammoLevel = getAmmoLevel(stack);
         switch (ammoLevel) {
             case GOLD_LEVEL -> {
-                return Component.translatable("item.tacz.ammo_box.gold").withStyle(ChatFormatting.YELLOW);
+                return Component.translatable("item.tacz.ammo_box.gold").withStyle(style -> style.withColor(0xFFFF55));
             }
             case DIAMOND_LEVEL -> {
-                return Component.translatable("item.tacz.ammo_box.diamond").withStyle(ChatFormatting.AQUA);
+                return Component.translatable("item.tacz.ammo_box.diamond").withStyle(style -> style.withColor(0x55FFFF));
             }
             default -> {
                 return Component.translatable("item.tacz.ammo_box.iron");
@@ -247,7 +191,7 @@ public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItem
     }
 
     public static void fillItemCategory(CreativeModeTab.Output output) {
-        ItemStack ammoBox = ModItems.AMMO_BOX.get().getDefaultInstance();
+        ItemStack ammoBox = new net.minecraft.world.item.ItemStack(ModItems.AMMO_BOX.get());
         if (ammoBox.getItem() instanceof IAmmoBox iAmmoBox) {
             // 添加普通版本的弹药盒
             output.accept(iAmmoBox.setAmmoLevel(ammoBox.copy(), IRON_LEVEL));
@@ -277,18 +221,32 @@ public class AmmoBoxItem extends Item implements DyeableLeatherItem, AmmoBoxItem
         return Optional.of(new AmmoBoxTooltip(stack, ammoStack, ammoCount));
     }
 
+    /**
+     * 弹药盒<b>不使用</b>自定义渲染器 —— 它走原版模型渲染。
+     *
+     * <p>外观变体由 {@code assets/tacz/items/ammo_box.json} 里的
+     * {@code minecraft:select} + {@code tacz:ammo_statue} 属性
+     * （见 {@code AmmoBoxStatueProperty}）在 9 个
+     * {@code models/item/ammo_box/*.json} 之间切换，染色由模型里的
+     * {@code minecraft:dye} tint 完成。这与上游 1.21.1 的做法一致 ——
+     * 上游同样没有弹药盒渲染器，只有 {@code ItemProperties.register} + overrides。
+     *
+     * <p>此前这里返回过 {@code AmmoBoxItemRenderer}，它把 128×128 的
+     * <b>3D 模型 UV 展开图</b>当平面图标贴在 16×16 四边形上，
+     * 导致物品栏与模型贴图全是错乱色块。该类已随本次修改删除。
+     */
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level pLevel, List<Component> components, TooltipFlag isAdvanced) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> adder, TooltipFlag isAdvanced) {
         if (isAllTypeCreative(stack)) {
-            components.add(Component.translatable("tooltip.tacz.ammo_box.usage.all_type_creative").withStyle(ChatFormatting.GOLD));
+            adder.accept(Component.translatable("tooltip.tacz.ammo_box.usage.all_type_creative").withStyle(style -> style.withColor(0xFFAA00)));
             return;
         }
         if (isCreative(stack)) {
-            components.add(Component.translatable("tooltip.tacz.ammo_box.usage.creative.1").withStyle(ChatFormatting.YELLOW));
-            components.add(Component.translatable("tooltip.tacz.ammo_box.usage.creative.2").withStyle(ChatFormatting.YELLOW));
+            adder.accept(Component.translatable("tooltip.tacz.ammo_box.usage.creative.1").withStyle(style -> style.withColor(0xFFFF55)));
+            adder.accept(Component.translatable("tooltip.tacz.ammo_box.usage.creative.2").withStyle(style -> style.withColor(0xFFFF55)));
             return;
         }
-        components.add(Component.translatable("tooltip.tacz.ammo_box.usage.deposit").withStyle(ChatFormatting.GRAY));
-        components.add(Component.translatable("tooltip.tacz.ammo_box.usage.remove").withStyle(ChatFormatting.GRAY));
+        adder.accept(Component.translatable("tooltip.tacz.ammo_box.usage.deposit").withStyle(style -> style.withColor(0xAAAAAA)));
+        adder.accept(Component.translatable("tooltip.tacz.ammo_box.usage.remove").withStyle(style -> style.withColor(0xAAAAAA)));
     }
 }

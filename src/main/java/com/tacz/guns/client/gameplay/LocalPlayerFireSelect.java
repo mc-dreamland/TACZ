@@ -2,6 +2,7 @@ package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.item.ItemBehavior;
 
+import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
 import com.tacz.guns.api.event.common.GunFireSelectEvent;
@@ -9,13 +10,11 @@ import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
 import com.tacz.guns.client.sound.SoundPlayManager;
-import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.network.message.ClientMessagePlayerFireSelect;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.LogicalSide;
 
 public class LocalPlayerFireSelect {
     private final LocalPlayerDataHolder data;
@@ -36,7 +35,9 @@ public class LocalPlayerFireSelect {
         if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return;
         }
-        if (MinecraftForge.EVENT_BUS.post(new GunFireSelectEvent(player, player.getMainHandItem(), LogicalSide.CLIENT))) {
+        GunFireSelectEvent fireSelectEvent = new GunFireSelectEvent(player, player.getMainHandItem(), LogicalSide.CLIENT);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(fireSelectEvent);
+        if (fireSelectEvent.isCanceled()) {
             return;
         }
 
@@ -44,7 +45,7 @@ public class LocalPlayerFireSelect {
             // 播放音效
             SoundPlayManager.playFireSelectSound(player, gunIndex);
             // 发送切换开火模式的数据包，通知服务器
-            NetworkHandler.CHANNEL.sendToServer(new ClientMessagePlayerFireSelect());
+            ClientPacketDistributor.sendToServer(ClientMessagePlayerFireSelect.INSTANCE);
             // 客户端切换开火模式
             if (iGun instanceof AbstractGunItem logicGun) {
                 logicGun.fireSelect(null, mainHandItem);

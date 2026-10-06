@@ -46,7 +46,7 @@ public final class AllowAttachmentTagMatcher {
      * 目前内部用于独头弹特殊标签的判断，
      * 也能方便到外部（附属，整合包等）制作它们的特殊标签。
      *
-     * @param tag tacz 配件标签
+     * @param tag          tacz 配件标签
      * @param attachmentId 配件 id
      * @return 配件 id 是否有这个配件标签
      * @since 1.1.7
@@ -75,7 +75,7 @@ public final class AllowAttachmentTagMatcher {
         for (String tag : tags) {
             // 如果是 tag，则去 attachment tag 寻找我们的东西
             if (tag.startsWith(TAG_PREFIX)) {
-                ResourceLocation tagId = new ResourceLocation(tag.substring(TAG_PREFIX.length()));
+                ResourceLocation tagId = ResourceLocation.parse(tag.substring(TAG_PREFIX.length()));
                 Set<String> attachmentTags = CommonAssetsManager.get().getAttachmentTags(tagId);
                 // 如果检索的这个配件 tag 不为空，开始递归查找
                 if (attachmentTags != null && !attachmentTags.isEmpty()) {
@@ -84,7 +84,7 @@ public final class AllowAttachmentTagMatcher {
             }
             // 如果是配件 id，直接对比
             else {
-                ResourceLocation matchAttachmentId = new ResourceLocation(tag);
+                ResourceLocation matchAttachmentId = ResourceLocation.parse(tag);
                 if (attachmentId.equals(matchAttachmentId)) {
                     searchSignal.set(true);
                     return;

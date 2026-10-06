@@ -26,18 +26,18 @@ import com.tacz.guns.client.resource.serialize.ItemStackSerializer;
 import com.tacz.guns.client.resource.serialize.SoundEffectKeyframesSerializer;
 import com.tacz.guns.client.resource.serialize.Vector3fSerializer;
 import com.tacz.guns.resource.CommonAssetsManager;
+import com.tacz.guns.resource.manager.JsonDataManager;
 import com.tacz.guns.resource.manager.LazyJsonDataManager;
 import com.tacz.guns.resource.manager.ScriptManager;
+import com.tacz.guns.resource.serialize.IdentifierSerializer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.block.model.ItemTransform;
-import net.minecraft.client.renderer.block.model.ItemTransforms;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.packs.resources.PreparableReloadListener.PreparationBarrier;
+import net.minecraft.server.packs.resources.PreparableReloadListener.SharedState;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.server.ServerLifecycleHooks;
+import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.luaj.vm2.LuaTable;
@@ -46,73 +46,96 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 客户端资源管理器<br/>
  * 所有枪包资源缓存在此
  */
-@OnlyIn(Dist.CLIENT)
 public enum ClientAssetsManager {
     INSTANCE;
-    public static final Gson GSON = new GsonBuilder().registerTypeAdapter(ResourceLocation.class, new ResourceLocation.Serializer())
+    public static final Gson GSON = new GsonBuilder()
+            .setStrictness(com.google.gson.Strictness.LENIENT)
+            .registerTypeAdapter(ResourceLocation.class, new IdentifierSerializer())
             .registerTypeAdapter(CubesItem.class, new CubesItem.Deserializer())
             .registerTypeAdapter(Vector3f.class, new Vector3fSerializer())
             .registerTypeAdapter(CommonTransformObject.class, new CommonTransformObject.Serializer())
             .registerTypeAdapter(ItemStack.class, new ItemStackSerializer())
             .registerTypeAdapter(AnimationKeyframes.class, new AnimationKeyframesSerializer())
             .registerTypeAdapter(SoundEffectKeyframes.class, new SoundEffectKeyframesSerializer())
-            .registerTypeAdapter(ItemTransforms.class, new ItemTransforms.Deserializer())
-            .registerTypeAdapter(ItemTransform.class, new ItemTransform.Deserializer())
             .create();
 
-    // 枪械展示数据
     private DisplayManager<GunDisplay> gunDisplay;
-    // 弹药展示数据
     private DisplayManager<AmmoDisplay> ammoDisplay;
-    // 配件展示数据
     private DisplayManager<AttachmentDisplay> attachmentDisplay;
-    // 方块展示数据
     private DisplayManager<BlockDisplay> blockDisplay;
-    // 原始基岩版模型
     private LazyJsonDataManager<BedrockModelPOJO> bedrockModel;
-    // 基岩版模型动画
     private LazyJsonDataManager<BedrockAnimationFile> bedrockAnimation;
-    // gltf 动画
     private GltfManager gltfAnimation;
-    // 客户端脚本
     private final List<LuaLibrary> libList = List.of(new LuaAnimationConstant(), new LuaGunAnimationConstant());
     private ScriptManager scriptManager;
-    // 音效
-    // 枪包元数据
     private PackInfoManager packInfo;
 
     private List<PreparableReloadListener> listeners;
+    private boolean registered;
 
-    public void reloadAndRegister(Consumer<PreparableReloadListener> register) {
+    public void reloadAndRegister(AddClientReloadListenersEvent event) {
         if (listeners == null) {
             listeners = new ArrayList<>();
-            gunDisplay = register(new DisplayManager<>(GunDisplay.class, GSON, "display/guns", "GunDisplayLoader"));
-            ammoDisplay = register(new DisplayManager<>(AmmoDisplay.class, GSON, "display/ammo", "AmmoDisplayLoader"));
-            attachmentDisplay = register(new DisplayManager<>(AttachmentDisplay.class, GSON, "display/attachments", "AttachmentDisplayLoader"));
-            blockDisplay = register(new DisplayManager<>(BlockDisplay.class, GSON, "display/blocks", "BlockDisplayLoader"));
-
-            bedrockModel = register(new LazyJsonDataManager<>(BedrockModelPOJO.class, GSON, "geo_models", "BedrockModelLoader",
+            gunDisplay = remember(new DisplayManager<>(GunDisplay.class, GSON, "display/guns", "GunDisplayLoader"));
+            ammoDisplay = remember(new DisplayManager<>(AmmoDisplay.class, GSON, "display/ammo", "AmmoDisplayLoader"));
+            attachmentDisplay = remember(new DisplayManager<>(AttachmentDisplay.class, GSON, "display/attachments", "AttachmentDisplayLoader"));
+            blockDisplay = remember(new DisplayManager<>(BlockDisplay.class, GSON, "display/blocks", "BlockDisplayLoader"));
+            bedrockModel = remember(new LazyJsonDataManager<>(BedrockModelPOJO.class, GSON, "geo_models", "BedrockModelLoader",
                     id -> GunMod.MOD_ID.equals(id.getNamespace())));
-            bedrockAnimation = register(new LazyJsonDataManager<>(BedrockAnimationFile.class, GSON, new FileToIdConverter("animations", ".animation.json"),
+            bedrockAnimation = remember(new LazyJsonDataManager<>(BedrockAnimationFile.class, GSON,
+                    new FileToIdConverter("animations", ".animation.json"),
                     "BedrockAnimationLoader", id -> GunMod.MOD_ID.equals(id.getNamespace())));
-            gltfAnimation = register(new GltfManager());
-            scriptManager = register(new ScriptManager(new FileToIdConverter("scripts", ".lua"), libList));
-            packInfo = register(new PackInfoManager());
-            register((barrier, resourceManager, preparationProfiler, reloadProfiler, backgroundExecutor, gameExecutor) ->
-                    barrier.wait(Void.TYPE).thenRunAsync(ClientIndexManager::reload, gameExecutor));
+            gltfAnimation = remember(new GltfManager());
+            scriptManager = remember(new ScriptManager(new FileToIdConverter("scripts", ".lua"), libList));
+            packInfo = remember(new PackInfoManager());
+            remember(new ClientIndexReloadListener());
         }
-        listeners.forEach(register);
+        if (!registered) {
+            for (PreparableReloadListener listener : listeners) {
+                event.addListener(keyOf(listener), listener);
+            }
+            registered = true;
+        }
     }
 
-    private <T extends PreparableReloadListener> T register(T listener) {
+    private ResourceLocation keyOf(PreparableReloadListener listener) {
+        if (listener instanceof JsonDataManager<?> json) {
+            return json.ID;
+        }
+        if (listener instanceof LazyJsonDataManager<?> lazy) {
+            return lazy.ID;
+        }
+        if (listener instanceof ScriptManager) {
+            return ScriptManager.ID;
+        }
+        if (listener instanceof PackInfoManager) {
+            return PackInfoManager.ID;
+        }
+        if (listener instanceof ClientIndexReloadListener) {
+            return ClientIndexReloadListener.ID;
+        }
+        return ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, listener.getClass().getSimpleName().toLowerCase());
+    }
+
+    private <T extends PreparableReloadListener> T remember(T listener) {
         listeners.add(listener);
         return listener;
+    }
+
+    private static final class ClientIndexReloadListener implements PreparableReloadListener {
+        static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "client_index_manager_reload");
+
+        @Override
+        public CompletableFuture<Void> reload(SharedState sharedState, Executor backgroundExecutor, PreparationBarrier barrier, Executor gameExecutor) {
+            return barrier.wait(null).thenRunAsync(ClientIndexManager::reload, gameExecutor);
+        }
     }
 
     @Nullable
@@ -176,17 +199,15 @@ public enum ClientAssetsManager {
         return packInfo.getData(namespace.getNamespace());
     }
 
-    @OnlyIn(Dist.CLIENT)
     public static void reloadAllPack() {
-        try {
-            Minecraft.getInstance().reloadResourcePacks().get();
-            if (ServerLifecycleHooks.getCurrentServer() != null) {
-                // 直接刷新data
-                CommonAssetsManager.reloadAllPack();
-            }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        // Reload applies resources on the client executor; waiting here would deadlock a
+        // reload initiated by the client command handler.
+        Minecraft.getInstance().reloadResourcePacks().thenRun(() -> {
+            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+            if (server != null) server.execute(CommonAssetsManager::reloadAllPack);
+        }).exceptionally(error -> {
+            GunMod.LOGGER.error("Failed to reload TACZ client resources", error);
+            return null;
+        });
     }
-
 }

@@ -21,16 +21,15 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 
 import javax.annotation.Nullable;
+import java.util.Set;
 
 import static com.tacz.guns.block.TargetBlock.OUTPUT_POWER;
 import static com.tacz.guns.block.TargetBlock.STAND;
 
 public class TargetBlockEntity extends BlockEntity implements Nameable {
-    public static final BlockEntityType<TargetBlockEntity> TYPE = BlockEntityType.Builder.of(TargetBlockEntity::new, ModBlocks.TARGET.get()).build(null);
     /**
      * 标靶复位时间，暂定为 5 秒
      */
@@ -43,7 +42,7 @@ public class TargetBlockEntity extends BlockEntity implements Nameable {
     private @Nullable Component name;
 
     public TargetBlockEntity(BlockPos pos, BlockState blockState) {
-        super(TYPE, pos, blockState);
+        super(ModBlocks.TARGET_BE.get(), pos, blockState);
     }
 
     public static void clientTick(Level level, BlockPos pos, BlockState state, TargetBlockEntity pBlockEntity) {
@@ -62,32 +61,73 @@ public class TargetBlockEntity extends BlockEntity implements Nameable {
 
     public void setOwner(@Nullable GameProfile owner) {
         this.owner = owner;
-        SkullBlockEntity.updateGameprofile(this.owner, gameProfile -> {
-            this.owner = gameProfile;
-            this.refresh();
-        });
+        this.refresh();
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        if (tag.contains(OWNER_TAG, Tag.TAG_COMPOUND)) {
-            this.owner = NbtUtils.readGameProfile(tag.getCompound(OWNER_TAG));
+    public void loadAdditional(net.minecraft.world.level.storage.ValueInput input) {
+        super.loadAdditional(input);
+        this.owner = input.read(OWNER_TAG, CompoundTag.CODEC).map(TargetBlockEntity::readOwner).orElse(null);
+        // Also read saves produced by the transitional UUID/name representation.
+        if (owner == null && !input.getStringOr("owner_name", "").isEmpty()) {
+            CompoundTag legacy = new CompoundTag();
+            legacy.putString("Name", input.getStringOr("owner_name", ""));
+            try {
+                legacy.put("Id", net.minecraft.core.UUIDUtil.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE,
+                        java.util.UUID.fromString(input.getStringOr("owner_uuid", ""))).getOrThrow());
+            } catch (IllegalArgumentException ignored) {
+                // Older profiles could omit a UUID; the name still gives a stable offline identity.
+            }
+            owner = readOwner(legacy);
         }
-        if (tag.contains(CUSTOM_NAME_TAG, Tag.TAG_STRING)) {
-            this.name = Component.Serializer.fromJson(tag.getString(CUSTOM_NAME_TAG));
+        this.name = input.read("custom_name", net.minecraft.network.chat.ComponentSerialization.CODEC).orElse(null);
+        String legacyName = input.getStringOr(CUSTOM_NAME_TAG, "");
+        if (name == null && !legacyName.isEmpty()) {
+            this.name = net.minecraft.network.chat.ComponentSerialization.CODEC.parse(
+                    com.mojang.serialization.JsonOps.INSTANCE, com.google.gson.JsonParser.parseString(legacyName)).getOrThrow();
         }
     }
 
+    private static GameProfile readOwner(CompoundTag data) {
+        String name = data.getStringOr("Name", "");
+        java.util.UUID id = data.contains("Id") ? net.minecraft.core.UUIDUtil.CODEC.parse(
+                net.minecraft.nbt.NbtOps.INSTANCE, data.get("Id")).result().orElse(null) : null;
+        if (id == null) id = net.minecraft.core.UUIDUtil.createOfflinePlayerUUID(name);
+        var properties = com.google.common.collect.ImmutableMultimap.<String, com.mojang.authlib.properties.Property>builder();
+        CompoundTag storedProperties = data.getCompoundOrEmpty("Properties");
+        for (String key : storedProperties.keySet()) {
+            for (net.minecraft.nbt.Tag value : storedProperties.getListOrEmpty(key)) {
+                if (value instanceof CompoundTag property) {
+                    properties.put(key, new com.mojang.authlib.properties.Property(key,
+                            property.getStringOr("Value", ""), property.getString("Signature").orElse(null)));
+                }
+            }
+        }
+        return new GameProfile(id, name, new com.mojang.authlib.properties.PropertyMap(properties.build()));
+    }
+
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    protected void saveAdditional(net.minecraft.world.level.storage.ValueOutput output) {
+        super.saveAdditional(output);
         if (owner != null) {
-            tag.put(OWNER_TAG, NbtUtils.writeGameProfile(new CompoundTag(), owner));
+            CompoundTag data = new CompoundTag();
+            data.putString("Name", owner.name());
+            data.put("Id", net.minecraft.core.UUIDUtil.CODEC.encodeStart(net.minecraft.nbt.NbtOps.INSTANCE, owner.id()).getOrThrow());
+            CompoundTag properties = new CompoundTag();
+            owner.properties().asMap().forEach((key, values) -> {
+                net.minecraft.nbt.ListTag entries = new net.minecraft.nbt.ListTag();
+                for (var property : values) {
+                    CompoundTag entry = new CompoundTag();
+                    entry.putString("Value", property.value());
+                    if (property.signature() != null) entry.putString("Signature", property.signature());
+                    entries.add(entry);
+                }
+                properties.put(key, entries);
+            });
+            data.put("Properties", properties);
+            output.store(OWNER_TAG, CompoundTag.CODEC, data);
         }
-        if (this.name != null) {
-            tag.putString(CUSTOM_NAME_TAG, Component.Serializer.toJson(this.name));
-        }
+        output.storeNullable("custom_name", net.minecraft.network.chat.ComponentSerialization.CODEC, name);
     }
 
     @Override
@@ -111,8 +151,8 @@ public class TargetBlockEntity extends BlockEntity implements Nameable {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
-        return saveWithoutMetadata();
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider provider) {
+        return saveWithoutMetadata(provider);
     }
 
     public void refresh() {
@@ -121,11 +161,6 @@ public class TargetBlockEntity extends BlockEntity implements Nameable {
             BlockState state = level.getBlockState(worldPosition);
             level.sendBlockUpdated(worldPosition, state, state, Block.UPDATE_ALL);
         }
-    }
-
-    @Override
-    public AABB getRenderBoundingBox() {
-        return new AABB(worldPosition.offset(-2, 0, -2), worldPosition.offset(2, 2, 2));
     }
 
     public void hit(Level level, BlockState state, BlockHitResult hit, boolean isUpperBlock) {
@@ -143,7 +178,7 @@ public class TargetBlockEntity extends BlockEntity implements Nameable {
             // 当声音大于 1 时，距离为 = 16 * volume
             float volume = OtherConfig.TARGET_SOUND_DISTANCE.get() / 16.0f;
             volume = Math.max(volume, 0);
-            level.playSound(null, blockPos, ModSounds.TARGET_HIT.get(), SoundSource.BLOCKS, volume, this.level.random.nextFloat() * 0.1F + 0.9F);
+            level.playSound(null, blockPos, ModSounds.TARGET_HIT.get(), SoundSource.BLOCKS, volume, this.level.getRandom().nextFloat() * 0.1F + 0.9F);
         }
     }
 }

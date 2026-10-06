@@ -2,6 +2,7 @@ package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ReloadState;
+import com.tacz.guns.util.TaczThreads;
 import net.minecraft.client.player.LocalPlayer;
 
 import javax.annotation.Nullable;
@@ -11,8 +12,19 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.function.Predicate;
 
 public class LocalPlayerDataHolder {
-    public static final ScheduledExecutorService SCHEDULED_EXECUTOR_SERVICE = Executors.newScheduledThreadPool(2);
-    public long clientBaseTimestamp = -1L;
+    /**
+     * 枪械操作的定时任务池（拔枪音效延时、连发节拍）。
+     *
+     * <p><b>必须是 daemon 池</b>：这里面跑的是 {@code scheduleAtFixedRate} 的连发任务，
+     * 而且全仓没有任何 {@code shutdown()} 调用。原先用的是无参重载，
+     * 也就是 {@code Executors.defaultThreadFactory()} —— 它<b>无条件</b>
+     * {@code setDaemon(false)}，于是这两个线程会一直卡住 JVM 退出，
+     * 15 秒后 {@code ClientShutdownWatchdog} 发一份崩溃报告。
+     * 详见 {@link com.tacz.guns.util.TaczThreads}。
+     */
+    public static final ScheduledExecutorService SCHEDULED_EXECUTOR_SERVICE =
+            Executors.newScheduledThreadPool(2, TaczThreads.daemonFactory("tacz-gun-scheduler"));
+    public static long clientBaseTimestamp = -1L;
     /**
      * 上一个 tick 的瞄准进度，用于插值，范围 0 ~ 1
      */

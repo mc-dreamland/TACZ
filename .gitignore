@@ -23,6 +23,7 @@ run
 test
 !paper/src/test/
 !shared/src/test/
+!src/test/
 logs
 .luarc.json
 

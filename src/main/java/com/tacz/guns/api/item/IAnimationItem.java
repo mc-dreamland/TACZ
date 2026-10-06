@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 public interface IAnimationItem {
     /**
      * 返回物品是否需要重新初始化状态机或属性
+     *
      * @param stack1 物品2
      * @param stack2 物品2
      * @return 是否需要重新初始化
@@ -15,7 +16,7 @@ public interface IAnimationItem {
         if (pStack == pOther) {
             return true;
         } else {
-            return ItemStack.isSameItemSameTags(pStack, pOther);
+            return ItemStack.isSameItemSameComponents(pStack, pOther);
         }
     }
 }

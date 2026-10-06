@@ -14,6 +14,14 @@ public class GunResult {
     @SerializedName("attachments")
     private EnumMap<AttachmentType, ResourceLocation> attachments = Maps.newEnumMap(AttachmentType.class);
 
+    public GunResult() {
+    }
+
+    public GunResult(int ammoCount, EnumMap<AttachmentType, ResourceLocation> attachments) {
+        this.ammoCount = Math.max(0, ammoCount);
+        this.attachments = attachments == null ? Maps.newEnumMap(AttachmentType.class) : attachments;
+    }
+
     public int getAmmoCount() {
         return ammoCount;
     }

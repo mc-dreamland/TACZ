@@ -3,6 +3,7 @@ package com.tacz.guns.entity.sync.core;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -35,7 +36,7 @@ public class Serializers {
 
         @Override
         public Boolean read(Tag tag) {
-            return ((ByteTag) tag).getAsByte() != 0;
+            return ((ByteTag) tag).byteValue() != 0;
         }
     };
 
@@ -57,7 +58,7 @@ public class Serializers {
 
         @Override
         public Byte read(Tag tag) {
-            return ((ByteTag) tag).getAsByte();
+            return ((ByteTag) tag).byteValue();
         }
     };
 
@@ -79,7 +80,7 @@ public class Serializers {
 
         @Override
         public Short read(Tag tag) {
-            return ((ShortTag) tag).getAsShort();
+            return ((ShortTag) tag).shortValue();
         }
     };
 
@@ -101,7 +102,7 @@ public class Serializers {
 
         @Override
         public Integer read(Tag tag) {
-            return ((IntTag) tag).getAsInt();
+            return ((IntTag) tag).intValue();
         }
     };
 
@@ -123,7 +124,7 @@ public class Serializers {
 
         @Override
         public Long read(Tag tag) {
-            return ((LongTag) tag).getAsLong();
+            return ((LongTag) tag).longValue();
         }
     };
 
@@ -145,7 +146,7 @@ public class Serializers {
 
         @Override
         public Float read(Tag tag) {
-            return ((FloatTag) tag).getAsFloat();
+            return ((FloatTag) tag).floatValue();
         }
     };
 
@@ -167,7 +168,7 @@ public class Serializers {
 
         @Override
         public Double read(Tag tag) {
-            return ((DoubleTag) tag).getAsDouble();
+            return ((DoubleTag) tag).doubleValue();
         }
     };
 
@@ -189,7 +190,7 @@ public class Serializers {
 
         @Override
         public Character read(Tag tag) {
-            return (char) ((IntTag) tag).getAsInt();
+            return (char) ((IntTag) tag).intValue();
         }
     };
 
@@ -211,7 +212,7 @@ public class Serializers {
 
         @Override
         public String read(Tag tag) {
-            return tag.getAsString();
+            return tag.asString().orElse("");
         }
     };
 
@@ -255,7 +256,7 @@ public class Serializers {
 
         @Override
         public BlockPos read(Tag tag) {
-            return BlockPos.of(((LongTag) tag).getAsLong());
+            return BlockPos.of(((LongTag) tag).longValue());
         }
     };
 
@@ -281,29 +282,32 @@ public class Serializers {
         @Override
         public UUID read(Tag tag) {
             CompoundTag compound = (CompoundTag) tag;
-            return new UUID(compound.getLong("Most"), compound.getLong("Least"));
+            return new UUID(compound.getLongOr("Most", 0), compound.getLongOr("Least", 0));
         }
     };
 
     public static final IDataSerializer<ItemStack> ITEM_STACK = new IDataSerializer<>() {
+        // Entity data can contain an empty stack when an item is cleared.
         @Override
         public void write(FriendlyByteBuf buf, ItemStack value) {
-            buf.writeItem(value);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode((RegistryFriendlyByteBuf) buf, value);
         }
 
         @Override
         public ItemStack read(FriendlyByteBuf buf) {
-            return buf.readItem();
+            return ItemStack.OPTIONAL_STREAM_CODEC.decode((RegistryFriendlyByteBuf) buf);
         }
 
+        // 同理用 OPTIONAL_CODEC：ItemStack.CODEC 的 count 取值范围是 [1,99]，
+        // 对 ItemStack.EMPTY 会 getOrThrow 抛异常，而这里保存的可能就是空栈。
         @Override
         public Tag write(ItemStack value) {
-            return value.save(new CompoundTag());
+            return com.tacz.guns.util.ItemNbtUtils.saveItemStack(value);
         }
 
         @Override
         public ItemStack read(Tag tag) {
-            return ItemStack.of((CompoundTag) tag);
+            return com.tacz.guns.util.ItemNbtUtils.loadItemStack((CompoundTag) tag);
         }
     };
 
@@ -325,7 +329,7 @@ public class Serializers {
 
         @Override
         public ResourceLocation read(Tag tag) {
-            return ResourceLocation.tryParse(tag.getAsString());
+            return ResourceLocation.tryParse(tag.asString().orElse(""));
         }
     };
 }
