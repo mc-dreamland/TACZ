@@ -34,6 +34,17 @@ class PaperInventoryServiceTest {
             f.service.handle(f.player, request); assertEquals(6, f.slots[1].getAmount()); assertEquals(1, f.granted("gun", "tacz:test")); assertFalse(f.errors.isEmpty());
         }
     }
+    @Test void aResultRemovedFromTheCatalogCannotConsumeCraftMaterials() {
+        try (Fixture f = new Fixture()) {
+            f.slots[1] = f.stack(Material.IRON_INGOT, 10, null); f.slots[2] = f.stack(Material.GOLD_INGOT, 3, null);
+            f.service.open(f.player, "workbench", -1); JsonObject request = f.request("craft"); request.addProperty("recipe", "tacz:gun/test");
+            when(f.pack.hasItem("gun", "tacz:test")).thenReturn(false);
+            f.service.handle(f.player, request);
+            assertEquals(10, f.slots[1].getAmount()); assertEquals(3, f.slots[2].getAmount()); assertTrue(f.given.isEmpty());
+            verify(f.inventory, never()).setStorageContents(any()); verify(f.items, never()).create(anyString(), anyString(), anyInt());
+            assertFalse(f.errors.isEmpty());
+        }
+    }
     @Test void refitConsumesNewReturnsOldAndRefundsReducedMagazineOverflow() {
         try (Fixture f = new Fixture()) {
             f.slots[0] = f.stack(Material.STICK, 1, f.gun()); f.slots[1] = f.stack(Material.FLINT, 2, json("{kind:'attachment',id:'tacz:small_mag'}"));
@@ -191,7 +202,7 @@ class PaperInventoryServiceTest {
             doAnswer(i -> { ItemStack stack = i.getArgument(1); JsonObject item = states.get(stack).deepCopy(); item.addProperty("count", stack.getAmount()); given.add(item); return null; }).when(items).give(eq(player), any());
             doAnswer(i -> { String type = i.getArgument(1); JsonObject data = i.getArgument(2); if (type.equals("menu")) { menu = data.deepCopy(); menus.add(menu); } if (type.equals("inventory_changed")) changed.incrementAndGet(); if (type.equals("error")) { errors.add(data.get("message").getAsString()); errorPackets.add(data.deepCopy()); } return null; }).when(peer).send(eq(player), anyString(), any());
             JsonObject recipe = json("{materials:[{item:{tag:'forge:ingots/iron'},count:4},{item:{tag:'forge:ingots/gold'},count:2}],result:{type:'gun',id:'tacz:test'}}");
-            when(pack.recipes()).thenReturn(Map.of("tacz:gun/test", recipe)); when(pack.customModelData(anyString(), anyString())).thenReturn(3_000_000);
+            when(pack.recipes()).thenReturn(Map.of("tacz:gun/test", recipe)); when(pack.hasItem("gun", "tacz:test")).thenReturn(true);
             when(pack.ammoIndexes()).thenReturn(Map.of("tacz:bullet", new JsonObject())); when(pack.gun(anyString())).thenReturn(json("{ammo:'tacz:bullet',ammo_amount:30,allow_attachment_types:['extended_mag']}"));
             when(pack.attachmentIndexes()).thenReturn(Map.of("tacz:small_mag", json("{type:'extended_mag'}"), "tacz:large_mag", json("{type:'extended_mag'}"))); when(pack.allowedAttachment(anyString(), anyString())).thenReturn(true);
             service = new PaperInventoryService(null, pack, items, peer, clock::get);

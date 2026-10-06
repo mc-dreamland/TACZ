@@ -44,7 +44,7 @@ public final class GunResolver {
     }
 
     public record ResolvedGun(ItemStack realStack, ItemStack renderStack, IGun data, String instance, boolean paper) { }
-    private record Metadata(Item material, int cmd, String wireData, JsonObject parsed) { }
+    private record Metadata(Item material, String wireData, JsonObject parsed) { }
     private record StateView(JsonObject data, int owner, String baseline) { }
 
     @Nullable
@@ -53,11 +53,10 @@ public final class GunResolver {
         CompoundTag tag = stack.getTag();
         String wireData = tag.getCompound("PublicBukkitValues").getString("tacz:bridge");
         if (wireData.isEmpty()) return null;
-        int cmd = tag.getInt("CustomModelData");
         Metadata cached = METADATA.get(stack);
-        if (cached != null && cached.material() == stack.getItem() && cached.cmd() == cmd && cached.wireData().equals(wireData)) return cached.parsed();
+        if (cached != null && cached.material() == stack.getItem() && cached.wireData().equals(wireData)) return cached.parsed();
         JsonObject parsed = PaperClientBridge.itemData(stack);
-        METADATA.put(stack, new Metadata(stack.getItem(), cmd, wireData, parsed));
+        METADATA.put(stack, new Metadata(stack.getItem(), wireData, parsed));
         return parsed;
     }
 

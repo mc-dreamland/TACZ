@@ -1,6 +1,6 @@
 # Gun catalogs live in guns/, ammos/, attachments/, recipes/ and attachment_tags/.
 # JSON files are scanned recursively; /tacz reload validates and synchronizes them.
-# CMD identifies the model/skin. Gameplay states are sent over tacz:paper.
+# The tacz:bridge PDC kind/id identifies items. Gameplay states use tacz:paper.
 ammo-box:
   capacity:
     0: 192

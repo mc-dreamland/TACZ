@@ -17,20 +17,27 @@ class DefaultGunPackTest {
             }
         } return bytes.toByteArray();
     }
-    @Test void bundledCatalogReferencesMappingsAndTagsAreComplete() throws Exception {
+    @Test void bundledCatalogIdentitiesReferencesAndTagsAreComplete() throws Exception {
         DefaultGunPack pack = new DefaultGunPack(null); pack.load(new ByteArrayInputStream(bundledData()));
         assertTrue(pack.gunIndexes().size() >= 50); assertTrue(pack.attachmentIndexes().size() >= 90);
-        for (String id : pack.gunIndexes().keySet()) assertNotNull(pack.gun(id), id);
-        for (String id : pack.attachmentIndexes().keySet()) assertNotNull(pack.attachment(id), id);
+        for (String id : pack.gunIndexes().keySet()) { assertNotNull(pack.gun(id), id); assertTrue(pack.hasItem("gun", id)); }
+        for (String id : pack.ammoIndexes().keySet()) assertTrue(pack.hasItem("ammo", id));
+        for (String id : pack.attachmentIndexes().keySet()) { assertNotNull(pack.attachment(id), id); assertTrue(pack.hasItem("attachment", id)); }
+        for (String id : DefaultGunPack.BOX_IDS) assertTrue(pack.hasItem("box", id));
         for (JsonObject recipe : pack.recipes().values()) if (recipe.has("result")) {
-            JsonObject result = recipe.getAsJsonObject("result"); assertTrue(pack.customModelData(result.get("type").getAsString(), result.get("id").getAsString()) >= 0, result.toString());
+            JsonObject result = recipe.getAsJsonObject("result"); assertTrue(pack.hasItem(result.get("type").getAsString(), result.get("id").getAsString()), result.toString());
         }
         assertTrue(pack.allowedAttachment("tacz:ak47", "tacz:ammo_mod_fmj"));
         assertTrue(pack.attachmentHasTag("tacz:ammo_mod_slug", "tacz:intrinsic/slug"));
         assertFalse(pack.allowedAttachment("tacz:ak47", "foreign:scope"));
-        Set<Integer> models = new HashSet<>(); for (JsonElement row : pack.mappings()) assertTrue(models.add(row.getAsJsonObject().get("cmd").getAsInt()));
-        assertEquals(pack.gunIndexes().size() + pack.ammoIndexes().size() + pack.attachmentIndexes().size() + 3, models.size());
-        assertEquals(3_000_002, pack.customModelData("gun", "tacz:ak47"), "Existing saved guns must retain their frozen model");
+        assertTrue(pack.hasItem("gun", "tacz:ak47"));
+        assertFalse(pack.hasItem("ammo", "tacz:ak47"));
+        assertFalse(pack.hasItem("gun", "tacz:ammo_box"));
+        assertFalse(pack.hasItem("gun", "missing:gun"));
+        assertFalse(pack.hasItem("box", "missing:box"));
+        assertFalse(pack.hasItem("unknown", "tacz:ak47"));
+        assertFalse(pack.hasItem(null, "tacz:ak47"));
+        assertFalse(pack.hasItem("gun", null));
         assertTrue(pack.networkData().getAsJsonObject("GUN_DATA").has("tacz:ak47_data"));
         assertFalse(pack.scripts().isEmpty());
         assertEquals(2, pack.scopeZoomCount("tacz:scope_standard_8x"));
@@ -38,7 +45,8 @@ class DefaultGunPackTest {
         assertTrue(pack.laserEditable("attachment", "tacz:laser_peq15")); assertTrue(pack.laserEditable("attachment", "tacz:laser_peq6"));
         assertFalse(pack.laserEditable("attachment", "tacz:grip_vertical_ranger"), "A built-in laser may explicitly forbid recoloring");
         assertFalse(pack.laserEditable("ammo", "tacz:9mm"));
-        JsonArray mapping = pack.mappings(); pack.load(new ByteArrayInputStream(bundledData())); assertEquals(mapping, pack.mappings(), "Reload must keep every carrier model stable");
+        JsonObject network = pack.networkData(); pack.load(new ByteArrayInputStream(bundledData()));
+        assertEquals(network, pack.networkData(), "Reload must keep catalog identities and data stable");
     }
     @Test void invalidPackDoesNotLoadSilently() throws Exception {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream(); try (ZipOutputStream ignored = new ZipOutputStream(bytes)) {}

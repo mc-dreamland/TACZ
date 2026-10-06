@@ -1,6 +1,7 @@
 package com.tacz.guns.paper.item;
 
 import com.google.gson.*;
+import com.tacz.guns.bridge.BridgeItemIdentity;
 import com.tacz.guns.paper.pack.DefaultGunPack;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
@@ -25,19 +26,17 @@ public final class PaperItemStore {
     }
     public static Material material(String kind) { return switch (kind) { case "gun" -> Material.STICK; case "ammo" -> Material.PAPER; case "attachment" -> Material.FLINT; case "box" -> Material.CHEST; default -> Material.AIR; }; }
 
-    /** Reject a carrier if its material, model, catalog identity or persisted state disagrees. */
-    @SuppressWarnings("deprecation")
+    /** Identity comes from the PDC kind/id, checked against the active catalog and vanilla carrier. */
     public JsonObject read(ItemStack stack) {
         if (stack == null || stack.getType().isAir() || !stack.hasItemMeta()) return null;
         ItemMeta meta = stack.getItemMeta(); String raw = meta.getPersistentDataContainer().get(BRIDGE_KEY, PersistentDataType.STRING);
-        if (raw == null || raw.length() > 16_384) return null;
         try {
-            JsonObject state = JsonParser.parseString(raw).getAsJsonObject(); String kind = string(state, "kind", ""), id = string(state, "id", "");
-            int model = pack.customModelData(kind, id);
-            if (model < 0 || stack.getType() != material(kind) || integer(state, "cmd", -1) != model || !meta.hasCustomModelData() || meta.getCustomModelData() != model) return null;
+            JsonObject state = BridgeItemIdentity.parse(raw, stack.getType().getKey().toString(), pack::hasItem);
+            if (state == null) return null;
+            String kind = string(state, "kind", ""), id = string(state, "id", "");
             validateLaserColors(state);
             if (stack.getAmount() < 1 || stack.getAmount() > stack.getMaxStackSize()) return null;
-            if (kind.equals("gun") || kind.equals("box")) { if (stack.getAmount() != 1) return null; UUID.fromString(state.get("instance").getAsString()); }
+            if ((kind.equals("gun") || kind.equals("box")) && stack.getAmount() != 1) return null;
             if (kind.equals("gun")) {
                 JsonObject data = pack.gun(id), attachments = state.getAsJsonObject("attachments"); if (attachments == null || attachments.size() > 6) return null;
                 for (Map.Entry<String, JsonElement> entry : attachments.entrySet()) {
@@ -83,11 +82,11 @@ public final class PaperItemStore {
                 throw new IllegalArgumentException("此配件不支持激光调色");
         }
     }
-    @SuppressWarnings("deprecation")
     public void write(ItemStack stack, JsonObject state) {
-        String kind = string(state, "kind", ""), id = string(state, "id", ""); int model = pack.customModelData(kind, id);
-        if (model < 0 || stack.getType() != material(kind)) throw new IllegalArgumentException("Invalid TACZ item identity");
-        state.addProperty("cmd", model); ItemMeta meta = stack.getItemMeta(); meta.setCustomModelData(model);
+        String kind = string(state, "kind", ""), id = string(state, "id", "");
+        if (!pack.hasItem(kind, id) || stack.getType() != material(kind)) throw new IllegalArgumentException("Invalid TACZ item identity");
+        state.remove("cmd");
+        ItemMeta meta = stack.getItemMeta();
         meta.setMaxStackSize(kind.equals("gun") || kind.equals("box") ? 1 : kind.equals("ammo") ? Math.min(64, Math.max(1, integer(pack.ammoIndexes().get(id), "stack_size", 64))) : 64);
         meta.getPersistentDataContainer().set(BRIDGE_KEY, PersistentDataType.STRING, state.toString());
         JsonObject index = switch (kind) { case "gun" -> pack.gunIndexes().get(id); case "ammo" -> pack.ammoIndexes().get(id); case "attachment" -> pack.attachmentIndexes().get(id); default -> null; };
@@ -106,7 +105,7 @@ public final class PaperItemStore {
         meta.lore(lore); stack.setItemMeta(meta);
     }
     public ItemStack create(String kind, String id, int count) {
-        if (count < 1 || count > 4096 || pack.customModelData(kind, id) < 0) throw new IllegalArgumentException("Unknown item or invalid count");
+        if (count < 1 || count > 4096 || !pack.hasItem(kind, id)) throw new IllegalArgumentException("Unknown item or invalid count");
         if ((kind.equals("gun") || kind.equals("box")) && count != 1) throw new IllegalArgumentException("Guns and ammunition boxes cannot stack");
         ItemStack stack = new ItemStack(material(kind)); JsonObject state = new JsonObject(); state.addProperty("kind", kind); state.addProperty("id", id);
         if (kind.equals("gun")) {

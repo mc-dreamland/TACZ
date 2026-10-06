@@ -63,7 +63,6 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
     private void rebuildPack() throws IOException {
         JsonObject bundle = new JsonObject();
         bundle.add("data", pack.networkData());
-        bundle.add("mappings", pack.mappings());
         packChunks = PackTransfer.encode(bundle);
         packHash = packChunks.getFirst().get("hash").getAsString();
     }

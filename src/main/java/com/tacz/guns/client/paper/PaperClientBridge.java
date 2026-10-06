@@ -1,10 +1,9 @@
 package com.tacz.guns.client.paper;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.tacz.guns.GunMod;
+import com.tacz.guns.bridge.BridgeItemIdentity;
 import com.tacz.guns.bridge.BridgeProtocol;
 import com.tacz.guns.bridge.PackTransfer;
 import com.tacz.guns.client.resource.ClientIndexManager;
@@ -31,14 +30,15 @@ import javax.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class PaperClientBridge {
     private static final ResourceLocation CHANNEL = new ResourceLocation(BridgeProtocol.CHANNEL);
     private static final PackTransfer.Receiver TRANSFER = new PackTransfer.Receiver();
     private static final Map<Integer, JsonObject> STATES = new HashMap<>();
-    private static final Map<String, JsonObject> MAPPINGS = new HashMap<>();
-    private static JsonArray mappingList = new JsonArray();
+    private static final Map<String, Set<String>> CATALOG = new HashMap<>();
     private static boolean active;
     private static boolean connected;
     private static String nonce = "";
@@ -48,7 +48,6 @@ public final class PaperClientBridge {
 
     private PaperClientBridge() {}
     public static boolean active() { return active; }
-    public static JsonArray mappings() { return mappingList; }
     @Nullable public static JsonObject state(int entityId) { return STATES.get(entityId); }
 
     @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -82,7 +81,7 @@ public final class PaperClientBridge {
                     sequence = 0;
                     TRANSFER.reset();
                     STATES.clear();
-                    MAPPINGS.clear();
+                    CATALOG.clear();
                     PaperClientGameplay.reset();
                     nonce = data.get("nonce").getAsString();
                     expectedHash = data.get("hash").getAsString();
@@ -130,37 +129,40 @@ public final class PaperClientBridge {
 
     private static void installPack(JsonObject bundle) {
         Map<DataType, Map<ResourceLocation, String>> cache = new EnumMap<>(DataType.class);
+        Map<String, Set<String>> catalog = new HashMap<>();
         for (Map.Entry<String, JsonElement> group : bundle.getAsJsonObject("data").entrySet()) {
             Map<ResourceLocation, String> entries = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : group.getValue().getAsJsonObject().entrySet())
                 entries.put(new ResourceLocation(entry.getKey()), entry.getValue().getAsString());
             cache.put(DataType.valueOf(group.getKey()), entries);
+            String kind = switch (group.getKey()) {
+                case "GUN_INDEX" -> "gun";
+                case "AMMO_INDEX" -> "ammo";
+                case "ATTACHMENT_INDEX" -> "attachment";
+                default -> null;
+            };
+            if (kind != null) {
+                Set<String> ids = new HashSet<>();
+                entries.keySet().forEach(id -> ids.add(id.toString()));
+                catalog.put(kind, Set.copyOf(ids));
+            }
         }
-        mappingList = bundle.getAsJsonArray("mappings").deepCopy();
-        for (JsonElement entry : mappingList) {
-            JsonObject mapping = entry.getAsJsonObject();
-            MAPPINGS.put(mapping.get("material").getAsString() + "/" + mapping.get("cmd").getAsInt(), mapping);
-        }
+        catalog.put("box", Set.copyOf(BridgeItemIdentity.BOX_IDS));
         CommonAssetsManager.clearInstance();
         CommonNetworkCache.INSTANCE.fromNetwork(cache);
         ClientIndexManager.reload();
+        CATALOG.clear();
+        CATALOG.putAll(catalog);
     }
 
     @Nullable public static JsonObject itemData(ItemStack stack) {
         if (!active || stack == null || stack.isEmpty()) return null;
         CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains("CustomModelData", Tag.TAG_INT)) return null;
-        JsonObject mapping = MAPPINGS.get(BuiltInRegistries.ITEM.getKey(stack.getItem()) + "/" + tag.getInt("CustomModelData"));
-        if (mapping == null) return null;
+        if (tag == null) return null;
         CompoundTag pdc = tag.getCompound("PublicBukkitValues");
         if (!pdc.contains(BridgeProtocol.ITEM_KEY, Tag.TAG_STRING)) return null;
-        String json = pdc.getString(BridgeProtocol.ITEM_KEY);
-        if (json.length() > 16_384) return null;
-        try {
-            JsonObject data = JsonParser.parseString(json).getAsJsonObject();
-            if (!mapping.get("kind").equals(data.get("kind")) || !mapping.get("id").equals(data.get("id"))) return null;
-            return data;
-        } catch (RuntimeException ignored) { return null; }
+        return BridgeItemIdentity.parse(pdc.getString(BridgeProtocol.ITEM_KEY), BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(),
+                (kind, id) -> CATALOG.getOrDefault(kind, Set.of()).contains(id));
     }
 
     public static long sendAction(String op, JsonObject arguments) {
@@ -196,8 +198,7 @@ public final class PaperClientBridge {
         expectedHash = "";
         ticks = 0;
         sequence = 0;
-        mappingList = new JsonArray();
-        MAPPINGS.clear();
+        CATALOG.clear();
         STATES.clear();
         TRANSFER.reset();
         PaperClientGameplay.reset();

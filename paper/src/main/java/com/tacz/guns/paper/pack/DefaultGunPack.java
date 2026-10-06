@@ -1,6 +1,7 @@
 package com.tacz.guns.paper.pack;
 
 import com.google.gson.*;
+import com.tacz.guns.bridge.BridgeItemIdentity;
 import com.tacz.guns.bridge.PackTransfer;
 import com.tacz.guns.paper.item.AttachmentModifiers;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -14,14 +15,13 @@ import java.util.zip.ZipInputStream;
 
 /** Server-owned catalogs. Directory edits are validated before replacing the active pack. */
 public final class DefaultGunPack {
-    public static final List<String> BOX_IDS = List.of("tacz:ammo_box", "tacz:gold_ammo_box", "tacz:diamond_ammo_box");
+    public static final List<String> BOX_IDS = BridgeItemIdentity.BOX_IDS;
     private final JavaPlugin plugin;
     private final Map<String, Map<String, JsonObject>> objects = new LinkedHashMap<>();
     private final Map<String, JsonArray> tags = new TreeMap<>();
     private final Map<String, String> scripts = new TreeMap<>();
     private final Map<String, JsonObject> attachmentDisplays = new TreeMap<>();
     private final Map<String, JsonObject> gunDisplays = new TreeMap<>();
-    private final Map<String, Integer> models = new HashMap<>();
     private JsonObject network = new JsonObject();
 
     public DefaultGunPack(JavaPlugin plugin) { this.plugin = plugin; }
@@ -42,27 +42,21 @@ public final class DefaultGunPack {
         candidate.readBundled(input);
         if (directory != null) DirectoryPackFiles.apply(directory, candidate.objects, candidate.tags);
         PackCatalogValidator.validate(candidate.objects, candidate.tags);
-        JsonObject frozen = readFrozenModels();
-        StableModelRegistry.Plan registry = directory == null ? null
-                : StableModelRegistry.prepare(directory.resolve("model-mappings.json"), frozen, candidate.catalog());
-        candidate.loadModels(registry == null ? frozen : registry.mapping());
         candidate.buildNetwork();
         // A valid server configuration must also fit the client's bounded pack transfer.
         JsonObject bundle = new JsonObject();
-        bundle.add("data", candidate.networkData()); bundle.add("mappings", candidate.mappings());
+        bundle.add("data", candidate.networkData());
         PackTransfer.encode(bundle);
-        if (registry != null) registry.commit();
         objects.clear(); objects.putAll(candidate.objects);
         tags.clear(); tags.putAll(candidate.tags);
         scripts.clear(); scripts.putAll(candidate.scripts);
         attachmentDisplays.clear(); attachmentDisplays.putAll(candidate.attachmentDisplays);
         gunDisplays.clear(); gunDisplays.putAll(candidate.gunDisplays);
-        models.clear(); models.putAll(candidate.models);
         network = candidate.network;
     }
 
     private void readBundled(InputStream input) throws IOException {
-        objects.clear(); tags.clear(); scripts.clear(); attachmentDisplays.clear(); gunDisplays.clear(); models.clear(); network = new JsonObject();
+        objects.clear(); tags.clear(); scripts.clear(); attachmentDisplays.clear(); gunDisplays.clear(); network = new JsonObject();
         String[][] categories = {{"data/guns/", "GUN_DATA"}, {"data/attachments/", "ATTACHMENT_DATA"},
                 {"index/ammo/", "AMMO_INDEX"}, {"index/guns/", "GUN_INDEX"},
                 {"index/attachments/", "ATTACHMENT_INDEX"}, {"recipes/", "RECIPES"},
@@ -150,39 +144,6 @@ public final class DefaultGunPack {
     }
 
     private static String id(String path, String prefix, String suffix) { return "tacz:" + path.substring(prefix.length(), path.length() - suffix.length()); }
-    private static JsonObject readFrozenModels() throws IOException {
-        // These IDs are persistent item identities. Adding a default item must allocate a new unused number,
-        // never renumber existing entries merely because a catalog filename sorts before another one.
-        try (InputStream input = DefaultGunPack.class.getResourceAsStream("/default-models.json")) {
-            if (input == null) throw new IOException("Bundled default-models.json is missing");
-            return JsonParser.parseReader(new InputStreamReader(input, StandardCharsets.UTF_8)).getAsJsonObject();
-        } catch (RuntimeException e) { throw new IOException("Invalid default-models.json", e); }
-    }
-
-    private Map<String, Collection<String>> catalog() {
-        return Map.of("gun", gunIndexes().keySet(), "ammo", ammoIndexes().keySet(),
-                "attachment", attachmentIndexes().keySet(), "box", BOX_IDS);
-    }
-
-    private void loadModels(JsonObject frozen) throws IOException {
-        try {
-            Map<String, Collection<String>> catalog = catalog();
-            Set<Integer> used = new HashSet<>();
-            for (Map.Entry<String, Collection<String>> category : catalog.entrySet()) {
-                String kind = category.getKey(); JsonObject mapping = frozen.getAsJsonObject(kind);
-                if (mapping == null) throw new IOException("Missing frozen carrier category: " + kind);
-                int base = switch (kind) { case "gun" -> 3_000_000; case "ammo" -> 3_100_000; case "attachment" -> 3_200_000; default -> 3_300_000; };
-                for (Map.Entry<String, JsonElement> model : mapping.entrySet()) {
-                    int value = model.getValue().getAsBigDecimal().intValueExact();
-                    if (!model.getKey().matches("[a-z0-9_.-]+:[a-z0-9/._-]+") || value < base || value >= base + 100_000 || !used.add(value)) throw new IOException("Invalid or duplicate carrier model: " + model.getKey());
-                }
-                for (String id : category.getValue()) {
-                    if (!mapping.has(id)) throw new IOException("Item has no carrier model: " + kind + "/" + id);
-                    models.put(kind + "/" + id, mapping.get(id).getAsInt());
-                }
-            }
-        } catch (RuntimeException e) { throw new IOException("Invalid carrier model mapping", e); }
-    }
     private Map<String, JsonObject> map(String type) { return Collections.unmodifiableMap(objects.getOrDefault(type, Map.of())); }
     public Map<String, JsonObject> guns() { return map("GUN_DATA"); }
     public Map<String, JsonObject> gunIndexes() { return map("GUN_INDEX"); }
@@ -206,16 +167,17 @@ public final class DefaultGunPack {
     }
     public JsonObject gun(String id) { JsonObject index = gunIndexes().get(id); return index == null ? null : guns().get(index.get("data").getAsString()); }
     public JsonObject attachment(String id) { JsonObject index = attachmentIndexes().get(id); return index == null ? null : attachments().get(index.get("data").getAsString()); }
-    public int customModelData(String kind, String id) { return models.getOrDefault(kind + "/" + id, -1); }
-    public JsonObject networkData() { return network.deepCopy(); }
-    public JsonArray mappings() {
-        JsonArray result = new JsonArray();
-        models.entrySet().stream().sorted(Map.Entry.comparingByValue()).forEach(entry -> {
-            int separator = entry.getKey().indexOf('/'); String kind = entry.getKey().substring(0, separator);
-            JsonObject row = new JsonObject(); row.addProperty("kind", kind); row.addProperty("id", entry.getKey().substring(separator + 1));
-            row.addProperty("cmd", entry.getValue()); row.addProperty("material", "minecraft:" + switch (kind) { case "gun" -> "stick"; case "ammo" -> "paper"; case "attachment" -> "flint"; default -> "chest"; }); result.add(row);
-        }); return result;
+    public boolean hasItem(String kind, String id) {
+        if (kind == null || id == null) return false;
+        return switch (kind) {
+            case "gun" -> gunIndexes().containsKey(id);
+            case "ammo" -> ammoIndexes().containsKey(id);
+            case "attachment" -> attachmentIndexes().containsKey(id);
+            case "box" -> BOX_IDS.contains(id);
+            default -> false;
+        };
     }
+    public JsonObject networkData() { return network.deepCopy(); }
     public boolean allowedAttachment(String gunId, String attachmentId) {
         int separator = gunId.indexOf(':');
         return matches(tags.get(gunId.substring(0, separator + 1) + "allow_attachments/" + gunId.substring(separator + 1)), attachmentId, new HashSet<>());

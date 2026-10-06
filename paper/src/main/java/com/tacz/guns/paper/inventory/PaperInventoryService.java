@@ -127,7 +127,7 @@ public final class PaperInventoryService {
             pack.recipes().forEach((id, recipe) -> {
                 if (!recipe.has("materials") || !recipe.has("result")) return;
                 JsonObject result = recipe.getAsJsonObject("result"); String kind = string(result, "type", ""), resultId = string(result, "id", "");
-                if (pack.customModelData(kind, resultId) < 0) return;
+                if (!pack.hasItem(kind, resultId)) return;
                 entries.add(MenuEntries.recipe(id, recipe));
             });
         } else if (menu.equals("refit")) {
@@ -158,7 +158,7 @@ public final class PaperInventoryService {
         String recipeId = string(request, "recipe", string(request, "entry", "")); JsonObject recipe = pack.recipes().get(recipeId); require(recipe != null && recipe.has("materials") && recipe.has("result"), "配方不存在");
         int count = integer(request, "count", 1); require(count >= 1 && count <= 64, "合成次数必须为 1–64");
         JsonObject output = recipe.getAsJsonObject("result"); String kind = string(output, "type", ""), id = string(output, "id", "");
-        long outputCount = (long) integer(output, "count", 1) * count; require(outputCount > 0 && outputCount <= 4096 && pack.customModelData(kind, id) >= 0, "配方结果无效");
+        long outputCount = (long) integer(output, "count", 1) * count; require(outputCount > 0 && outputCount <= 4096 && pack.hasItem(kind, id), "配方结果无效");
         ItemStack[] plan = player.getInventory().getStorageContents(); for (int i = 0; i < plan.length; i++) if (plan[i] != null) plan[i] = plan[i].clone();
         for (JsonElement element : recipe.getAsJsonArray("materials")) {
             JsonObject requirement = element.getAsJsonObject(); long needed = (long) integer(requirement, "count", 1) * count; require(needed > 0 && needed <= Integer.MAX_VALUE, "配方材料数量无效");

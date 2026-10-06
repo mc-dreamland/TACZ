@@ -14,7 +14,7 @@ import java.util.Set;
 public final class BridgeProtocol {
     public static final String CHANNEL = "tacz:paper";
     public static final String ITEM_KEY = "tacz:bridge";
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
     public static final int MAX_PACKET_BYTES = 30_000;
     public static final Gson GSON = new Gson();
     private static final Set<String> TYPES = Set.of("hello", "welcome", "pack", "ready", "action",

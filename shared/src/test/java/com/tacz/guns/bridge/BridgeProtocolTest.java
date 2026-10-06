@@ -22,6 +22,8 @@ class BridgeProtocolTest {
         assertThrows(IllegalArgumentException.class, () -> BridgeProtocol.decode(
                 "{\"version\":2,\"type\":\"event\",\"data\":{\"op\":\"shoot\"}}".getBytes(StandardCharsets.UTF_8)));
         assertThrows(IllegalArgumentException.class, () -> BridgeProtocol.decode(
+                "{\"version\":3,\"type\":\"pack\",\"data\":{}}".getBytes(StandardCharsets.UTF_8)));
+        assertThrows(IllegalArgumentException.class, () -> BridgeProtocol.decode(
                 "{\"version\":1.5,\"type\":\"action\",\"data\":{}}".getBytes(StandardCharsets.UTF_8)));
         assertThrows(IllegalArgumentException.class, () -> BridgeProtocol.decode(new byte[]{(byte) 0xc3, 0x28}));
         assertThrows(IllegalArgumentException.class, () -> BridgeProtocol.decode(new byte[BridgeProtocol.MAX_PACKET_BYTES + 1]));
