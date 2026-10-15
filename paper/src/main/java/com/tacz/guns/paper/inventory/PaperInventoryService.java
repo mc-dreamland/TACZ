@@ -1,6 +1,7 @@
 package com.tacz.guns.paper.inventory;
 
 import com.google.gson.*;
+import com.tacz.guns.bridge.BridgeRecipeIngredients;
 import com.tacz.guns.paper.item.PaperItemStore;
 import com.tacz.guns.paper.network.BridgePeer;
 import com.tacz.guns.paper.pack.DefaultGunPack;
@@ -22,15 +23,6 @@ public final class PaperInventoryService {
     private final LongSupplier clock;
     private final Map<UUID, Session> sessions = new HashMap<>();
     private record Session(String menu, String token, int slot, String instance, long expires, Location origin, int page) {}
-    private static final Map<String, Material> FORGE_TAGS = Map.ofEntries(
-            Map.entry("forge:ingots/iron", Material.IRON_INGOT), Map.entry("forge:ingots/gold", Material.GOLD_INGOT),
-            Map.entry("forge:ingots/copper", Material.COPPER_INGOT), Map.entry("forge:ingots/netherite", Material.NETHERITE_INGOT),
-            Map.entry("forge:gems/diamond", Material.DIAMOND), Map.entry("forge:gems/lapis", Material.LAPIS_LAZULI),
-            Map.entry("forge:gems/quartz", Material.QUARTZ), Map.entry("forge:gems/amethyst", Material.AMETHYST_SHARD),
-            Map.entry("forge:dusts/glowstone", Material.GLOWSTONE_DUST), Map.entry("forge:dusts/redstone", Material.REDSTONE),
-            Map.entry("forge:gunpowder", Material.GUNPOWDER), Map.entry("forge:leather", Material.LEATHER),
-            Map.entry("forge:nuggets/iron", Material.IRON_NUGGET), Map.entry("forge:ores/netherite_scrap", Material.ANCIENT_DEBRIS),
-            Map.entry("forge:rods/blaze", Material.BLAZE_ROD));
     public PaperInventoryService(JavaPlugin plugin, DefaultGunPack pack, PaperItemStore items, BridgePeer peer) { this(plugin, pack, items, peer, System::currentTimeMillis); }
     public PaperInventoryService(JavaPlugin plugin, DefaultGunPack pack, PaperItemStore items, BridgePeer peer, LongSupplier clock) { this.plugin = plugin; this.pack = pack; this.items = items; this.peer = peer; this.clock = clock; }
     public void close(Player player) { sessions.remove(player.getUniqueId()); }
@@ -39,20 +31,24 @@ public final class PaperInventoryService {
         if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Inventory transaction off the server thread");
         try {
             String op = string(request, "op", "");
-            if (op.equals("close_refit")) {
+            if (Set.of("close_refit", "close_workbench", "close_box").contains(op)) {
                 Session current = sessions.get(player.getUniqueId()); JsonElement token = request.get("token");
                 // A late response may be discarded after the player moved or opened another menu.
                 // Closing carries no mutation and must never invalidate a newer token or emit an error.
-                if (current != null && current.menu.equals("refit") && token != null && token.isJsonPrimitive()
+                if (current != null && current.menu.equals(op.substring("close_".length())) && token != null && token.isJsonPrimitive()
                         && token.getAsJsonPrimitive().isString() && current.token.equals(token.getAsString())) sessions.remove(player.getUniqueId());
                 return;
             }
             require(peer.ready(player), "TACZ 客户端桥接尚未就绪");
             require(!player.isDead() && player.getGameMode() != GameMode.SPECTATOR, "当前状态不能操作物品");
             switch (op) {
-                case "open_workbench" -> open(player, "workbench", -1, integer(request, "page", 0));
+                case "open_workbench" -> open(player, "workbench", -1, integer(request, "page", 0), requestId(request), null);
                 case "open_refit" -> open(player, "refit", player.getInventory().getHeldItemSlot(), 0, requestId(request), null);
-                case "open_box" -> open(player, "box", player.getInventory().getHeldItemSlot());
+                case "open_box" -> open(player, "box", player.getInventory().getHeldItemSlot(), 0, requestId(request), null);
+                case "refresh_workbench", "refresh_box" -> {
+                    Session current = session(player, request, op.substring("refresh_".length()));
+                    open(player, current.menu, current.slot, current.page, null, current.token, current.origin);
+                }
                 case "craft" -> { Session session = session(player, request, "workbench"); craft(player, request); finish(player, session); }
                 case "refit" -> { Session session = session(player, request, "refit"); refit(player, session, request); finish(player, session); }
                 case "unload" -> { Session session = session(player, request, "refit"); unload(player, session, request); finish(player, session); }
@@ -96,13 +92,17 @@ public final class PaperInventoryService {
     private void checkPermission(Player player, String menu) { require(player.hasPermission("tacz." + (menu.equals("box") ? "ammobox" : menu)), "没有操作权限"); }
     private void finish(Player player, Session session) {
         // Consume the token before outbound hooks: an exception while sending must not resurrect a completed transaction.
-        sessions.remove(player.getUniqueId()); peer.send(player, "inventory_changed", new JsonObject()); open(player, session.menu, session.slot, session.page, null, session.token);
+        sessions.remove(player.getUniqueId()); peer.send(player, "inventory_changed", new JsonObject());
+        open(player, session.menu, session.slot, session.page, null, session.token, session.menu.equals("refit") ? null : session.origin);
     }
     public void open(Player player, String menu, int slot) { open(player, menu, slot, 0); }
     private void open(Player player, String menu, int slot, int page) {
         open(player, menu, slot, page, null, null);
     }
     private void open(Player player, String menu, int slot, int page, String requestId, String previousToken) {
+        open(player, menu, slot, page, requestId, previousToken, null);
+    }
+    private void open(Player player, String menu, int slot, int page, String requestId, String previousToken, Location origin) {
         require(peer.ready(player), "TACZ 客户端桥接尚未就绪"); checkPermission(player, menu);
         require(!player.isDead() && player.getGameMode() != GameMode.SPECTATOR, "当前状态不能操作物品");
         require(Set.of("workbench", "refit", "box").contains(menu), "未知菜单");
@@ -116,12 +116,12 @@ public final class PaperInventoryService {
         String token = UUID.randomUUID().toString();
         JsonObject payload = new JsonObject(); payload.addProperty("menu", menu); payload.addProperty("token", token); payload.addProperty("slot", slot);
         payload.addProperty("title", switch (menu) { case "workbench" -> "TACZ 工作台"; case "refit" -> "TACZ 枪械改装"; default -> "TACZ 弹药箱"; });
-        if (state != null) payload.add("state", state.deepCopy());
-        if (menu.equals("refit")) {
+        if (state != null) {
+            payload.add("state", state.deepCopy());
             payload.addProperty("instance", instance);
-            if (requestId != null) payload.addProperty("requestId", requestId);
-            if (previousToken != null) { payload.addProperty("refresh", true); payload.addProperty("previousToken", previousToken); }
         }
+        if (requestId != null) payload.addProperty("requestId", requestId);
+        if (previousToken != null) { payload.addProperty("refresh", true); payload.addProperty("previousToken", previousToken); }
         JsonArray entries = new JsonArray();
         if (menu.equals("workbench")) {
             pack.recipes().forEach((id, recipe) -> {
@@ -151,7 +151,8 @@ public final class PaperInventoryService {
             JsonArray slice = new JsonArray(); for (int i = page * 40; i < Math.min(entries.size(), (page + 1) * 40); i++) slice.add(entries.get(i));
             payload.add("entries", slice); payload.addProperty("page", page); payload.addProperty("pages", pages);
         } else payload.add("entries", entries);
-        sessions.put(player.getUniqueId(), new Session(menu, token, slot, instance, clock.getAsLong() + 120_000, player.getLocation().clone(), page));
+        sessions.put(player.getUniqueId(), new Session(menu, token, slot, instance, clock.getAsLong() + 120_000,
+                origin == null ? player.getLocation().clone() : origin.clone(), page));
         peer.send(player, "menu", payload);
     }
     private void craft(Player player, JsonObject request) {
@@ -180,8 +181,8 @@ public final class PaperInventoryService {
         JsonObject object = ingredient.getAsJsonObject();
         if (object.has("item")) return material.getKey().toString().equals(object.get("item").getAsString());
         if (!object.has("tag")) return false; String tag = object.get("tag").getAsString();
-        Material mapped = FORGE_TAGS.get(tag); if (mapped != null) return material == mapped;
-        if (tag.equals("forge:glass")) return material == Material.GLASS || material.name().endsWith("_STAINED_GLASS");
+        String mapped = BridgeRecipeIngredients.FORGE_ITEMS.get(tag); if (mapped != null) return material.getKey().toString().equals(mapped);
+        if (tag.equals("forge:glass")) return BridgeRecipeIngredients.GLASS_ITEMS.contains(material.getKey().toString());
         NamespacedKey key = NamespacedKey.fromString(tag); Tag<Material> bukkitTag = key == null ? null : Bukkit.getTag(Tag.REGISTRY_ITEMS, key, Material.class); return bukkitTag != null && bukkitTag.isTagged(material);
     }
     private void refit(Player player, Session session, JsonObject request) {

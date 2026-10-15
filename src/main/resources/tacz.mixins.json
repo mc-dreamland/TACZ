@@ -22,6 +22,7 @@
     "client.PlayerModelMixin",
     "client.PaperPayloadMixin",
     "client.PaperItemRendererMixin",
+    "client.PaperContainerScreenMixin",
     "client.SoundManagerPreparationsMixin",
     "client.StairBlockAccessor"
   ],

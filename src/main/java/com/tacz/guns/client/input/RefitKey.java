@@ -46,7 +46,7 @@ public class RefitKey {
                         Minecraft.getInstance().setScreen(new GunRefitScreen());
                     }
                 }
-            } else if (Minecraft.getInstance().screen instanceof com.tacz.guns.client.paper.PaperMenuScreen paperScreen) {
+            } else if (Minecraft.getInstance().screen instanceof com.tacz.guns.client.paper.PaperAmmoBoxScreen paperScreen) {
                 paperScreen.onClose();
             } else if (Minecraft.getInstance().screen instanceof GunRefitScreen refitScreen) {
                 refitScreen.onClose();

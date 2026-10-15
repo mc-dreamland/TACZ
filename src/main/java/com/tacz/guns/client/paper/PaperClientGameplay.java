@@ -235,10 +235,11 @@ public final class PaperClientGameplay {
     public static void onMenu(JsonObject menu) {
         Minecraft mc = Minecraft.getInstance();
         if (!string(menu, "menu", "").equals("refit")) {
-            cancelScheduledShot();
-            PaperShotPresentation.cancelScene();
-            pendingRefitOpen = null;
-            mc.setScreen(new PaperMenuScreen(menu));
+            if (PaperInventoryMenus.receive(menu)) {
+                cancelScheduledShot();
+                PaperShotPresentation.cancelScene();
+                pendingRefitOpen = null;
+            }
             return;
         }
         // A transaction may complete after Z/Escape, a hotbar change, or a different menu.
@@ -289,6 +290,7 @@ public final class PaperClientGameplay {
     }
 
     public static void onError(JsonObject error) {
+        if (PaperInventoryMenus.error(error)) return;
         Minecraft mc = Minecraft.getInstance();
         PendingRefitOpen pending = pendingRefitOpen;
         if (pending != null) {
@@ -299,8 +301,6 @@ public final class PaperClientGameplay {
             }
         } else if (mc.screen instanceof GunRefitScreen screen && screen.acceptsPaperError(error)) {
             screen.clearPaperPending();
-        } else if (mc.screen instanceof PaperMenuScreen screen) {
-            screen.clearPending();
         }
     }
 
@@ -308,6 +308,7 @@ public final class PaperClientGameplay {
         cancelScheduledShot();
         PaperShotPresentation.cancelScene();
         if (menu.equals("refit")) {
+            PaperInventoryMenus.cancelPending();
             if (pendingRefitOpen != null) {
                 // Pressing Z again while the server is responding cancels the pending open.
                 pendingRefitOpen = null;
@@ -316,9 +317,8 @@ public final class PaperClientGameplay {
             requestRefitMenu(null);
             return;
         }
-        JsonObject request = new JsonObject();
-        request.addProperty("op", "open_" + menu);
-        PaperClientBridge.sendMenuAction(request);
+        pendingRefitOpen = null;
+        PaperInventoryMenus.open(menu);
     }
 
     public static void reopenRefitMenu(GunRefitScreen screen) {
@@ -545,6 +545,7 @@ public final class PaperClientGameplay {
     }
 
     public static void inventoryTick(LocalPlayer player) {
+        PaperInventoryMenus.tick();
         if (pendingRefitOpen != null && !pendingRefitOpen.valid(Minecraft.getInstance())) {
             GunRefitScreen waiting = pendingRefitOpen.screen();
             pendingRefitOpen = null;
@@ -599,6 +600,7 @@ public final class PaperClientGameplay {
     }
 
     public static void reset() {
+        PaperInventoryMenus.reset();
         STATES.clear(); LAST_EVENTS.clear(); LAST_GUNS.clear(); GunResolver.reset();
         PaperClientBallistics.reset();
         PaperShotPresentation.reset();
