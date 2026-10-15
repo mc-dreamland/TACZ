@@ -22,6 +22,7 @@
     "client.MouseHandlerMixin",
     "client.PlayerModelMixin",
     "client.ScreenAccessor",
+    "client.PaperContainerScreenMixin",
     "client.SoundManagerPreparationsMixin",
     "client.StairBlockAccessor",
     "client.PaperItemRendererMixin",

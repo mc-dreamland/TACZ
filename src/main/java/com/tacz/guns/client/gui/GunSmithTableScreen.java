@@ -17,6 +17,8 @@ import com.tacz.guns.client.gui.components.TaczImageButton;
 import com.tacz.guns.client.gui.components.smith.ResultButton;
 import com.tacz.guns.client.gui.components.smith.TypeButton;
 import com.tacz.guns.client.gui.preview.GunPreviewRenderState;
+import com.tacz.guns.client.paper.PaperClientBridge;
+import com.tacz.guns.client.paper.PaperWorkbenchRecipes;
 import com.tacz.guns.client.resource.ClientAssetsManager;
 import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.pojo.data.recipe.TableRecipe;
@@ -25,7 +27,6 @@ import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.config.sync.SyncConfig;
 import com.tacz.guns.crafting.GunSmithTableIngredient;
 import com.tacz.guns.crafting.GunSmithTableRecipe;
-import com.tacz.guns.init.ModRecipe;
 import com.tacz.guns.inventory.GunSmithTableMenu;
 import com.tacz.guns.network.message.ClientMessageCraft;
 import com.tacz.guns.resource.filter.RecipeFilter;
@@ -37,7 +38,6 @@ import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
@@ -52,15 +52,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.Util;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.display.SlotDisplayContext;
-import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
-import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceKey;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Matrix3x2fStack;
@@ -74,12 +72,25 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
 
     private final LinkedHashMap<ResourceLocation, TabConfig> recipeKeys = Maps.newLinkedHashMap();
     private final Map<ResourceLocation, List<ResourceLocation>> recipes = Maps.newLinkedHashMap();
+    private final @Nullable PaperActions paperActions;
+    private final Map<ResourceLocation, GunSmithTableRecipe> paperRecipes;
+    private @Nullable TaczImageButton craftButton;
+
+    /** Transport/lifecycle callbacks; this screen never mutates a Paper inventory or menu. */
+    public interface PaperActions {
+        boolean pending();
+        void craft(ResourceLocation recipeId);
+        void close();
+        void tick();
+        void openLink(String url);
+    }
 
     private int typePage;
     private ResourceLocation selectedType = null;
     private List<ResourceLocation> selectedRecipeList = new ArrayList<>();
 
     private int indexPage;
+    private int ingredientPage;
     private @Nullable GunSmithTableRecipe selectedRecipe;
     private @Nullable Int2IntArrayMap playerIngredientCount;
 
@@ -89,8 +100,17 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     private boolean autoByHandFilterApplied = false;
 
     public GunSmithTableScreen(GunSmithTableMenu menu, Inventory inventory, Component title) {
+        this(menu, inventory, title, null);
+    }
+
+    public static GunSmithTableScreen forPaper(Inventory inventory, Component title, PaperActions actions) {
+        return new GunSmithTableScreen(new GunSmithTableMenu(0, inventory, DefaultAssets.DEFAULT_BLOCK_ID), inventory, title, Objects.requireNonNull(actions));
+    }
+
+    private GunSmithTableScreen(GunSmithTableMenu menu, Inventory inventory, Component title, @Nullable PaperActions actions) {
         super(menu, inventory, title);
-        // 1.21.11：AbstractContainerScreen 构造器不再接受宽高，构造后写入。
+        this.paperActions = actions;
+        this.paperRecipes = actions == null ? Map.of() : PaperWorkbenchRecipes.load(PaperClientBridge.workbenchRecipes());
         this.imageWidth = 344;
         this.imageHeight = 186;
         this.classifyRecipes();
@@ -99,6 +119,8 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         this.selectedRecipe = this.getSelectedRecipe(selectedRecipeList != null && !this.selectedRecipeList.isEmpty() ? this.selectedRecipeList.get(0) : null);
         this.getPlayerIngredientCount(this.selectedRecipe);
     }
+
+    public boolean isPaperWorkbench() { return paperActions != null; }
 
     public static void drawModCenteredString(GuiGraphics gui, Font font, Component component, int pX, int pY, int color) {
         FormattedCharSequence text = component.getVisualOrderText();
@@ -115,65 +137,45 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         Map<ResourceLocation, List<ResourceLocation>> recipes = Maps.newLinkedHashMap();
         Map<ResourceLocation, TabConfig> recipeKeys = Maps.newLinkedHashMap();
 
-        TimelessAPI.getCommonBlockIndex(blockId).ifPresent(blockIndex -> {
-            var tabs = blockIndex.getData().getTabs();
-            if (DefaultAssets.DEFAULT_BLOCK_ID.equals(blockId) && !SyncConfig.ENABLE_TABLE_FILTER.get()) {
-                tabs = TabConfig.DEFAULT_TABS;
-            }
-            for (TabConfig tab : tabs) {
-                recipes.put(tab.id(), Lists.newArrayList());
-                recipeKeys.put(tab.id(), tab);
-            }
-        });
+        List<TabConfig> tabs = isPaperWorkbench() ? TabConfig.DEFAULT_TABS : TimelessAPI.getCommonBlockIndex(blockId)
+                .map(blockIndex -> DefaultAssets.DEFAULT_BLOCK_ID.equals(blockId) && !SyncConfig.ENABLE_TABLE_FILTER.get()
+                        ? TabConfig.DEFAULT_TABS : blockIndex.getData().getTabs()).orElse(List.of());
+        for (TabConfig tab : tabs) {
+            recipes.put(tab.id(), Lists.newArrayList());
+            recipeKeys.put(tab.id(), tab);
+        }
 
         List<Pair<ResourceLocation, ResourceLocation>> recipeIds = Lists.newArrayList();
 
-        // 第 12 轮修复：改用 CommonAssetsManager.get()。
-        //
-        // 之前这里用的是 getInstance()，那是<b>纯服务端</b>实例（recipeManager 只在
-        // AddReloadListenerEvent 里由 event.getServerResources() 赋值）。
-        // 多人客户端上 getInstance() 恒为 null -> 配方列表必然为空，
-        // 表现就是"工作台打得开、分类页签也在，但一条配方都没有"。
-        //
-        // get() 会在客户端回退到 CommonNetworkCache（与本方法下面取 blockIndex 的方式一致，
-        // 此前同一个方法里两种取法混用，正是 bug 来源）。
-        //
-        // 注意不能照抄上游的 recipeManager.getAllRecipesFor(...)：26.2 客户端<b>没有</b>
-        // 完整配方表（ClientLevel#recipeAccess 只有 propertySet/stonecutterRecipes），
-        // 因此配方改由 mod 自己经 DataType.RECIPES 通道同步过来。
-        Set<String> namespaces = filterList != null ? filterList.namespaceList() : null;
-        for (Map.Entry<ResourceLocation, TableRecipe> entry : CommonAssetsManager.get().getAllTableRecipes()) {
-            ResourceLocation id = entry.getKey();
-            TableRecipe pojo = entry.getValue();
-            if (pojo == null || pojo.getResult() == null) {
-                continue;
+        // Native recipes use the mod's synchronized catalog: the vanilla client recipe
+        // access no longer exposes the full table. Paper views stay entirely independent.
+        Collection<GunSmithTableRecipe> recipeList;
+        if (isPaperWorkbench()) {
+            recipeList = paperRecipes.values();
+        } else {
+            recipeList = new ArrayList<>();
+            for (Map.Entry<ResourceLocation, TableRecipe> entry : CommonAssetsManager.get().getAllTableRecipes()) {
+                GunSmithTableRecipe recipe = getSelectedRecipe(entry.getKey());
+                if (recipe != null) recipeList.add(recipe);
             }
+        }
+        Set<String> namespaces = filterList != null ? filterList.namespaceList() : null;
+        for (GunSmithTableRecipe recipe : recipeList) {
+            ResourceLocation id = recipe.getId();
             if (namespaces != null && !namespaces.contains(id.getNamespace())) {
                 continue;
             }
-            GunSmithTableRecipe recipe = new GunSmithTableRecipe(id, pojo);
-            // 必须调用 init()：Gson 反序列化出来的 result 里只有 raw 数据，
-            // 真正的 ItemStack 与 group 要靠 RawGunTableResult.init 解析出来。
-            // 少了这一步，getResult() 恒为 EMPTY、getGroup() 为 null，
-            // 所有配方都会在下面的 recipeKeys.containsKey(groupName) 处被过滤掉
-            // —— 这就是第 12 轮"所有配方都看不见"的原因。
-            recipe.init();
-            if (Minecraft.getInstance().level != null) {
-                recipe.resolveIngredients(Minecraft.getInstance().level.registryAccess());
-            }
-            if (!isSuitableForMainHand(recipe)) {
-                continue;
-            }
-            if (!isNameMatch(recipe)) {
+            if (!isSuitableForMainHand(recipe) || !isNameMatch(recipe)) {
                 continue;
             }
             ResourceLocation groupName = recipe.getResult().getGroup();
+            if (isPaperWorkbench() && !recipeKeys.containsKey(groupName)) groupName = TabConfig.TAB_MISC;
             if (recipeKeys.containsKey(groupName)) {
                 recipeIds.add(Pair.of(groupName, id));
             }
         }
 
-        TimelessAPI.getCommonBlockIndex(menu.getBlockId()).map(blockIndex -> {
+        List<Pair<ResourceLocation, ResourceLocation>> filteredRecipes = isPaperWorkbench() ? recipeIds : TimelessAPI.getCommonBlockIndex(menu.getBlockId()).map(blockIndex -> {
             if (menu.getBlockId().equals(DefaultAssets.DEFAULT_BLOCK_ID) && !SyncConfig.ENABLE_TABLE_FILTER.get()) {
                 return null;
             }
@@ -182,7 +184,8 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 return filter.filter(recipeIds, Pair::value);
             }
             return null;
-        }).orElse(recipeIds).forEach(entry -> {
+        }).orElse(recipeIds);
+        filteredRecipes.forEach(entry -> {
             ResourceLocation groupName = entry.key();
             if (recipeKeys.containsKey(groupName)) {
                 recipes.computeIfAbsent(groupName, g -> Lists.newArrayList()).add(entry.value());
@@ -211,6 +214,8 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         if (selectedType != null) {
             selectedRecipeList = this.recipes.get(selectedType);
         }
+        indexPage = Math.max(0, Math.min(indexPage, selectedRecipeList == null ? 0 : (selectedRecipeList.size() - 1) / 6));
+        typePage = Math.max(0, Math.min(typePage, (this.recipes.size() - 1) / 7));
     }
 
     private boolean isNameMatch(GunSmithTableRecipe recipe) {
@@ -256,7 +261,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     private boolean shouldFilterByMainHand() {
         Minecraft minecraft = Minecraft.getInstance();
         ItemStack stack = minecraft.player != null ? minecraft.player.getMainHandItem() : ItemStack.EMPTY;
-        Item item = stack.getItem();
+        Object item = ItemBehavior.of(stack);
         return item instanceof IGun || item instanceof IAttachment || item instanceof IAmmo;
     }
 
@@ -264,11 +269,13 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         if (selectedRecipeList == null || selectedRecipeList.isEmpty()) {
             this.selectedRecipe = null;
             this.playerIngredientCount = null;
+            this.ingredientPage = 0;
             return;
         }
         boolean selectedRecipeExists = this.selectedRecipe != null && selectedRecipeList.contains(this.selectedRecipe.getId());
         if (!selectedRecipeExists) {
             this.selectedRecipe = this.getSelectedRecipe(selectedRecipeList.get(0));
+            this.ingredientPage = 0;
         }
         this.getPlayerIngredientCount(this.selectedRecipe);
     }
@@ -279,17 +286,16 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
 
     @Nullable
     private GunSmithTableRecipe getSelectedRecipe(ResourceLocation recipeId) {
-        // 第 12 轮：同上，改走客户端可用的同步数据。
-        if (recipeId != null) {
-            TableRecipe pojo = CommonAssetsManager.get().getTableRecipe(recipeId);
-            if (pojo != null && pojo.getResult() != null) {
-                GunSmithTableRecipe recipe = new GunSmithTableRecipe(recipeId, pojo);
-                recipe.init();   // 同上，必须解析 raw result
-                if (Minecraft.getInstance().level != null) {
-                    recipe.resolveIngredients(Minecraft.getInstance().level.registryAccess());
-                }
-                return recipe;
+        if (recipeId == null) return null;
+        if (isPaperWorkbench()) return paperRecipes.get(recipeId);
+        TableRecipe pojo = CommonAssetsManager.get().getTableRecipe(recipeId);
+        if (pojo != null && pojo.getResult() != null) {
+            GunSmithTableRecipe recipe = new GunSmithTableRecipe(recipeId, pojo);
+            recipe.init();
+            if (Minecraft.getInstance().level != null) {
+                recipe.resolveIngredients(Minecraft.getInstance().level.registryAccess());
             }
+            return recipe;
         }
         return null;
     }
@@ -297,6 +303,11 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     private void getPlayerIngredientCount(GunSmithTableRecipe recipe) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || recipe == null) {
+            if (isPaperWorkbench()) playerIngredientCount = null;
+            return;
+        }
+        if (isPaperWorkbench()) {
+            playerIngredientCount = PaperWorkbenchRecipes.available(recipe, player.getInventory());
             return;
         }
         List<GunSmithTableIngredient> ingredients = recipe.getInputs();
@@ -324,6 +335,13 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             this.getPlayerIngredientCount(selectedRecipe);
         }
         this.init();
+    }
+
+    /** Inventory synchronization can arrive after the transaction ACK; do not rebuild search widgets. */
+    public void refreshPaperIngredients() {
+        if (!isPaperWorkbench()) return;
+        getPlayerIngredientCount(selectedRecipe);
+        updatePaperCraftButton();
     }
 
     @Override
@@ -376,7 +394,15 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
      * 手动绘制那一行也一并按上游补回，两者不再冲突。</p>
      */
     private void addCraftButton() {
-        this.addRenderableWidget(new TaczImageButton(leftPos + 289, topPos + 162, 48, 18, 138, 164, 18, TEXTURE, b -> {
+        craftButton = this.addRenderableWidget(new TaczImageButton(leftPos + 289, topPos + 162, 48, 18, 138, 164, 18, TEXTURE, b -> {
+            if (isPaperWorkbench()) {
+                refreshPaperIngredients();
+                if (!paperActions.pending() && hasIngredients() && selectedRecipe != null) {
+                    paperActions.craft(selectedRecipe.getId());
+                    updatePaperCraftButton();
+                }
+                return;
+            }
             if (this.selectedRecipe != null && playerIngredientCount != null) {
                 List<GunSmithTableIngredient> inputs = selectedRecipe.getInputs();
                 int size = inputs.size();
@@ -394,6 +420,26 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 ClientPacketDistributor.sendToServer(new ClientMessageCraft(this.selectedRecipe.getId(), this.menu.containerId));
             }
         }));
+        updatePaperCraftButton();
+    }
+
+    private boolean hasIngredients() {
+        if (selectedRecipe == null || playerIngredientCount == null) return false;
+        List<GunSmithTableIngredient> inputs = selectedRecipe.getInputs();
+        for (int i = 0; i < inputs.size(); i++) {
+            // Unknown newer items or unavailable tags have no client icon/matcher. The Paper
+            // server is still able to decide; never disable their transaction on a guessed count.
+            if (ingredientItems(inputs.get(i).getIngredient()).length == 0) continue;
+            if (playerIngredientCount.get(i) < inputs.get(i).getCount()) return false;
+        }
+        return true;
+    }
+
+    private void updatePaperCraftButton() {
+        if (!isPaperWorkbench() || craftButton == null) return;
+        craftButton.active = !paperActions.pending() && hasIngredients();
+        craftButton.setTooltip(paperActions.pending() ? Tooltip.create(Component.literal("等待服务器确认…"))
+                : selectedRecipe != null && !hasIngredients() ? Tooltip.create(Component.literal("合成材料不足")) : null);
     }
 
     /** 枪包主页链接。【本轮还原】改回上游贴图按钮（UV 149,211，18×18）。 */
@@ -419,6 +465,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 }
                 String url = packInfo.getUrl();
                 if (StringUtils.isNotBlank(url) && minecraft != null) {
+                    if (isPaperWorkbench()) { paperActions.openLink(url); return; }
                     minecraft.setScreenAndShow(new ConfirmLinkScreen(yes -> {
                         if (yes) {
                             Util.getPlatform().openUri(url);
@@ -447,6 +494,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             }
             ResultButton button = addRenderableWidget(new ResultButton(leftPos + 144, yOffset, recipe.getOutput(), b -> {
                 this.selectedRecipe = recipe;
+                this.ingredientPage = 0;
                 this.getPlayerIngredientCount(this.selectedRecipe);
                 this.init();
             }));
@@ -473,6 +521,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 this.selectedType = type;
                 this.selectedRecipeList = recipes.get(type);
                 this.indexPage = 0;
+                this.ingredientPage = 0;
                 this.selectedRecipe = getSelectedRecipe(this.selectedRecipeList.isEmpty() ? null : this.selectedRecipeList.get(0));
                 this.getPlayerIngredientCount(this.selectedRecipe);
                 this.init();
@@ -538,7 +587,14 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
 
     @Override
     public boolean mouseScrolled(double pMouseX, double pMouseY, double pScrollDeltaX, double pScrollDeltaY) {
-        if (pMouseX > leftPos + 143 && pMouseX < leftPos + 143 + 94 && pMouseY > topPos + 66 && pMouseY < topPos + 66 + 85) {
+        if (isPaperWorkbench() && selectedRecipe != null && pMouseX >= leftPos + 250 && pMouseX < leftPos + 344
+                && pMouseY >= topPos + 50 && pMouseY < topPos + 161) {
+            int last = Math.max(0, (selectedRecipe.getInputs().size() - 1) / 8);
+            ingredientPage = Math.max(0, Math.min(last, ingredientPage + (pScrollDeltaY > 0 ? -1 : pScrollDeltaY < 0 ? 1 : 0)));
+            return true;
+        }
+        if (selectedRecipeList != null && !selectedRecipeList.isEmpty()
+                && pMouseX > leftPos + 143 && pMouseX < leftPos + 143 + 94 && pMouseY > topPos + 66 && pMouseY < topPos + 66 + 85) {
             if (pScrollDeltaY > 0) {
                 this.indexPage = Math.max(0, this.indexPage - 1);
             } else {
@@ -577,7 +633,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             graphics.drawString(font, Component.translatable("gui.tacz.gun_smith_table.count", this.selectedRecipe.getResult().getResult().getCount()), leftPos + 254, topPos + 140, 0xFF555555, false);
         }
         if (selectedRecipeList != null && !selectedRecipeList.isEmpty()) {
-            renderIngredient(graphics);
+            renderIngredient(graphics, mouseX, mouseY);
         }
 
         ((ScreenAccessor) this).tacz$getRenderables().stream().filter(w -> w instanceof ResultButton)
@@ -657,16 +713,24 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         }
     }
 
-    private void renderIngredient(GuiGraphics gui) {
+    private void renderIngredient(GuiGraphics gui, int mouseX, int mouseY) {
         if (this.selectedRecipe == null) {
             return;
         }
         List<GunSmithTableIngredient> inputs = this.selectedRecipe.getInputs();
-        for (int i = 0; i < 6; i++) {
+        int pages = isPaperWorkbench() ? Math.max(1, (inputs.size() + 7) / 8) : 1;
+        ingredientPage = Math.max(0, Math.min(pages - 1, ingredientPage));
+        if (isPaperWorkbench() && pages > 1) {
+            gui.drawString(font, (ingredientPage + 1) + "/" + pages + " ↕", leftPos + 254, topPos + 151, 0xFF555555, false);
+        }
+        ItemStack hoveredItem = null;
+        int hoveredUnknownCount = 0;
+        int rows = isPaperWorkbench() ? 4 : 6;
+        for (int i = 0; i < rows; i++) {
             for (int j = 0; j < 2; j++) {
-                int index = i * 2 + j;
+                int index = i * 2 + j + (isPaperWorkbench() ? ingredientPage * 8 : 0);
                 if (index >= inputs.size()) {
-                    return;
+                    break;
                 }
                 int offsetX = leftPos + 254 + 45 * j;
                 int offsetY = topPos + 62 + 17 * i;
@@ -675,13 +739,16 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 // 第 14 轮：材料改为延迟解析，可能尚未（或无法）解析出来，必须判空。
                 Ingredient ingredient = smithTableIngredient.getIngredient();
 
-                ItemStack[] items = ingredient == null
-                        ? new ItemStack[0]
-                        : ingredient.display().resolveForStacks(SlotDisplayContext.fromLevel(Minecraft.getInstance().level)).toArray(ItemStack[]::new);
-                int itemIndex = ((int) (System.currentTimeMillis() / 1_000)) % Math.max(1, items.length);
-                ItemStack item = items.length > 0 ? items[itemIndex] : ItemStack.EMPTY;
+                ItemStack[] items = ingredientItems(ingredient);
+                boolean unknown = items.length == 0;
+                int itemIndex = unknown ? 0 : ((int) (System.currentTimeMillis() / 1_000)) % items.length;
+                ItemStack item = unknown ? (isPaperWorkbench() ? new ItemStack(Items.BARRIER) : ItemStack.EMPTY) : items[itemIndex];
 
                 gui.renderFakeItem(item, offsetX, offsetY);
+                if (mouseX >= offsetX && mouseX < offsetX + 16 && mouseY >= offsetY && mouseY < offsetY + 16) {
+                    if (unknown && isPaperWorkbench()) hoveredUnknownCount = smithTableIngredient.getCount();
+                    else hoveredItem = item;
+                }
 
                 Matrix3x2fStack poseStack = gui.pose();
                 poseStack.pushMatrix();
@@ -689,7 +756,9 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 poseStack.translate(0, 0);
                 poseStack.scale(0.5f, 0.5f);
                 int count = smithTableIngredient.getCount();
-                if (Minecraft.getInstance().player != null && Minecraft.getInstance().player.isCreative()) {
+                if (unknown && isPaperWorkbench()) {
+                    gui.drawString(font, count + "/?", (offsetX + 17) * 2, (offsetY + 10) * 2, 0xFFFFCC66, false);
+                } else if (!isPaperWorkbench() && Minecraft.getInstance().player != null && Minecraft.getInstance().player.isCreative()){
                     gui.drawString(font, String.format("%d/∞", count), (offsetX + 17) * 2, (offsetY + 10) * 2, 0xFFFFFFFF, false);
                 } else {
                     int hasCount = 0;
@@ -708,6 +777,19 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 poseStack.popMatrix();
             }
         }
+        if (hoveredItem != null && !hoveredItem.isEmpty()) gui.setTooltipForNextFrame(font, hoveredItem, mouseX, mouseY);
+        else if (hoveredUnknownCount > 0) gui.setTooltipForNextFrame(font,
+                List.of(Component.literal("材料由服务器确认，所需数量：" + hoveredUnknownCount)), Optional.empty(), mouseX, mouseY);
+        else if (isPaperWorkbench() && pages > 1 && mouseX >= leftPos + 250 && mouseX < leftPos + 344
+                && mouseY >= topPos + 149 && mouseY < topPos + 162)
+            gui.setTooltipForNextFrame(font, List.of(Component.literal("滚动查看全部材料")), Optional.empty(), mouseX, mouseY);
+    }
+
+    private static ItemStack[] ingredientItems(@Nullable Ingredient ingredient) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (ingredient == null || minecraft.level == null) return new ItemStack[0];
+        return ingredient.display().resolveForStacks(SlotDisplayContext.fromLevel(minecraft.level)).stream()
+                .filter(stack -> !stack.isEmpty()).toArray(ItemStack[]::new);
     }
 
     /**
@@ -822,6 +904,37 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
         // 三个工作台共用本 Screen，所以这一处修好，三个界面一起恢复。
         gui.blit(RenderPipelines.GUI_TEXTURED, SIDE, leftPos, topPos, 0, 0, 134, 187, 256, 256);
         gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, leftPos + 136, topPos + 27, 0, 0, 208, 160, 256, 256);
+    }
+
+    @Override
+    protected void containerTick() {
+        if (isPaperWorkbench()) paperActions.tick();
+        else super.containerTick();
+    }
+
+    /** Invoked by the Paper-only guard for AbstractContainerScreen's final tick method. */
+    public void tickPaperWorkbench() {
+        if (isPaperWorkbench()) paperActions.tick();
+    }
+
+    @Override
+    protected void slotClicked(Slot slot, int slotId, int button, ClickType clickType) {
+        if (!isPaperWorkbench()) super.slotClicked(slot, slotId, button, clickType);
+    }
+
+    @Override
+    public void onClose() {
+        if (isPaperWorkbench()) {
+            paperActions.close();
+            if (minecraft != null) minecraft.setScreen(null);
+        } else super.onClose();
+    }
+
+    @Override
+    public void removed() {
+        // There is no corresponding server container for the Paper view. In particular, do not
+        // run AbstractContainerScreen's cleanup against the player's actual inventory menu.
+        if (!isPaperWorkbench()) super.removed();
     }
 
     @Override

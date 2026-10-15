@@ -47,7 +47,8 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
             new PaperItemGuard(this, items, inventory, network);
             network.handlers(guns::handle, (player, request) -> {
                 // Discarding a late menu response must not interrupt the player's current gun.
-                if (!PaperItemStore.string(request, "op", "").equals("close_refit")) guns.reset(player);
+                String op = PaperItemStore.string(request, "op", "");
+                if (!java.util.Set.of("close_refit", "close_workbench", "close_box", "refresh_workbench", "refresh_box").contains(op)) guns.reset(player);
                 inventory.handle(player, request);
             }, guns::sync, guns::sync, player -> {
                 guns.resetConnection(player);

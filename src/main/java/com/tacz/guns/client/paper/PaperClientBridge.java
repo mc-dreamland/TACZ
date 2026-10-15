@@ -43,6 +43,7 @@ public final class PaperClientBridge {
     private static final PackTransfer.Receiver TRANSFER = new PackTransfer.Receiver();
     private static final Map<Integer, JsonObject> STATES = new HashMap<>();
     private static final Map<String, Set<String>> CATALOG = new HashMap<>();
+    private static Map<ResourceLocation, String> workbenchRecipes = Map.of();
     private static boolean active;
     private static boolean connected;
     private static String nonce = "";
@@ -61,6 +62,7 @@ public final class PaperClientBridge {
         });
     }
     public static boolean active() { return active; }
+    public static Map<ResourceLocation, String> workbenchRecipes() { return workbenchRecipes; }
     @Nullable public static JsonObject state(int entityId) { return STATES.get(entityId); }
 
     @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -96,6 +98,7 @@ public final class PaperClientBridge {
                     TRANSFER.reset();
                     STATES.clear();
                     CATALOG.clear();
+                    workbenchRecipes = Map.of();
                     PaperClientGameplay.reset();
                     nonce = data.get("nonce").getAsString();
                     expectedHash = data.get("hash").getAsString();
@@ -167,6 +170,7 @@ public final class PaperClientBridge {
         ClientIndexManager.reload();
         CATALOG.clear();
         CATALOG.putAll(catalog);
+        workbenchRecipes = Map.copyOf(cache.getOrDefault(DataType.RECIPES, Map.of()));
     }
 
     @Nullable public static JsonObject itemData(ItemStack stack) {
@@ -212,6 +216,7 @@ public final class PaperClientBridge {
         ticks = 0;
         sequence = 0;
         CATALOG.clear();
+        workbenchRecipes = Map.of();
         STATES.clear();
         TRANSFER.reset();
         PaperClientGameplay.reset();

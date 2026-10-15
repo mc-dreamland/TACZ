@@ -1,6 +1,7 @@
 package com.tacz.guns.paper.inventory;
 
 import com.google.gson.*;
+import com.tacz.guns.bridge.BridgeRecipeIngredients;
 import com.tacz.guns.paper.item.PaperItemStore;
 import com.tacz.guns.paper.network.BridgePeer;
 import com.tacz.guns.paper.pack.DefaultGunPack;
@@ -94,6 +95,143 @@ class PaperInventoryServiceTest {
             assertFalse(f.menu.has("requestId")); assertNotEquals(oldToken, f.menu.get("token").getAsString());
             f.service.open(f.player, "refit", 0);
             assertFalse(f.menu.has("requestId")); assertFalse(f.menu.has("refresh"), "Command opens use the same native menu without being tagged as an action refresh");
+        }
+    }
+    @Test void workbenchAndBoxEchoRequestsAndRefreshWithoutLateCloseInvalidatingTheNewToken() {
+        for (String menu : List.of("workbench", "box")) {
+            try (Fixture f = new Fixture()) {
+                if (menu.equals("box")) f.slots[0] = f.stack(Material.CHEST, 1, f.box());
+                String requestId = UUID.randomUUID().toString();
+                JsonObject open = json("{op:'open_" + menu + "'}"); open.addProperty("requestId", requestId);
+                f.service.handle(f.player, open);
+                assertEquals(requestId, f.menu.get("requestId").getAsString()); assertFalse(f.menu.has("refresh"));
+                if (menu.equals("box")) assertEquals(f.box().get("instance"), f.menu.get("instance"));
+                JsonObject oldClose = f.request("close_" + menu); String previous = f.menu.get("token").getAsString();
+                f.service.handle(f.player, f.request("refresh_" + menu));
+                assertTrue(f.menu.get("refresh").getAsBoolean()); assertEquals(previous, f.menu.get("previousToken").getAsString());
+                assertNotEquals(previous, f.menu.get("token").getAsString()); assertFalse(f.menu.has("requestId"));
+                assertEquals(0, f.changed.get(), "A read-only refresh must not report an inventory mutation");
+                f.service.handle(f.player, oldClose);
+                f.service.handle(f.player, f.request("refresh_" + menu));
+                assertTrue(f.errors.isEmpty()); assertEquals(3, f.menus.size());
+                JsonObject close = f.request("close_" + menu);
+                when(f.peer.ready(f.player)).thenReturn(false); when(f.player.hasPermission(anyString())).thenReturn(false);
+                f.service.handle(f.player, close); f.service.handle(f.player, close);
+                assertTrue(f.errors.isEmpty()); assertEquals(3, f.menus.size()); assertEquals(0, f.changed.get());
+                when(f.peer.ready(f.player)).thenReturn(true); when(f.player.hasPermission(anyString())).thenReturn(true);
+                f.service.handle(f.player, f.request("refresh_" + menu));
+                assertEquals(1, f.errors.size(), "The matching close must consume the current token");
+            }
+        }
+    }
+    @Test void refreshingExtendsExpiryButKeepsTheOriginalWorkPosition() {
+        for (String menu : List.of("workbench", "box")) {
+            try (Fixture f = new Fixture()) {
+                if (menu.equals("box")) f.slots[0] = f.stack(Material.CHEST, 1, f.box());
+                f.service.open(f.player, menu, menu.equals("box") ? 0 : -1);
+                World world = f.player.getWorld();
+                when(f.player.getLocation()).thenReturn(new Location(world, 7, 64, 0));
+                f.clock.addAndGet(110_000);
+                f.service.handle(f.player, f.request("refresh_" + menu));
+                f.clock.addAndGet(20_000); // The original token would have expired, but this refreshed session has not.
+                f.service.handle(f.player, f.request("refresh_" + menu));
+                assertTrue(f.errors.isEmpty()); assertEquals(3, f.menus.size());
+                when(f.player.getLocation()).thenReturn(new Location(world, 14, 64, 0));
+                JsonObject refresh = f.request("refresh_" + menu);
+                f.service.handle(f.player, refresh);
+                assertEquals(1, f.errors.size()); assertEquals(3, f.menus.size());
+                assertEquals(refresh.get("token"), f.errorPackets.getLast().get("token"));
+            }
+        }
+    }
+    @Test void refreshValidatesPermissionsWorldDistanceExpiryAndTheBoxInstance() {
+        for (String menu : List.of("workbench", "box")) for (String cause : List.of("token", "permission", "world", "distance", "expired", "instance")) {
+            if (cause.equals("instance") && menu.equals("workbench")) continue;
+            try (Fixture f = new Fixture()) {
+                if (menu.equals("box")) f.slots[0] = f.stack(Material.CHEST, 1, f.box());
+                f.service.open(f.player, menu, menu.equals("box") ? 0 : -1); JsonObject request = f.request("refresh_" + menu);
+                switch (cause) {
+                    case "token" -> request.addProperty("token", UUID.randomUUID().toString());
+                    case "permission" -> when(f.player.hasPermission(anyString())).thenReturn(false);
+                    case "world" -> { World other = mock(World.class); when(f.player.getWorld()).thenReturn(other); }
+                    case "distance" -> { World world = f.player.getWorld(); when(f.player.getLocation()).thenReturn(new Location(world, 9, 64, 0)); }
+                    case "expired" -> f.clock.addAndGet(120_001);
+                    case "instance" -> { JsonObject other = f.box(); other.addProperty("instance", UUID.randomUUID().toString()); f.slots[0] = f.stack(Material.CHEST, 1, other); }
+                }
+                f.service.handle(f.player, request);
+                assertEquals(1, f.errors.size(), menu + "/" + cause); assertEquals(1, f.menus.size()); assertEquals(0, f.changed.get());
+                verify(f.inventory, never()).setStorageContents(any()); verify(f.items, never()).write(any(), any());
+                assertEquals(request.get("token"), f.errorPackets.getLast().get("token"));
+            }
+        }
+    }
+    @Test void batchCraftRefreshesTheSameScreenAndAnOldTokenCannotConsumeMaterialsTwice() {
+        try (Fixture f = new Fixture()) {
+            f.slots[1] = f.stack(Material.IRON_INGOT, 12, null); f.slots[2] = f.stack(Material.GOLD_INGOT, 6, null);
+            f.service.open(f.player, "workbench", -1); JsonObject craft = f.request("craft");
+            craft.addProperty("recipe", "tacz:gun/test"); craft.addProperty("count", 2);
+            f.service.handle(f.player, craft);
+            assertEquals(4, f.slots[1].getAmount()); assertEquals(2, f.slots[2].getAmount()); assertEquals(2, f.granted("gun", "tacz:test"));
+            assertTrue(f.menu.get("refresh").getAsBoolean()); assertEquals(craft.get("token"), f.menu.get("previousToken"));
+            f.service.handle(f.player, craft);
+            assertEquals(4, f.slots[1].getAmount()); assertEquals(2, f.slots[2].getAmount()); assertEquals(2, f.granted("gun", "tacz:test"));
+            assertEquals(1, f.changed.get()); assertEquals(1, f.errors.size());
+        }
+    }
+    @Test void batchCraftRetainsItsExactCountBoundsAndInsufficientMaterialsAreAtomic() {
+        try (Fixture f = new Fixture()) {
+            f.slots[1] = f.stack(Material.IRON_INGOT, 10, null); f.slots[2] = f.stack(Material.GOLD_INGOT, 3, null);
+            f.service.open(f.player, "workbench", -1);
+            for (String count : List.of("0", "65", "1.5", "2147483648", "null", "true", "'invalid'", "2")) {
+                JsonObject craft = f.request("craft"); craft.addProperty("recipe", "tacz:gun/test"); craft.add("count", JsonParser.parseString(count));
+                f.service.handle(f.player, craft);
+            }
+            assertEquals(8, f.errors.size()); assertEquals(10, f.slots[1].getAmount()); assertEquals(3, f.slots[2].getAmount());
+            assertTrue(f.given.isEmpty()); assertEquals(0, f.changed.get()); verify(f.inventory, never()).setStorageContents(any());
+        }
+        try (Fixture f = new Fixture()) {
+            for (int slot = 1; slot <= 4; slot++) f.slots[slot] = f.stack(Material.IRON_INGOT, 64, null);
+            for (int slot = 5; slot <= 6; slot++) f.slots[slot] = f.stack(Material.GOLD_INGOT, 64, null);
+            f.service.open(f.player, "workbench", -1); JsonObject craft = f.request("craft");
+            craft.addProperty("recipe", "tacz:gun/test"); craft.addProperty("count", 64); f.service.handle(f.player, craft);
+            assertTrue(f.errors.isEmpty()); assertEquals(64, f.granted("gun", "tacz:test"));
+            for (int slot = 1; slot <= 6; slot++) assertNull(f.slots[slot]);
+            verify(f.items, times(64)).create("gun", "tacz:test", 1);
+        }
+    }
+    @Test void craftRefreshCannotMoveTheWorkbenchOriginAndCreativeStillNeedsMaterials() {
+        try (Fixture f = new Fixture()) {
+            f.slots[1] = f.stack(Material.IRON_INGOT, 12, null); f.slots[2] = f.stack(Material.GOLD_INGOT, 6, null);
+            f.service.open(f.player, "workbench", -1); World world = f.player.getWorld();
+            when(f.player.getLocation()).thenReturn(new Location(world, 7, 64, 0));
+            JsonObject craft = f.request("craft"); craft.addProperty("recipe", "tacz:gun/test"); f.service.handle(f.player, craft);
+            when(f.player.getLocation()).thenReturn(new Location(world, 14, 64, 0));
+            craft = f.request("craft"); craft.addProperty("recipe", "tacz:gun/test"); f.service.handle(f.player, craft);
+            assertEquals(1, f.granted("gun", "tacz:test")); assertEquals(1, f.errors.size());
+        }
+        try (Fixture f = new Fixture()) {
+            when(f.player.getGameMode()).thenReturn(GameMode.CREATIVE); f.service.open(f.player, "workbench", -1);
+            JsonObject craft = f.request("craft"); craft.addProperty("recipe", "tacz:gun/test"); f.service.handle(f.player, craft);
+            assertTrue(f.given.isEmpty()); assertEquals(1, f.errors.size());
+        }
+    }
+    @Test void sharedForgeAliasesMatchTheServerWithoutReplacingMinecraftTagLookup() {
+        for (var alias : BridgeRecipeIngredients.FORGE_ITEMS.entrySet()) {
+            Material material = Material.valueOf(alias.getValue().substring("minecraft:".length()).toUpperCase(Locale.ROOT));
+            assertTrue(PaperInventoryService.matches(material, json("{tag:'" + alias.getKey() + "'}")));
+            assertFalse(PaperInventoryService.matches(Material.STONE, json("{tag:'" + alias.getKey() + "'}")));
+        }
+        for (Material material : Material.values()) {
+            if (material.name().startsWith("LEGACY_")) continue;
+            boolean glass = material == Material.GLASS || material.name().endsWith("_STAINED_GLASS");
+            assertEquals(glass, PaperInventoryService.matches(material, json("{tag:'forge:glass'}")), material.name());
+        }
+        try (MockedStatic<Bukkit> bukkit = mockStatic(Bukkit.class)) {
+            @SuppressWarnings("unchecked") Tag<Material> planks = mock(Tag.class);
+            when(planks.isTagged(Material.OAK_PLANKS)).thenReturn(true);
+            bukkit.when(() -> Bukkit.getTag(Tag.REGISTRY_ITEMS, NamespacedKey.minecraft("planks"), Material.class)).thenReturn(planks);
+            assertTrue(PaperInventoryService.matches(Material.OAK_PLANKS, json("{tag:'minecraft:planks'}")));
+            assertFalse(PaperInventoryService.matches(Material.STONE, json("{tag:'minecraft:planks'}")));
         }
     }
     @Test void closingSavesAllLaserColorsOnceWithoutReopeningAndOldCloseCannotInvalidateNewSession() {
@@ -208,6 +346,7 @@ class PaperInventoryServiceTest {
             service = new PaperInventoryService(null, pack, items, peer, clock::get);
         }
         JsonObject gun() { return json("{kind:'gun',id:'tacz:test',instance:'22222222-2222-2222-2222-222222222222',ammo:38,chamber:true,attachments:{extended_mag:'tacz:large_mag'}}"); }
+        JsonObject box() { return json("{kind:'box',id:'tacz:ammo_box',instance:'11111111-1111-1111-1111-111111111111',boxAmmo:5,boxAmmoId:'tacz:bullet',boxCapacity:100,boxLevel:0}"); }
         JsonObject laserGun() { JsonObject gun = gun(); gun.getAsJsonObject("attachments").addProperty("laser", "tacz:laser_old"); gun.addProperty("laserColor", 0xFF0000); gun.add("attachmentColors", json("{laser:255}")); return gun; }
         void enableLasers() {
             when(pack.gun(anyString())).thenReturn(json("{ammo:'tacz:bullet',ammo_amount:30,allow_attachment_types:['extended_mag','laser']}"));
