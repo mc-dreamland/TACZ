@@ -1,0 +1,10 @@
+{
+  "slot": "bujidao:attachment/slot/sr03_slot",
+  "model": "bujidao:attachment/sr03_geo",
+  "texture": "bujidao:attachment/uv/sr03",
+  "scope": true,
+  "zoom": [
+    5
+  ],
+  "fov": 30
+}

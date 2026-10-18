@@ -66,32 +66,32 @@ public final class DefaultGunPack {
             for (ZipEntry entry; (entry = zip.getNextEntry()) != null;) {
                 if (entry.isDirectory()) continue;
                 String path = entry.getName().replace('\\', '/');
-                String displayPrefix = path.contains("assets/tacz/display/attachments/") ? "assets/tacz/display/attachments/" : "assets/tacz/display/guns/";
-                int displayRoot = path.indexOf(displayPrefix);
-                if (displayRoot >= 0 && (displayRoot == 0 || path.charAt(displayRoot - 1) == '/') && path.endsWith(".json")) {
+                ResourcePath asset = resourcePath(path, "assets");
+                String displayPrefix = asset != null && asset.path.startsWith("display/attachments/") ? "display/attachments/" : "display/guns/";
+                if (asset != null && asset.path.startsWith(displayPrefix) && asset.path.endsWith(".json")) {
                     byte[] bytes = zip.readNBytes(2_000_001);
                     if (bytes.length > 2_000_000) throw new IOException("Oversized item display: " + entry.getName());
-                    try { (displayPrefix.contains("attachments/") ? attachmentDisplays : gunDisplays).put(id(path.substring(displayRoot), displayPrefix, ".json"), JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject()); }
+                    try { (displayPrefix.contains("attachments/") ? attachmentDisplays : gunDisplays).put(asset.id(displayPrefix, ".json"), JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject()); }
                     catch (RuntimeException e) { throw new IOException("Invalid item display: " + entry.getName(), e); }
                     continue;
                 }
-                int root = path.indexOf("data/tacz/");
-                if (root < 0 || (root > 0 && path.charAt(root - 1) != '/')) continue;
-                path = path.substring(root + "data/tacz/".length());
+                ResourcePath data = resourcePath(path, "data");
+                if (data == null) continue;
+                path = data.path;
                 if (!path.endsWith(".json") && !path.endsWith(".lua")) continue;
                 byte[] bytes = zip.readNBytes(2_000_001);
                 if (bytes.length > 2_000_000) throw new IOException("Oversized default pack entry: " + entry.getName());
                 String raw = new String(bytes, StandardCharsets.UTF_8);
                 if (path.startsWith("scripts/") && path.endsWith(".lua")) {
-                    scripts.put(id(path, "scripts/", ".lua"), raw); continue;
+                    scripts.put(data.id("scripts/", ".lua"), raw); continue;
                 }
                 try {
-                    if (path.startsWith("tacz_tags/attachments/")) {
-                        tags.put(id(path, "tacz_tags/attachments/", ".json"), JsonParser.parseString(raw).getAsJsonArray());
+                    if (path.startsWith("tacz_tags/attachments/") && path.endsWith(".json")) {
+                        tags.put(data.id("tacz_tags/attachments/", ".json"), JsonParser.parseString(raw).getAsJsonArray());
                     } else {
                         for (String[] category : categories) {
                             if (path.startsWith(category[0]) && path.endsWith(".json")) {
-                                objects.get(category[1]).put(id(path, category[0], ".json"), JsonParser.parseString(raw).getAsJsonObject());
+                                objects.get(category[1]).put(data.id(category[0], ".json"), JsonParser.parseString(raw).getAsJsonObject());
                                 break;
                             }
                         }
@@ -143,7 +143,20 @@ public final class DefaultGunPack {
         }
     }
 
-    private static String id(String path, String prefix, String suffix) { return "tacz:" + path.substring(prefix.length(), path.length() - suffix.length()); }
+    /** A zip may contain the resource roots directly or inside its named pack directory. */
+    private static ResourcePath resourcePath(String entry, String root) {
+        String prefix = root + "/";
+        int start = entry.startsWith(prefix) ? 0 : entry.indexOf("/" + prefix);
+        if (start < 0) return null;
+        if (!entry.startsWith(prefix)) start++;
+        String relative = entry.substring(start + prefix.length());
+        int separator = relative.indexOf('/');
+        if (separator <= 0 || separator == relative.length() - 1) return null;
+        return new ResourcePath(relative.substring(0, separator), relative.substring(separator + 1));
+    }
+    private record ResourcePath(String namespace, String path) {
+        String id(String prefix, String suffix) { return namespace + ":" + path.substring(prefix.length(), path.length() - suffix.length()); }
+    }
     private Map<String, JsonObject> map(String type) { return Collections.unmodifiableMap(objects.getOrDefault(type, Map.of())); }
     public Map<String, JsonObject> guns() { return map("GUN_DATA"); }
     public Map<String, JsonObject> gunIndexes() { return map("GUN_INDEX"); }

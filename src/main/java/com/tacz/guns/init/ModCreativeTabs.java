@@ -71,36 +71,36 @@ public class ModCreativeTabs {
 
     public static RegistryObject<CreativeModeTab> GUN_PISTOL_TAB = TABS.register("pistol", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.pistol.name")).withTabsBefore(ATTACHMENT_LASER_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "glock_17")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "hg_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.PISTOL))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_SNIPER_TAB = TABS.register("sniper", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.sniper.name")).withTabsBefore(GUN_PISTOL_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "ai_awp")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "sr_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.SNIPER))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_RIFLE_TAB = TABS.register("rifle", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.rifle.name")).withTabsBefore(GUN_SNIPER_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "ak47")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "ar_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.RIFLE))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_SHOTGUN_TAB = TABS.register("shotgun", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.shotgun.name")).withTabsBefore(GUN_RIFLE_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "db_short")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "sg_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.SHOTGUN))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_SMG_TAB = TABS.register("smg", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.smg.name")).withTabsBefore(GUN_SHOTGUN_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "hk_mp5a5")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "ar_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.SMG))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_RPG_TAB = TABS.register("rpg", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.rpg.name")).withTabsBefore(GUN_SMG_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "rpg7")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "ar_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.RPG))).build());
 
     public static RegistryObject<CreativeModeTab> GUN_MG_TAB = TABS.register("mg", () -> CreativeModeTab.builder()
             .title(Component.translatable("tacz.type.mg.name")).withTabsBefore(GUN_RPG_TAB.getId())
-            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation(GunMod.MOD_ID, "m249")).build())
+            .icon(() -> GunItemBuilder.create().setId(new ResourceLocation("bujidao", "ar_01")).build())
             .displayItems((parameters, output) -> output.acceptAll(AbstractGunItem.fillItemCategory(GunTabType.MG))).build());
 }

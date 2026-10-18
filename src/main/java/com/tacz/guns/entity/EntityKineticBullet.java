@@ -13,6 +13,7 @@ import com.tacz.guns.api.event.common.EntityKillByGunEvent;
 import com.tacz.guns.api.event.server.AmmoHitBlockEvent;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import com.tacz.guns.client.particle.AmmoParticleSpawner;
+import com.tacz.guns.client.particle.ClientBulletTrail;
 import com.tacz.guns.config.common.AmmoConfig;
 import com.tacz.guns.config.sync.SyncConfig;
 import com.tacz.guns.entity.shooter.ShooterDataHolder;
@@ -62,6 +63,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.entity.IEntityAdditionalSpawnData;
 import net.minecraftforge.entity.PartEntity;
@@ -137,6 +139,8 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
     // 曳光弹
     private boolean isTracerAmmo;
     private boolean clientVisual;
+    @OnlyIn(Dist.CLIENT)
+    private ClientBulletTrail clientTrail;
     // 以下几个是只对客户端有用的曳光弹数据
     private float cameraXRot;
     private float cameraYRot;
@@ -193,6 +197,24 @@ public class EntityKineticBullet extends Projectile implements IEntityAdditional
 
     /** True only for bridge replicas that do not participate in network entity tracking. */
     public boolean isClientVisual() { return clientVisual; }
+
+    /** Draw only the not-yet-emitted portion of this client projectile's clipped trail. */
+    @ApiStatus.Internal
+    @OnlyIn(Dist.CLIENT)
+    public void emitClientTrailTo(Vec3 end) {
+        if (!level().isClientSide) return;
+        if (clientTrail == null) clientTrail = new ClientBulletTrail();
+        clientTrail.emitTo(this, end, false);
+    }
+
+    /** Reconcile a Paper terminal position, including a spawn/end delivered in the same batch. */
+    @ApiStatus.Internal
+    @OnlyIn(Dist.CLIENT)
+    public void finishClientTrail(Vec3 end) {
+        if (!level().isClientSide) return;
+        if (clientTrail == null) clientTrail = new ClientBulletTrail();
+        clientTrail.emitTo(this, end, true);
+    }
 
     public EntityKineticBullet(Level worldIn, LivingEntity throwerIn, ItemStack gunItem, ResourceLocation ammoId, ResourceLocation gunId,
                                ResourceLocation gunDisplayId, boolean isTracerAmmo, GunData gunData, BulletData bulletData) {

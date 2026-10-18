@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PackCatalogValidatorTest {
     private static JsonObject bundledNetwork;
-    private static String akDataId;
+    private static String arDataId;
     private static String fmjDataId;
 
     @BeforeAll static void fixture() throws IOException {
@@ -31,13 +31,13 @@ class PackCatalogValidatorTest {
             pack.load(input);
         }
         bundledNetwork = pack.networkData();
-        akDataId = pack.gunIndexes().get("tacz:ak47").get("data").getAsString();
+        arDataId = pack.gunIndexes().get("bujidao:ar_01").get("data").getAsString();
         fmjDataId = pack.attachmentIndexes().get("tacz:ammo_mod_fmj").get("data").getAsString();
     }
 
     @Test void completeBundledCatalogPassesWithoutDroppingAnyCategory() {
         Catalog catalog = catalog();
-        assertTrue(catalog.objects.get("GUN_INDEX").size() >= 50);
+        assertEquals(DefaultGunPackTest.GUN_IDS, catalog.objects.get("GUN_INDEX").keySet());
         assertTrue(catalog.objects.get("ATTACHMENT_INDEX").size() >= 90);
         assertFalse(catalog.objects.get("RECIPES").isEmpty());
         assertDoesNotThrow(() -> PackCatalogValidator.validate(catalog.objects, catalog.tags));
@@ -64,15 +64,15 @@ class PackCatalogValidatorTest {
                 gunCase("unrecognized infinite range", gun -> damageRange(gun, "forever"))
         ).map(test -> DynamicTest.dynamicTest(test.name, () -> {
             Catalog catalog = catalog();
-            test.change.accept(catalog.objects.get("GUN_DATA").get(akDataId));
-            rejected(catalog, "GUN_DATA", akDataId);
+            test.change.accept(catalog.objects.get("GUN_DATA").get(arDataId));
+            rejected(catalog, "GUN_DATA", arDataId);
         }));
     }
 
     @TestFactory Stream<DynamicTest> invalidIndexesAttachmentsAndRecipesFailBeforePublishing() {
         return Stream.of(
-                new InvalidCase("missing gun data", "GUN_INDEX", "tacz:ak47", value -> value.addProperty("data", "example:missing")),
-                new InvalidCase("invalid display identifier", "GUN_INDEX", "tacz:ak47", value -> value.addProperty("display", "Uppercase:Gun")),
+                new InvalidCase("missing gun data", "GUN_INDEX", "bujidao:ar_01", value -> value.addProperty("data", "example:missing")),
+                new InvalidCase("invalid display identifier", "GUN_INDEX", "bujidao:ar_01", value -> value.addProperty("display", "Uppercase:Gun")),
                 new InvalidCase("blank name", "AMMO_INDEX", "tacz:762x39", value -> value.addProperty("name", " ")),
                 new InvalidCase("unsafe ammunition stack size", "AMMO_INDEX", "tacz:762x39", value -> value.addProperty("stack_size", 65)),
                 new InvalidCase("missing attachment data", "ATTACHMENT_INDEX", "tacz:ammo_mod_fmj", value -> value.addProperty("data", "example:missing")),
@@ -80,14 +80,14 @@ class PackCatalogValidatorTest {
                 new InvalidCase("unsupported attachment formula", "ATTACHMENT_DATA", fmjDataId,
                         value -> value.getAsJsonObject("damage").addProperty("function", "y = x * 987")),
                 new InvalidCase("invalid extended magazine level", "ATTACHMENT_DATA", fmjDataId, value -> value.addProperty("extended_mag_level", 4)),
-                new InvalidCase("empty recipe materials", "RECIPES", "tacz:gun/ak47", value -> value.add("materials", new JsonArray())),
-                new InvalidCase("zero recipe ingredient count", "RECIPES", "tacz:gun/ak47",
+                new InvalidCase("empty recipe materials", "RECIPES", "bujidao:gun/ar_01", value -> value.add("materials", new JsonArray())),
+                new InvalidCase("zero recipe ingredient count", "RECIPES", "bujidao:gun/ar_01",
                         value -> value.getAsJsonArray("materials").get(0).getAsJsonObject().addProperty("count", 0)),
-                new InvalidCase("ambiguous recipe ingredient", "RECIPES", "tacz:gun/ak47",
+                new InvalidCase("ambiguous recipe ingredient", "RECIPES", "bujidao:gun/ar_01",
                         value -> value.getAsJsonArray("materials").get(0).getAsJsonObject().add("item", json("{\"item\":\"minecraft:iron_ingot\",\"tag\":\"minecraft:logs\"}"))),
-                new InvalidCase("missing recipe result", "RECIPES", "tacz:gun/ak47", value -> value.getAsJsonObject("result").addProperty("id", "example:missing")),
-                new InvalidCase("unbounded recipe output count", "RECIPES", "tacz:gun/ak47", value -> value.getAsJsonObject("result").addProperty("count", 4097)),
-                new InvalidCase("unsupported recipe type", "RECIPES", "tacz:gun/ak47", value -> value.addProperty("type", "minecraft:crafting_shaped"))
+                new InvalidCase("missing recipe result", "RECIPES", "bujidao:gun/ar_01", value -> value.getAsJsonObject("result").addProperty("id", "example:missing")),
+                new InvalidCase("unbounded recipe output count", "RECIPES", "bujidao:gun/ar_01", value -> value.getAsJsonObject("result").addProperty("count", 4097)),
+                new InvalidCase("unsupported recipe type", "RECIPES", "bujidao:gun/ar_01", value -> value.addProperty("type", "minecraft:crafting_shaped"))
         ).map(test -> DynamicTest.dynamicTest(test.name, () -> {
             Catalog catalog = catalog();
             test.change.accept(catalog.objects.get(test.category).get(test.id));
@@ -97,7 +97,7 @@ class PackCatalogValidatorTest {
 
     @Test void symbolicInfiniteDamageRangeAndInventoryFeedingRemainSupported() {
         Catalog catalog = catalog();
-        JsonObject gun = catalog.objects.get("GUN_DATA").get(akDataId);
+        JsonObject gun = catalog.objects.get("GUN_DATA").get(arDataId);
         damageRange(gun, "infinite");
         gun.remove("ammo_amount");
         gun.getAsJsonObject("reload").addProperty("type", "inventory");
@@ -113,8 +113,8 @@ class PackCatalogValidatorTest {
             JsonArray array = new JsonArray();
             array.add(number);
             nested.add("nested", array);
-            catalog.objects.get("GUN_DATA").get(akDataId).add("optional_extension", nested);
-            IOException error = rejected(catalog, "GUN_DATA", akDataId);
+            catalog.objects.get("GUN_DATA").get(arDataId).add("optional_extension", nested);
+            IOException error = rejected(catalog, "GUN_DATA", arDataId);
             assertTrue(error.getMessage().contains("non-finite"));
         }
     }
@@ -132,7 +132,7 @@ class PackCatalogValidatorTest {
 
     @Test void bodyPartMultipliersAreOptionalAndAllowZeroAndUpperBound() {
         Catalog catalog = catalog();
-        JsonObject extra = catalog.objects.get("GUN_DATA").get(akDataId).getAsJsonObject("bullet").getAsJsonObject("extra_damage");
+        JsonObject extra = catalog.objects.get("GUN_DATA").get(arDataId).getAsJsonObject("bullet").getAsJsonObject("extra_damage");
         extra.remove("head_shot_multiplier");
         extra.remove("body_part_multipliers");
         assertDoesNotThrow(() -> PackCatalogValidator.validate(catalog.objects, catalog.tags));
@@ -167,9 +167,9 @@ class PackCatalogValidatorTest {
                 new InvalidRegion("non-finite legs multiplier", "body_part_multipliers", json("{\"legs\":1e1000}"))
         ).map(test -> DynamicTest.dynamicTest(test.name, () -> {
             Catalog catalog = catalog();
-            JsonObject extra = catalog.objects.get("GUN_DATA").get(akDataId).getAsJsonObject("bullet").getAsJsonObject("extra_damage");
+            JsonObject extra = catalog.objects.get("GUN_DATA").get(arDataId).getAsJsonObject("bullet").getAsJsonObject("extra_damage");
             extra.add(test.field, test.value.deepCopy());
-            rejected(catalog, "GUN_DATA", akDataId);
+            rejected(catalog, "GUN_DATA", arDataId);
         }));
     }
 

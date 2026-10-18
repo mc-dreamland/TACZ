@@ -172,6 +172,7 @@ public final class PaperClientBallistics {
         }
         Vec3 end = position(record);
         EntityKineticBullet bullet = visual.bullet;
+        bullet.finishClientTrail(end);
         // A spawn and impact can arrive in the same batch. Preserve their segment for one
         // rendered frame instead of deleting the projectile before it can ever be seen.
         Vec3 prior = new Vec3(bullet.xo, bullet.yo, bullet.zo);
@@ -289,6 +290,7 @@ public final class PaperClientBallistics {
                 if (hit.getType() == HitResult.Type.BLOCK) {
                     // Cosmetic prediction only: never damage a block/entity or emit an impact.
                     // Wait for Paper's terminal record (or correction) at the near side of the wall.
+                    bullet.emitClientTrailTo(hit.getLocation());
                     bullet.setPos(hit.getLocation());
                     bullet.tickCount = Math.max(5, bullet.tickCount);
                     visual.blocked = true;

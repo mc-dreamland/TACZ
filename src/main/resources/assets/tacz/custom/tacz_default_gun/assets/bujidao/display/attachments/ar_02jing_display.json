@@ -1,0 +1,10 @@
+{
+  "slot": "bujidao:attachment/slot/ar_02jing",
+  "model": "bujidao:attachment/ar_02jing_geo",
+  "texture": "bujidao:attachment/uv/ar_02jing",
+  "scope": true,
+  "zoom": [
+    2.5
+  ],
+  "fov": 50
+}

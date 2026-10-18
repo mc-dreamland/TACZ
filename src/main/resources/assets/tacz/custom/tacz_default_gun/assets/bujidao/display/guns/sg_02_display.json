@@ -1,0 +1,69 @@
+{
+  "model": "bujidao:gun/sg_02_geo",
+  "texture": "bujidao:gun/uv/sg_02",
+  "iron_zoom": 1.33,
+  "zoom_model_fov": 45,
+  "ammo_count_style": "normal",
+  "damage_style": "per_projectile",
+  "show_crosshair": false,
+  "transform": {
+    "scale": {
+      "thirdperson": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "ground": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "fixed": [
+        1.2,
+        1.2,
+        1.2
+      ]
+    }
+  },
+  "animation": "bujidao:sg_02",
+  "use_default_animation": "rifle",
+  "third_person_animation": "default",
+  "hud": "bujidao:gun/hud/sg_02",
+  "slot": "bujidao:gun/slot/sg_02",
+  "muzzle_flash": {
+    "texture": "bujidao:flash/sg_02_flash",
+    "scale": 0.75
+  },
+  "ammo": {
+    "tracer_color": "#FF8888"
+  },
+  "shell": {
+    "initial_velocity": [
+      5,
+      2,
+      1
+    ],
+    "random_velocity": [
+      1,
+      1,
+      0.25
+    ],
+    "acceleration": [
+      0,
+      -10,
+      0
+    ],
+    "angular_velocity": [
+      360,
+      -1200,
+      90
+    ],
+    "living_time": 1
+  },
+  "state_machine": "tacz:default_state_machine",
+  "player_animator_3rd": "tacz:rifle_default.player_animation",
+  "sounds": {
+    "shoot": "tacz:db_short/db_shoot",
+    "shoot_3p": "tacz:db_short/db_shoot_3p"
+  }
+}

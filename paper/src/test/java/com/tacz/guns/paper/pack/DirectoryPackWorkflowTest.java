@@ -41,10 +41,34 @@ class DirectoryPackWorkflowTest {
         defaults.load(new ByteArrayInputStream(bundle));
     }
 
+    @Test void distributableExportUsesTheFirstRunFormatAndReloadsTheCompleteCatalog() throws Exception {
+        PackConfigExporter.export(directory);
+        assertTrue(Files.isRegularFile(directory.resolve(DirectoryPackFiles.MARKER_FILE)));
+        DefaultGunPack reloaded = loadDirectory();
+        assertEquals(DefaultGunPackTest.GUN_IDS, reloaded.gunIndexes().keySet());
+        assertEquals(defaults.ammoIndexes(), reloaded.ammoIndexes());
+        assertEquals(defaults.attachmentIndexes().keySet(), reloaded.attachmentIndexes().keySet());
+        assertEquals(defaults.recipes(), reloaded.recipes());
+        assertEquals(defaults.gunIndexes().keySet(), documents("guns").keySet());
+        assertTrue(Files.isRegularFile(directory.resolve("guns/bujidao/ar_01.json")));
+        assertTrue(Files.isRegularFile(directory.resolve("recipes/bujidao/gun/ar_01.json")));
+        assertTrue(Files.isRegularFile(directory.resolve("ammos/tacz/762x39.json")));
+        assertFalse(Files.exists(directory.resolve("guns/tacz")));
+        assertEquals(defaults.ammoIndexes().keySet(), documents("ammos").keySet());
+        assertEquals(defaults.attachmentIndexes().keySet(), documents("attachments").keySet());
+        assertEquals(defaults.recipes().keySet(), documents("recipes").keySet());
+        assertFalse(documents("attachment_tags").isEmpty());
+        JsonObject before = reloaded.networkData();
+        assertThrows(IOException.class, () -> PackConfigExporter.export(directory), "Build exporter must never overwrite an existing deployment");
+        reload(reloaded);
+        assertEquals(before, reloaded.networkData());
+    }
+
     @Test void firstLoadExportsEveryDefaultItemAndRecipeWithoutCreatingAModelRegistry() throws Exception {
         DefaultGunPack pack = loadDirectory();
         assertTrue(Files.isRegularFile(directory.resolve(".pack-files-v1")));
         assertFalse(Files.exists(directory.resolve("model-mappings.json")));
+        assertEquals(DefaultGunPackTest.GUN_IDS, pack.gunIndexes().keySet());
         assertEquals(defaults.gunIndexes().keySet(), pack.gunIndexes().keySet());
         assertEquals(defaults.ammoIndexes().keySet(), pack.ammoIndexes().keySet());
         assertEquals(defaults.attachmentIndexes().keySet(), pack.attachmentIndexes().keySet());
@@ -74,28 +98,28 @@ class DirectoryPackWorkflowTest {
         for (String id : defaults.recipes().keySet())
             assertEquals(defaults.recipes().get(id), recipes.get(id).getAsJsonObject("recipe"), id);
         assertEquals(defaults.scripts(), pack.scripts(), "Directory numeric configuration must retain the supported bundled scripts");
-        assertTrue(pack.hasItem("gun", "tacz:ak47"));
-        assertTrue(pack.allowedAttachment("tacz:ak47", "tacz:ammo_mod_fmj"));
+        assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
+        assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_fmj"));
         assertTrue(pack.attachmentHasTag("tacz:ammo_mod_slug", "tacz:intrinsic/slug"));
     }
 
-    @Test void editingAndMovingAkIntoArbitraryNestedFoldersChangesServerAndNetworkDataWithoutChangingIdentity() throws Exception {
+    @Test void editingAndMovingArIntoArbitraryNestedFoldersChangesServerAndNetworkDataWithoutChangingIdentity() throws Exception {
         DefaultGunPack pack = loadDirectory();
-        Path file = fileFor("guns", "tacz:ak47");
+        Path file = fileFor("guns", "bujidao:ar_01");
         JsonObject gun = read(file);
         gun.getAsJsonObject("data").addProperty("rpm", 780);
         gun.getAsJsonObject("data").addProperty("ammo_amount", 27);
         gun.getAsJsonObject("data").getAsJsonObject("bullet").addProperty("damage", 41.5);
         write(file, gun);
         reload(pack);
-        assertAkChanges(pack);
+        assertArChanges(pack);
         Path moved = directory.resolve("guns/my-server/rifles/season-2/any-file-name.json");
         Files.createDirectories(moved.getParent());
         Files.move(file, moved);
         reload(pack);
-        assertAkChanges(pack);
+        assertArChanges(pack);
         assertFalse(Files.exists(file), "Reload must not restore the default location of a moved item");
-        assertEquals(moved, fileFor("guns", "tacz:ak47"));
+        assertEquals(moved, fileFor("guns", "bujidao:ar_01"));
     }
 
     @Test void ammoAttachmentAndCraftingEditsReachTheSameSynchronizedCatalog() throws Exception {
@@ -108,7 +132,7 @@ class DirectoryPackWorkflowTest {
         JsonObject attachment = read(attachmentFile);
         attachment.getAsJsonObject("data").getAsJsonObject("damage").addProperty("multiplier", .72);
         write(attachmentFile, attachment);
-        Path recipeFile = fileFor("recipes", "tacz:gun/ak47");
+        Path recipeFile = fileFor("recipes", "bujidao:gun/ar_01");
         JsonObject recipe = read(recipeFile);
         recipe.getAsJsonObject("recipe").getAsJsonArray("materials").get(0).getAsJsonObject().addProperty("count", 3);
         recipe.getAsJsonObject("recipe").getAsJsonObject("result").addProperty("count", 2);
@@ -116,12 +140,12 @@ class DirectoryPackWorkflowTest {
         reload(pack);
         assertEquals(37, pack.ammoIndexes().get("tacz:762x39").get("stack_size").getAsInt());
         assertEquals(.72, pack.attachment("tacz:ammo_mod_fmj").getAsJsonObject("damage").get("multiplier").getAsDouble(), .00001);
-        assertEquals(3, pack.recipes().get("tacz:gun/ak47").getAsJsonArray("materials").get(0).getAsJsonObject().get("count").getAsInt());
-        assertEquals(2, pack.recipes().get("tacz:gun/ak47").getAsJsonObject("result").get("count").getAsInt());
+        assertEquals(3, pack.recipes().get("bujidao:gun/ar_01").getAsJsonArray("materials").get(0).getAsJsonObject().get("count").getAsInt());
+        assertEquals(2, pack.recipes().get("bujidao:gun/ar_01").getAsJsonObject("result").get("count").getAsInt());
         assertEquals(pack.ammoIndexes().get("tacz:762x39"), network(pack, "AMMO_INDEX", "tacz:762x39"));
         String attachmentDataId = pack.attachmentIndexes().get("tacz:ammo_mod_fmj").get("data").getAsString();
         assertEquals(pack.attachment("tacz:ammo_mod_fmj"), network(pack, "ATTACHMENT_DATA", attachmentDataId));
-        assertEquals(pack.recipes().get("tacz:gun/ak47"), network(pack, "RECIPES", "tacz:gun/ak47"));
+        assertEquals(pack.recipes().get("bujidao:gun/ar_01"), network(pack, "RECIPES", "bujidao:gun/ar_01"));
     }
 
     @Test void twoDefaultItemsSharingBundledDataBecomeIndependentlyEditableFiles() throws Exception {
@@ -159,50 +183,50 @@ class DirectoryPackWorkflowTest {
         tag.addProperty("id", "example:my_family");
         tag.add("values", JsonParser.parseString("[\"example:ammo_mod_fmj\",\"#tacz:intrinsic/slug\"]"));
         write(directory.resolve("attachment_tags/custom/family.json"), tag);
-        JsonObject gun = read(fileFor("guns", "tacz:ak47"));
-        gun.addProperty("id", "example:ak47");
+        JsonObject gun = read(fileFor("guns", "bujidao:ar_01"));
+        gun.addProperty("id", "example:ar_01");
         gun.getAsJsonObject("data").addProperty("ammo", "example:762x39");
         gun.add("allow_attachments", JsonParser.parseString("[\"#example:my_family\"]"));
         write(directory.resolve("guns/custom/rifle.json"), gun);
-        JsonObject recipe = read(fileFor("recipes", "tacz:gun/ak47"));
-        recipe.addProperty("id", "example:gun/ak47");
-        recipe.getAsJsonObject("recipe").getAsJsonObject("result").addProperty("id", "example:ak47");
+        JsonObject recipe = read(fileFor("recipes", "bujidao:gun/ar_01"));
+        recipe.addProperty("id", "example:gun/ar_01");
+        recipe.getAsJsonObject("recipe").getAsJsonObject("result").addProperty("id", "example:ar_01");
         write(directory.resolve("recipes/custom/rifle.json"), recipe);
         reload(pack);
-        assertEquals("example:762x39", pack.gun("example:ak47").get("ammo").getAsString());
-        assertNotNull(pack.gun("tacz:ak47"));
-        assertTrue(pack.allowedAttachment("example:ak47", "example:ammo_mod_fmj"));
-        assertTrue(pack.allowedAttachment("example:ak47", "tacz:ammo_mod_slug"));
-        assertFalse(pack.allowedAttachment("tacz:ak47", "example:ammo_mod_fmj"));
+        assertEquals("example:762x39", pack.gun("example:ar_01").get("ammo").getAsString());
+        assertNotNull(pack.gun("bujidao:ar_01"));
+        assertTrue(pack.allowedAttachment("example:ar_01", "example:ammo_mod_fmj"));
+        assertTrue(pack.allowedAttachment("example:ar_01", "tacz:ammo_mod_slug"));
+        assertFalse(pack.allowedAttachment("bujidao:ar_01", "example:ammo_mod_fmj"));
         assertTrue(pack.attachmentHasTag("example:ammo_mod_fmj", "example:my_family"));
-        assertEquals("example:ak47", pack.recipes().get("example:gun/ak47").getAsJsonObject("result").get("id").getAsString());
-        assertTrue(pack.hasItem("gun", "tacz:ak47"));
-        assertTrue(pack.hasItem("gun", "example:ak47"));
+        assertEquals("example:ar_01", pack.recipes().get("example:gun/ar_01").getAsJsonObject("result").get("id").getAsString());
+        assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
+        assertTrue(pack.hasItem("gun", "example:ar_01"));
         assertTrue(pack.hasItem("ammo", "example:762x39"));
         assertTrue(pack.hasItem("attachment", "example:ammo_mod_fmj"));
-        assertFalse(pack.hasItem("ammo", "example:ak47"));
+        assertFalse(pack.hasItem("ammo", "example:ar_01"));
         assertFalse(Files.exists(directory.resolve("model-mappings.json")));
-        assertEquals(pack.gun("example:ak47"), network(pack, "GUN_DATA", pack.gunIndexes().get("example:ak47").get("data").getAsString()));
+        assertEquals(pack.gun("example:ar_01"), network(pack, "GUN_DATA", pack.gunIndexes().get("example:ar_01").get("data").getAsString()));
         JsonArray clientAllow = JsonParser.parseString(pack.networkData().getAsJsonObject("ATTACHMENT_TAGS")
-                .get("example:allow_attachments/ak47").getAsString()).getAsJsonArray();
+                .get("example:allow_attachments/ar_01").getAsString()).getAsJsonArray();
         assertTrue(clientAllow.contains(JsonParser.parseString("\"example:ammo_mod_fmj\"")), "Client compatibility tags must include custom namespace items");
     }
 
     @Test void deletionAndReadditionFollowTheCatalogWithoutRestoringRemovedConfiguration() throws Exception {
         DefaultGunPack pack = loadDirectory();
-        JsonObject first = read(fileFor("guns", "tacz:ak47"));
+        JsonObject first = read(fileFor("guns", "bujidao:ar_01"));
         first.addProperty("id", "example:removed");
         Path firstFile = directory.resolve("guns/custom/removed.json");
         write(firstFile, first);
         reload(pack);
         assertTrue(pack.hasItem("gun", "example:removed"));
         Files.delete(firstFile);
-        Path deletedRecipe = fileFor("recipes", "tacz:gun/ak47");
+        Path deletedRecipe = fileFor("recipes", "bujidao:gun/ar_01");
         Files.delete(deletedRecipe);
         pack = loadDirectory(); // A new loader instance models a server restart, not just /reload.
         assertNull(pack.gun("example:removed"));
         assertFalse(pack.hasItem("gun", "example:removed"));
-        assertFalse(pack.recipes().containsKey("tacz:gun/ak47"));
+        assertFalse(pack.recipes().containsKey("bujidao:gun/ar_01"));
         assertFalse(Files.exists(firstFile));
         assertFalse(Files.exists(deletedRecipe));
         JsonObject second = first.deepCopy();
@@ -231,15 +255,15 @@ class DirectoryPackWorkflowTest {
         second.addProperty("id", "example:cycle_b");
         second.add("values", JsonParser.parseString("[\"#example:cycle_a\",\"tacz:ammo_mod_slug\"]"));
         write(directory.resolve("attachment_tags/cycles/deep/b.json"), second);
-        Path gunFile = fileFor("guns", "tacz:ak47");
+        Path gunFile = fileFor("guns", "bujidao:ar_01");
         JsonObject gun = read(gunFile);
         gun.add("allow_attachments", JsonParser.parseString("[\"#example:cycle_a\"]"));
         write(gunFile, gun);
         reload(pack);
-        assertTrue(pack.allowedAttachment("tacz:ak47", "tacz:ammo_mod_fmj"));
-        assertTrue(pack.allowedAttachment("tacz:ak47", "tacz:ammo_mod_slug"));
+        assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_fmj"));
+        assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_slug"));
         JsonObject network = pack.networkData();
-        for (String id : new String[]{"example:cycle_a", "example:cycle_b", "tacz:allow_attachments/ak47"}) {
+        for (String id : new String[]{"example:cycle_a", "example:cycle_b", "bujidao:allow_attachments/ar_01"}) {
             JsonArray leaves = JsonParser.parseString(network.getAsJsonObject("ATTACHMENT_TAGS").get(id).getAsString()).getAsJsonArray();
             Set<String> values = new HashSet<>();
             for (JsonElement value : leaves) {
@@ -248,33 +272,33 @@ class DirectoryPackWorkflowTest {
             }
             assertEquals(Set.of("tacz:ammo_mod_fmj", "tacz:ammo_mod_slug"), values);
         }
-        JsonArray allowed = JsonParser.parseString(network.getAsJsonObject("ALLOW_ATTACHMENT_TAGS").get("tacz:ak47").getAsString()).getAsJsonArray();
+        JsonArray allowed = JsonParser.parseString(network.getAsJsonObject("ALLOW_ATTACHMENT_TAGS").get("bujidao:ar_01").getAsString()).getAsJsonArray();
         assertEquals(2, allowed.size());
         for (JsonElement entry : allowed) assertFalse(entry.getAsString().startsWith("#"));
     }
 
     @Test void firstExportPreservesAnExistingEditedFileInsteadOfCreatingADuplicateDefault() throws Exception {
         JsonObject gun = new JsonObject();
-        gun.addProperty("id", "tacz:ak47");
-        gun.add("index", defaults.gunIndexes().get("tacz:ak47").deepCopy());
-        gun.add("data", defaults.gun("tacz:ak47").deepCopy());
+        gun.addProperty("id", "bujidao:ar_01");
+        gun.add("index", defaults.gunIndexes().get("bujidao:ar_01").deepCopy());
+        gun.add("data", defaults.gun("bujidao:ar_01").deepCopy());
         gun.getAsJsonObject("data").addProperty("rpm", 840);
         gun.add("allow_attachments", JsonParser.parseString("[\"tacz:ammo_mod_fmj\"]"));
-        Path existing = directory.resolve("guns/private/rifles/server-ak.json");
+        Path existing = directory.resolve("guns/private/rifles/server-ar.json");
         write(existing, gun);
         String before = Files.readString(existing);
         DefaultGunPack pack = loadDirectory();
-        assertEquals(840, pack.gun("tacz:ak47").get("rpm").getAsInt());
+        assertEquals(840, pack.gun("bujidao:ar_01").get("rpm").getAsInt());
         assertEquals(before, Files.readString(existing));
-        assertEquals(existing, fileFor("guns", "tacz:ak47"));
+        assertEquals(existing, fileFor("guns", "bujidao:ar_01"));
         reload(pack);
         assertEquals(before, Files.readString(existing));
-        assertEquals(840, pack.gun("tacz:ak47").get("rpm").getAsInt());
+        assertEquals(840, pack.gun("bujidao:ar_01").get("rpm").getAsInt());
     }
 
     @Test void duplicateAndMalformedFilesLeaveTheActiveCatalogUnchanged() throws Exception {
         DefaultGunPack pack = loadDirectory();
-        Path original = fileFor("guns", "tacz:ak47");
+        Path original = fileFor("guns", "bujidao:ar_01");
         Path duplicate = directory.resolve("guns/another/deep/copy.json");
         write(duplicate, read(original));
         assertRejectedWithoutReplacingActive(pack);
@@ -284,12 +308,12 @@ class DirectoryPackWorkflowTest {
         assertRejectedWithoutReplacingActive(pack);
         Files.delete(malformed);
         reload(pack);
-        assertNotNull(pack.gun("tacz:ak47"));
+        assertNotNull(pack.gun("bujidao:ar_01"));
     }
 
     @Test void illegalValuesAndMissingReferencesCannotPartiallyPublishNewIdentities() throws Exception {
         DefaultGunPack pack = loadDirectory();
-        Path original = fileFor("guns", "tacz:ak47");
+        Path original = fileFor("guns", "bujidao:ar_01");
         JsonObject valid = read(original);
         JsonObject newGun = valid.deepCopy();
         newGun.addProperty("id", "example:pending_item");
@@ -318,32 +342,32 @@ class DirectoryPackWorkflowTest {
         byte[] invalid = "{this is not a valid model registry".getBytes(StandardCharsets.UTF_8);
         Files.write(legacy, invalid);
         DefaultGunPack pack = loadDirectory();
-        assertTrue(pack.hasItem("gun", "tacz:ak47"));
+        assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
         assertArrayEquals(invalid, Files.readAllBytes(legacy));
-        Path gunFile = fileFor("guns", "tacz:ak47");
+        Path gunFile = fileFor("guns", "bujidao:ar_01");
         JsonObject gun = read(gunFile); gun.getAsJsonObject("data").addProperty("rpm", 780); write(gunFile, gun);
         reload(pack);
-        assertEquals(780, pack.gun("tacz:ak47").get("rpm").getAsInt());
+        assertEquals(780, pack.gun("bujidao:ar_01").get("rpm").getAsInt());
         assertArrayEquals(invalid, Files.readAllBytes(legacy));
     }
 
-    private void assertAkChanges(DefaultGunPack pack) {
-        JsonObject gun = pack.gun("tacz:ak47");
+    private void assertArChanges(DefaultGunPack pack) {
+        JsonObject gun = pack.gun("bujidao:ar_01");
         assertEquals(780, gun.get("rpm").getAsInt());
         assertEquals(27, gun.get("ammo_amount").getAsInt());
         assertEquals(41.5, gun.getAsJsonObject("bullet").get("damage").getAsDouble(), .00001);
-        assertTrue(pack.hasItem("gun", "tacz:ak47"));
-        assertEquals(gun, network(pack, "GUN_DATA", pack.gunIndexes().get("tacz:ak47").get("data").getAsString()));
+        assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
+        assertEquals(gun, network(pack, "GUN_DATA", pack.gunIndexes().get("bujidao:ar_01").get("data").getAsString()));
     }
 
     private void assertRejectedWithoutReplacingActive(DefaultGunPack pack) throws Exception {
         JsonObject network = pack.networkData();
         Set<String> gunIds = Set.copyOf(pack.gunIndexes().keySet());
-        JsonObject gun = pack.gun("tacz:ak47").deepCopy();
+        JsonObject gun = pack.gun("bujidao:ar_01").deepCopy();
         assertThrows(IOException.class, () -> reload(pack));
         assertEquals(network, pack.networkData());
         assertEquals(gunIds, pack.gunIndexes().keySet());
-        assertEquals(gun, pack.gun("tacz:ak47"));
+        assertEquals(gun, pack.gun("bujidao:ar_01"));
         assertFalse(Files.exists(directory.resolve("model-mappings.json")));
     }
 
@@ -385,8 +409,7 @@ class DirectoryPackWorkflowTest {
     private static byte[] zip(Map<String, JsonObject> overrides) throws IOException {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(bytes); var files = Files.walk(SOURCE)) {
-            for (Path file : files.filter(Files::isRegularFile).filter(path -> path.startsWith(SOURCE.resolve("data"))
-                    || path.startsWith(SOURCE.resolve("assets/tacz/display/attachments")) || path.startsWith(SOURCE.resolve("assets/tacz/display/guns"))).sorted().toList()) {
+            for (Path file : files.filter(Files::isRegularFile).filter(path -> DefaultGunPackTest.bundledEntry(SOURCE, path)).sorted().toList()) {
                 String path = SOURCE.relativize(file).toString().replace('\\', '/');
                 zip.putNextEntry(new ZipEntry("nested-pack/" + path));
                 if (overrides.containsKey(path)) zip.write(JSON.toJson(overrides.get(path)).getBytes(StandardCharsets.UTF_8));

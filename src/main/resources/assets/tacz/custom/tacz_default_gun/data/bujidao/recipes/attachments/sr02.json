@@ -1,0 +1,27 @@
+{
+  "type": "tacz:gun_smith_table_crafting",
+  "materials": [
+    {
+      "item": {
+        "item": "minecraft:iron_ingot"
+      },
+      "count": 8
+    },
+    {
+      "item": {
+        "item": "minecraft:glass"
+      },
+      "count": 4
+    },
+    {
+      "item": {
+        "item": "minecraft:redstone"
+      },
+      "count": 2
+    }
+  ],
+  "result": {
+    "type": "attachment",
+    "id": "bujidao:sr02"
+  }
+}

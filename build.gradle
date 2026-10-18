@@ -112,8 +112,20 @@ minecraft {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 sourceSets.main.java.srcDir 'shared/src/main/java'
+sourceSets.test.java.srcDir 'shared/src/test/java'
 
 repositories {
+    // Resolve test libraries directly instead of querying every mod-specific repository.
+    exclusiveContent {
+        forRepository { mavenCentral() }
+        filter {
+            includeGroup 'org.junit'
+            includeGroup 'org.junit.jupiter'
+            includeGroup 'org.junit.platform'
+            includeGroup 'org.opentest4j'
+            includeGroup 'org.apiguardian'
+        }
+    }
     maven {
         // 阿里云镜像，方便国内开发
         url = uri("https://maven.aliyun.com/repository/public/")
@@ -254,6 +266,9 @@ dependencies {
         jarJar.ranged(it, "[0.3.6,)")
     }
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    testImplementation platform('org.junit:junit-bom:5.11.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 jar {
@@ -273,6 +288,24 @@ java {
     withSourcesJar()
 }
 
+def gunPackZip = tasks.register('gunPackZip', Zip) {
+    group = 'distribution'
+    description = 'Packages the complete built-in gun pack for installation in the tacz directory.'
+    from layout.projectDirectory.dir('src/main/resources/assets/tacz/custom/tacz_default_gun')
+    archiveFileName = 'tacz-bjd-gunpack.zip'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.named('assemble').configure {
+    dependsOn gunPackZip
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }

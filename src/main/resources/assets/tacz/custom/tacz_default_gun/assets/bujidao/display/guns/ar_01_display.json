@@ -1,0 +1,76 @@
+{
+  "model": "bujidao:gun/ar_01_geo",
+  "texture": "bujidao:gun/uv/ar_01",
+  "iron_zoom": 1.33,
+  "zoom_model_fov": 45,
+  "ammo_count_style": "normal",
+  "damage_style": "per_projectile",
+  "show_crosshair": false,
+  "transform": {
+    "scale": {
+      "thirdperson": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "ground": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "fixed": [
+        1.2,
+        1.2,
+        1.2
+      ]
+    }
+  },
+  "animation": "bujidao:ar_01",
+  "use_default_animation": "rifle",
+  "third_person_animation": "default",
+  "hud": "bujidao:gun/hud/ar_01",
+  "slot": "bujidao:gun/slot/ar_01",
+  "muzzle_flash": {
+    "texture": "bujidao:flash/ar_01_flash",
+    "scale": 1
+  },
+  "ammo": {
+    "tracer_color": "#FF8888"
+  },
+  "shell": {
+    "initial_velocity": [
+      5,
+      2,
+      1
+    ],
+    "random_velocity": [
+      1,
+      1,
+      0.25
+    ],
+    "acceleration": [
+      0,
+      -10,
+      0
+    ],
+    "angular_velocity": [
+      360,
+      -1200,
+      90
+    ],
+    "living_time": 1
+  },
+  "state_machine": "tacz:default_state_machine",
+  "player_animator_3rd": "tacz:rifle_default.player_animation",
+  "sounds": {
+    "shoot": "tacz:ak47/ak47_shoot",
+    "shoot_3p": "tacz:ak47/ak47_shoot_3p",
+    "silence": "tacz:ak47/ak47_silence",
+    "silence_3p": "tacz:ak47/ak47_silence_3p",
+    "dry_fire": "tacz:dry_fire",
+    "fire_select": "tacz:fire_select",
+    "head_hit": "tacz:head_hit",
+    "flesh_hit": "tacz:flesh_hit",
+    "kill": "tacz:kill"
+  }
+}

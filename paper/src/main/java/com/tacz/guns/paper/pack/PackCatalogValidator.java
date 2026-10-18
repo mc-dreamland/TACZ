@@ -20,7 +20,7 @@ public final class PackCatalogValidator {
     private static final Set<String> FIRE_MODES = Set.of("auto", "semi", "burst");
     private static final Set<String> SCRIPTS = Set.of("", "tacz:xmag_reload_logic", "tacz:db_short_gun_logic",
             "tacz:devotion_lmg_logic", "tacz:hk_mk23_logic", "tacz:kar98_gun_logic", "tacz:m1014_gun_logic",
-            "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic");
+            "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic", "bujidao:sg_01_gun_logic");
     private static final Set<String> BOXES = Set.copyOf(BridgeItemIdentity.BOX_IDS);
     private static final Set<String> NUMERIC_MODIFIERS = Set.of("rpm", "damage", "ammo_speed", "knockback", "pierce",
             "armor_ignore", "head_shot", "effective_range", "ads", "inaccuracy", "aim_inaccuracy", "sneak_inaccuracy", "lie_inaccuracy");
