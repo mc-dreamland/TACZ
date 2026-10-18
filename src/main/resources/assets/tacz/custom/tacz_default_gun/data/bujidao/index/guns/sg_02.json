@@ -1,0 +1,9 @@
+{
+  "name": "bujidao.gun.sg_02.name",
+  "tooltip": "bujidao.gun.sg_02.desc",
+  "data": "bujidao:sg_02_data",
+  "display": "bujidao:sg_02_display",
+  "type": "shotgun",
+  "item_type": "modern_kinetic",
+  "sort": 6
+}

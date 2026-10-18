@@ -4,6 +4,8 @@
 
 ## 支持范围
 
+当前内置资源已替换为 BJD 的 10 把枪和 4 个专用瞄具，保留 TACZ 公共弹药与配件。枪械使用 `bujidao:` 命名空间；旧枪不再注册。初始数值、特殊效果和现有服务器目录替换步骤见 [BJD 枪包说明](../docs/bjd-gunpack.md)。构建额外生成 `build/distributions/tacz-paper-bjd-config.zip`，可用于替换插件的五类目录配置。
+
 - 首次启动导出仓库默认枪包，之后从独立目录读取枪械、弹药、配件、兼容标签和工作台配方，支持多级子目录与新增物品 ID。弹药箱容量在 `config.yml` 配置。
 - 服务端处理开火、弹药扣除、射速、拔枪、换弹、拉栓、射击模式、瞄准、热量、近战及配件参数。
 - 逐 tick 弹道支持遮挡、实体穿透、距离伤害、头部/躯干/腿部判定、穿甲、燃烧和爆炸；伤害进入 Bukkit 事件。
@@ -45,7 +47,7 @@ Paper 使用 [paperweight-userdev](https://docs.papermc.io/paper/dev/userdev/) �
 例如：
 
 ```text
-/tacz give Steve gun tacz:ak47
+/tacz give Steve gun bujidao:ar_01
 /tacz give Steve ammo tacz:762x39 128
 /tacz give Steve attachment tacz:ammo_mod_fmj
 /tacz ammobox Steve 1

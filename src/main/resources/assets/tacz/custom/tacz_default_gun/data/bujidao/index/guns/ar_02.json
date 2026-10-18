@@ -1,0 +1,9 @@
+{
+  "name": "bujidao.gun.ar_02.name",
+  "tooltip": "bujidao.gun.ar_02.desc",
+  "data": "bujidao:ar_02_data",
+  "display": "bujidao:ar_02_display",
+  "type": "rifle",
+  "item_type": "modern_kinetic",
+  "sort": 2
+}

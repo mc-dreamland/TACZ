@@ -15,6 +15,10 @@ public class GunAmmo {
     private AmmoParticle particle = null;
 
     @Nullable
+    @SerializedName("electric_arc")
+    private ElectricArc electricArc = null;
+
+    @Nullable
     public String getTracerColor() {
         return tracerColor;
     }
@@ -23,4 +27,7 @@ public class GunAmmo {
     public AmmoParticle getParticle() {
         return particle;
     }
+
+    @Nullable
+    public ElectricArc getElectricArc() { return electricArc; }
 }

@@ -1,0 +1,215 @@
+{
+  "description": "Initial category presets; adjust per-gun JSON to balance.",
+  "guns": [
+    {
+      "id": "bujidao:ar_01",
+      "category": "rifle",
+      "ammo": "tacz:762x39",
+      "capacity": 30,
+      "rpm": 600,
+      "damage": 9,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.12
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 2.65
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:ar_02",
+      "category": "rifle",
+      "ammo": "tacz:556x45",
+      "capacity": 30,
+      "rpm": 750,
+      "damage": 6.5,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.12
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 2.65
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:hg_01",
+      "category": "pistol",
+      "ammo": "tacz:357mag",
+      "capacity": 6,
+      "rpm": 240,
+      "damage": 10.5,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.12
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 2.65
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:hg_3",
+      "category": "pistol",
+      "ammo": "tacz:357mag",
+      "capacity": 6,
+      "rpm": 180,
+      "damage": 10.5,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.56
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 3.2
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:sg_01",
+      "category": "shotgun",
+      "ammo": "tacz:12g",
+      "capacity": 6,
+      "rpm": 90,
+      "damage": 36,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2,
+          "tactical": 0.72
+        },
+        "cooldown": {
+          "empty": 0.675,
+          "tactical": 0.74
+        }
+      },
+      "script": "bujidao:sg_01_gun_logic"
+    },
+    {
+      "id": "bujidao:sg_02",
+      "category": "shotgun",
+      "ammo": "tacz:12g",
+      "capacity": 2,
+      "rpm": 120,
+      "damage": 24,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.4,
+          "tactical": 1.776
+        },
+        "cooldown": {
+          "empty": 3,
+          "tactical": 2.22
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:sr_01",
+      "category": "rifle",
+      "ammo": "tacz:762x39",
+      "capacity": 100,
+      "rpm": 600,
+      "damage": 9,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.12
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 2.65
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:sr_02",
+      "category": "rifle",
+      "ammo": "tacz:762x39",
+      "capacity": 100,
+      "rpm": 600,
+      "damage": 9,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.56,
+          "tactical": 2.12
+        },
+        "cooldown": {
+          "empty": 3.2,
+          "tactical": 2.65
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:sr_03",
+      "category": "sniper",
+      "ammo": "tacz:338",
+      "capacity": 8,
+      "rpm": 60,
+      "damage": 42,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.2,
+          "tactical": 1.88
+        },
+        "cooldown": {
+          "empty": 2.75,
+          "tactical": 2.35
+        }
+      },
+      "script": "default"
+    },
+    {
+      "id": "bujidao:sr_04",
+      "category": "sniper",
+      "ammo": "tacz:50bmg",
+      "capacity": 10,
+      "rpm": 120,
+      "damage": 55,
+      "reload": {
+        "type": "magazine",
+        "infinite": false,
+        "feed": {
+          "empty": 2.176,
+          "tactical": 1.968
+        },
+        "cooldown": {
+          "empty": 2.72,
+          "tactical": 2.46
+        }
+      },
+      "script": "default"
+    }
+  ]
+}

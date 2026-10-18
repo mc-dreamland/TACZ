@@ -26,7 +26,7 @@ sourceSets.test { java.srcDir("../shared/src/test/java") }
 
 val defaultGunPack by tasks.registering(Zip::class) {
     from("../src/main/resources/assets/tacz/custom/tacz_default_gun") {
-        include("data/**", "gunpack.meta.json", "assets/tacz/display/attachments/*.json", "assets/tacz/display/guns/*.json")
+        include("data/**", "gunpack.meta.json", "assets/*/display/attachments/**/*.json", "assets/*/display/guns/**/*.json")
     }
     archiveFileName = "default-pack.zip"
     destinationDirectory = layout.buildDirectory.dir("generated/pack")
@@ -61,3 +61,36 @@ tasks.processResources {
 tasks.jar {
     manifest.attributes("paperweight-mappings-namespace" to "mojang")
 }
+
+val serverConfigDirectory = layout.buildDirectory.dir("generated/server-config")
+val exportDefaultConfig by tasks.registering(JavaExec::class) {
+    group = "distribution"
+    description = "Exports validated plugin configuration using the real first-run catalog loader."
+    dependsOn(tasks.testClasses)
+    classpath = sourceSets.test.get().runtimeClasspath
+    mainClass = "com.tacz.guns.paper.pack.PackConfigExporter"
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    args(serverConfigDirectory.get().asFile.absolutePath)
+    inputs.file(defaultGunPack.flatMap { it.archiveFile })
+    outputs.dir(serverConfigDirectory)
+    doFirst {
+        // This is exclusively generated build output. The first-run marker must not retain
+        // removed defaults from an earlier build; live plugins/TACZ is never touched.
+        delete(serverConfigDirectory)
+    }
+}
+
+val defaultServerConfig by tasks.registering(Zip::class) {
+    group = "distribution"
+    description = "Packages the five configuration directories for extraction into plugins/TACZ."
+    dependsOn(exportDefaultConfig)
+    from(serverConfigDirectory) {
+        include("guns/**", "ammos/**", "attachments/**", "recipes/**", "attachment_tags/**", ".pack-files-v1")
+    }
+    archiveFileName = "tacz-paper-bjd-config.zip"
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
+}
+
+tasks.assemble { dependsOn(defaultServerConfig) }

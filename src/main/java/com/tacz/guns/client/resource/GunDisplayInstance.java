@@ -92,6 +92,7 @@ public class GunDisplayInstance {
     private float zoomModelFov;
     private boolean showCrosshair = false;
     private @Nullable AmmoParticle particle;
+    private @Nullable ElectricArc electricArc;
     private float @Nullable [] tracerColor = null;
     private EnumMap<FireMode, ControllableData> controllableData = new EnumMap<>(FireMode.class);
     private AmmoCountStyle ammoCountStyle = AmmoCountStyle.NORMAL;
@@ -617,6 +618,7 @@ public class GunDisplayInstance {
         if (displayGunAmmo == null) {
             return;
         }
+        electricArc = displayGunAmmo.getElectricArc();
         String tracerColorText = displayGunAmmo.getTracerColor();
         if (StringUtils.isNoneBlank(tracerColorText)) {
             tracerColor = ColorHex.colorTextToRbgFloatArray(tracerColorText);
@@ -625,7 +627,7 @@ public class GunDisplayInstance {
         if (particle != null) {
             try {
                 String name = particle.getName();
-                if (StringUtils.isNoneBlank()) {
+                if (StringUtils.isNotBlank(name)) {
                     particle.setParticleOptions(ParticleArgument.readParticle(new StringReader(name), RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)));
                     Preconditions.checkArgument(particle.getCount() > 0, "particle count must be greater than 0");
                     Preconditions.checkArgument(particle.getLifeTime() > 0, "particle life time must be greater than 0");
@@ -732,6 +734,9 @@ public class GunDisplayInstance {
     public AmmoParticle getParticle() {
         return particle;
     }
+
+    @Nullable
+    public ElectricArc getElectricArc() { return electricArc; }
 
     @Nullable
     public MuzzleFlash getMuzzleFlash() {

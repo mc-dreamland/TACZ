@@ -23,6 +23,9 @@ public class AmmoParticle {
     @SerializedName("count")
     private int count = 1;
 
+    @SerializedName("min_distance")
+    private double minDistance = 3;
+
     // 不进行序列化，而是需要 deco 的
     private transient ParticleOptions particleOptions;
 
@@ -44,6 +47,10 @@ public class AmmoParticle {
 
     public int getLifeTime() {
         return lifeTime;
+    }
+
+    public double getMinDistance() {
+        return Double.isFinite(minDistance) ? Math.max(0, Math.min(64, minDistance)) : 3;
     }
 
     @Nullable

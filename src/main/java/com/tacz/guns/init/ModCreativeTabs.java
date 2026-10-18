@@ -63,19 +63,19 @@ public final class ModCreativeTabs {
                     ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact"), ATTACHMENT_EXTENDED_MAG_TAB);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_PISTOL_TAB =
-            registerGunTab("pistol", GunTabType.PISTOL, "glock_17", ATTACHMENT_LASER_TAB);
+            registerGunTab("pistol", GunTabType.PISTOL, "bujidao:hg_01", ATTACHMENT_LASER_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_SNIPER_TAB =
-            registerGunTab("sniper", GunTabType.SNIPER, "ai_awp", GUN_PISTOL_TAB);
+            registerGunTab("sniper", GunTabType.SNIPER, "bujidao:sr_01", GUN_PISTOL_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_RIFLE_TAB =
-            registerGunTab("rifle", GunTabType.RIFLE, "ak47", GUN_SNIPER_TAB);
+            registerGunTab("rifle", GunTabType.RIFLE, "bujidao:ar_01", GUN_SNIPER_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_SHOTGUN_TAB =
-            registerGunTab("shotgun", GunTabType.SHOTGUN, "db_short", GUN_RIFLE_TAB);
+            registerGunTab("shotgun", GunTabType.SHOTGUN, "bujidao:sg_01", GUN_RIFLE_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_SMG_TAB =
-            registerGunTab("smg", GunTabType.SMG, "hk_mp5a5", GUN_SHOTGUN_TAB);
+            registerGunTab("smg", GunTabType.SMG, "bujidao:ar_01", GUN_SHOTGUN_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_RPG_TAB =
-            registerGunTab("rpg", GunTabType.RPG, "rpg7", GUN_SMG_TAB);
+            registerGunTab("rpg", GunTabType.RPG, "bujidao:ar_01", GUN_SMG_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_MG_TAB =
-            registerGunTab("mg", GunTabType.MG, "m249", GUN_RPG_TAB);
+            registerGunTab("mg", GunTabType.MG, "bujidao:ar_01", GUN_RPG_TAB);
 
     private ModCreativeTabs() {
     }
@@ -103,9 +103,9 @@ public final class ModCreativeTabs {
     }
 
     private static DeferredHolder<CreativeModeTab, CreativeModeTab> registerGunTab(
-            String id, GunTabType type, String iconPath,
+            String id, GunTabType type, String iconResource,
             DeferredHolder<CreativeModeTab, CreativeModeTab> tabBefore) {
-        ResourceLocation iconId = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, iconPath);
+        ResourceLocation iconId = ResourceLocation.parse(iconResource);
         return TABS.register(id, () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable("tacz.type." + id + ".name"))
                 .withTabsBefore(tabBefore.getId())

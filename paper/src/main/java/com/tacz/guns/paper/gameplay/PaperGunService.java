@@ -25,7 +25,7 @@ public final class PaperGunService implements Listener {
     private static final long SHOT_EARLY_WINDOW = 50;
     private static final Set<String> CANCEL_QUEUED_SHOT = Set.of("reload", "bolt", "melee", "fire_select", "inspect", "draw");
     private static final Set<String> SCRIPTS = Set.of("", "tacz:xmag_reload_logic", "tacz:db_short_gun_logic", "tacz:devotion_lmg_logic", "tacz:hk_mk23_logic",
-            "tacz:kar98_gun_logic", "tacz:m1014_gun_logic", "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic");
+            "tacz:kar98_gun_logic", "tacz:m1014_gun_logic", "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic", Sg01Reload.SCRIPT);
     private final JavaPlugin plugin;
     private final DefaultGunPack pack;
     private final PaperItemStore items;
@@ -71,6 +71,7 @@ public final class PaperGunService implements Listener {
         }
         // Requests can arrive between ticks. Settle due feeds before an action can interrupt them.
         tickReload(player, session, equipped, now);
+        if (Sg01Reload.matches(equipped.gun)) tickBolt(player, session, equipped, now);
         persist(equipped);
         if (op.equals("shoot") && executePendingShot(player, session, now)) {
             equipped = equip(player, session, now);
@@ -159,7 +160,7 @@ public final class PaperGunService implements Listener {
             }
             boolean firedBurst = false;
             if (s.burstRemaining > 0 && now >= s.burstAt) {
-                if (player.isSprinting() || s.reload != null || s.boltUntil > now || flag(e.state, "overheated", false)) finishBurst(player, s, "cancelled");
+                if (player.isSprinting() || reloading(s) || s.boltUntil > now || flag(e.state, "overheated", false)) finishBurst(player, s, "cancelled");
                 else {
                     // Catch up only the bounded, server-created burst; timestamps never come from clients.
                     for (int i = 0; i < 16 && s.burstRemaining > 0 && now >= s.burstAt; i++) {
@@ -296,6 +297,10 @@ public final class PaperGunService implements Listener {
         if (bolt.equals("closed_bolt") && ammo > 0 && !chamber && !inventory) { ammo--; chamber = true; }
         if (text(e.gun, "script", "").equals("tacz:spas_12_gun_logic") && text(e.state, "fireMode", "semi").equals("burst") && ammo > 0) { ammo--; chamber = true; }
         e.state.addProperty("ammo", Math.max(0, ammo)); e.state.addProperty("chamber", chamber);
+        if (Sg01Reload.matches(e.gun)) {
+            s.sgShotAt = now;
+            s.sgShotIntegrated = flag(object(e.gun, "script_param"), "shoot_includes_bolt", true);
+        }
         ballistics.fire(player, e.state, e.gun, s.aimingProgress, s.crawling);
         JsonObject heat = object(e.gun, "heat");
         if (!heat.isEmpty()) {
@@ -352,6 +357,7 @@ public final class PaperGunService implements Listener {
     private void reload(Player player, Session s, Equipped e, long now) {
         if (busy(s, now) || now < s.nextShot || text(object(e.gun, "reload"), "type", "magazine").equals("inventory")) return;
         int capacity = items.capacity(e.state);
+        if (Sg01Reload.matches(e.gun) && Sg01Reload.needed(e.state, capacity) == 0) return;
         if (integer(e.state, "ammo", 0) >= capacity && (text(e.gun, "bolt", "open_bolt").equals("open_bolt") || flag(e.state, "chamber", false))) return;
         if (!freeAmmo(player, e) && items.countAmmo(player, text(e.gun, "ammo", "")) == 0) return;
         int level = 0;
@@ -361,8 +367,14 @@ public final class PaperGunService implements Listener {
                 if (attachment != null) level = integer(attachment, "extended_mag_level", 0);
             }
         }
-        s.reload = ReloadPlan.create(e.gun, e.state, capacity, level);
-        s.reloadStart = now; s.feedIndex = 0; s.reloadEnd = now + s.reload.duration();
+        if (Sg01Reload.matches(e.gun)) {
+            s.sgReload = new Sg01Reload(e.gun, flag(e.state, "chamber", false));
+            s.sgShotAt = -1;
+        } else {
+            s.reload = ReloadPlan.create(e.gun, e.state, capacity, level);
+            s.reloadEnd = now + s.reload.duration();
+        }
+        s.reloadStart = now; s.feedIndex = 0;
         finishBurst(player, s, "cancelled"); s.aiming = false;
         player.setSprinting(false);
         sync(player); // Animation transitions must see the accepted reload phase before the event.
@@ -370,6 +382,16 @@ public final class PaperGunService implements Listener {
     }
 
     private void tickReload(Player player, Session s, Equipped e, long now) {
+        if (s.sgReload != null) {
+            long elapsed = now - s.reloadStart;
+            boolean free = freeAmmo(player, e);
+            String ammoId = text(e.gun, "ammo", "");
+            s.sgReload.advance(elapsed, e.state, items.capacity(e.state),
+                    () -> free || items.countAmmo(player, ammoId) > 0,
+                    () -> free || items.takeAmmo(player, ammoId, 1) == 1);
+            if (s.sgReload.finished(elapsed)) s.sgReload = null;
+            return;
+        }
         if (s.reload == null) return;
         while (s.feedIndex < s.reload.feeds().size() && now >= s.reloadStart + s.reload.feeds().get(s.feedIndex).time()) {
             ReloadPlan.Feed feed = s.reload.feeds().get(s.feedIndex++);
@@ -402,6 +424,18 @@ public final class PaperGunService implements Listener {
         if (busy(s, now) || now < s.nextShot || flag(e.state, "chamber", false) || !text(e.gun, "bolt", "open_bolt").equals("manual_action")) return;
         if (integer(e.state, "ammo", 0) <= 0 && !text(object(e.gun, "reload"), "type", "magazine").equals("inventory")) return;
         JsonObject params = object(e.gun, "script_param");
+        if (Sg01Reload.matches(e.gun)) {
+            long delay = Sg01Reload.timing(params, "bolt_feed_time", .72);
+            if (s.sgShotAt >= 0 && s.sgShotIntegrated) {
+                delay = Math.max(0, s.sgShotAt + Sg01Reload.timing(params, "shoot_feed_time", .53) - now);
+            }
+            s.sgShotAt = -1;
+            s.boltFeed = now + delay; s.boltUntil = s.boltFeed; s.boltFed = false;
+            peer.broadcast(player, "event", event(player, e.state, "bolt"));
+            tickBolt(player, s, e, now);
+            persist(e);
+            return;
+        }
         long duration = millis(params, "bolt_time", number(e.gun, "bolt_action_time", .5));
         double feedDefault = number(e.gun, "bolt_feed_time", duration / 1000.0);
         s.boltFeed = now + millis(params, "bolt_feed_time", feedDefault < 0 ? duration / 1000.0 : feedDefault);
@@ -499,10 +533,11 @@ public final class PaperGunService implements Listener {
         packet.add("attachments", object(packet, "attachments").deepCopy());
         long now = now();
         boolean feeding = feeding(s);
-        packet.addProperty("reloadState", s == null || s.reload == null ? "NOT_RELOADING" : (s.reload.empty() ? "EMPTY_RELOAD_" : "TACTICAL_RELOAD_") + (feeding ? "FEEDING" : "FINISHING"));
+        packet.addProperty("reloadState", !reloading(s) ? "NOT_RELOADING" : ((s.sgReload != null ? s.sgReload.empty() : s.reload.empty()) ? "EMPTY_RELOAD_" : "TACTICAL_RELOAD_") + (feeding ? "FEEDING" : "FINISHING"));
         packet.addProperty("reloadInterruptible", interruptible(s));
         long reloadDeadline = s == null || s.reload == null ? 0 : feeding ? s.reloadStart + s.reload.feeds().get(s.feedIndex).time() : s.reloadEnd;
-        packet.addProperty("reloadRemaining", Math.max(0, reloadDeadline - now));
+        packet.addProperty("reloadRemaining", s != null && s.sgReload != null
+                ? s.sgReload.remaining(now - s.reloadStart, packet, items.capacity(packet)) : Math.max(0, reloadDeadline - now));
         packet.addProperty("drawRemaining", s == null ? 0 : Math.max(0, s.drawUntil - now));
         packet.addProperty("shootRemaining", s == null ? 0 : Math.max(0, s.nextShot - now));
         packet.addProperty("shotInterval", s == null ? 0 : s.shotInterval);
@@ -520,7 +555,7 @@ public final class PaperGunService implements Listener {
 
     private void movement(Player player, Session s, Equipped e) {
         JsonObject movement = object(e.gun, "movement_speed");
-        String type = s.reload != null ? "reload" : s.aiming ? "aim" : "base";
+        String type = reloading(s) ? "reload" : s.aiming ? "aim" : "base";
         double amount = clamp(number(movement, type, 0) - Math.max(0, number(e.gun, "weight", 0)) * .015, -.95, 2);
         if (Double.compare(s.movement, amount) == 0) return;
         if (applyMovement(player, amount)) s.movement = amount;
@@ -567,13 +602,15 @@ public final class PaperGunService implements Listener {
         s.instance = ""; s.aiming = false; s.aimingProgress = 0; s.crawling = false; s.reload = null; s.boltUntil = 0;
         s.burstRemaining = 0; s.meleeAt = 0; s.charge = 0; s.movement = Double.NaN; s.drawUntil = 0; s.shotInterval = 0;
         s.pendingShot = null; s.shotPhase = false; s.acceleration = 0;
+        s.sgReload = null; s.sgShotAt = -1; s.sgShotIntegrated = false;
         s.lastFiredActionSeq = -1; s.lastFiredShotIndex = -1;
         // nextShot/sequence are session-wide; switching guns cannot bypass anti-replay or a firing cooldown.
     }
     private boolean allowed(Player player) { return peer.ready(player) && player.isOnline() && !player.isDead() && player.getGameMode() != GameMode.SPECTATOR && player.hasPermission("tacz.use"); }
-    private static boolean busy(Session s, long now) { return s.reload != null || s.boltUntil > now || s.drawUntil > now || s.burstRemaining > 0 || s.meleeAt > 0; }
-    private static boolean feeding(Session s) { return s != null && s.reload != null && s.feedIndex < s.reload.feeds().size(); }
-    private static boolean interruptible(Session s) { return feeding(s) && s.reload.progressive(); }
+    private static boolean reloading(Session s) { return s != null && (s.reload != null || s.sgReload != null); }
+    private static boolean busy(Session s, long now) { return reloading(s) || s.boltUntil > now || s.drawUntil > now || s.burstRemaining > 0 || s.meleeAt > 0; }
+    private static boolean feeding(Session s) { return s != null && (s.sgReload != null ? s.sgReload.feeding() : s.reload != null && s.feedIndex < s.reload.feeds().size()); }
+    private static boolean interruptible(Session s) { return feeding(s) && s.reload != null && s.reload.progressive(); }
     private long now() { return clock.getAsLong(); }
     private static JsonObject event(Player player, JsonObject state, String op) {
         JsonObject event = new JsonObject(); event.addProperty("entity", player.getEntityId()); event.addProperty("instance", text(state, "instance", "")); event.addProperty("id", text(state, "id", "")); event.addProperty("op", op); event.addProperty("seq", nextEventSequence()); event.addProperty("fireMode", text(state, "fireMode", "semi")); return event;
@@ -624,11 +661,13 @@ public final class PaperGunService implements Listener {
         long sequence = -1, windowStart, drawStarted, drawUntil, putAway, nextShot, lastShot, sprintUntil, boltUntil, boltFeed, heatAt, aimTick;
         long reloadStart, reloadEnd, burstAt, burstInterval, meleeAt, meleeUntil, shotInterval;
         long lastFiredActionSeq = -1;
+        long sgShotAt = -1;
         int lastFiredShotIndex = -1;
         int requests, feedIndex, burstRemaining, acceleration;
-        boolean aiming, crawling, boltFed, lastSyncedGun, shotPhase;
+        boolean aiming, crawling, boltFed, lastSyncedGun, shotPhase, sgShotIntegrated;
         double charge, aimingProgress, movement = Double.NaN;
         ReloadPlan reload;
+        Sg01Reload sgReload;
         PendingShot pendingShot;
         ShotTrigger burstTrigger;
     }

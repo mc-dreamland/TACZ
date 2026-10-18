@@ -15,7 +15,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:glock_17"
+          "GunId": "bujidao:hg_01"
         }
       }
     },
@@ -25,7 +25,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:ai_awp"
+          "GunId": "bujidao:sr_01"
         }
       }
     },
@@ -35,7 +35,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:ak47"
+          "GunId": "bujidao:ar_01"
         }
       }
     },
@@ -45,7 +45,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:db_short"
+          "GunId": "bujidao:sg_01"
         }
       }
     },
@@ -55,7 +55,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:hk_mp5a5"
+          "GunId": "bujidao:ar_01"
         }
       }
     },
@@ -65,7 +65,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:rpg7"
+          "GunId": "bujidao:ar_01"
         }
       }
     },
@@ -75,7 +75,7 @@
       "icon": {
         "item": "tacz:modern_kinetic_gun",
         "nbt": {
-          "GunId": "tacz:m249"
+          "GunId": "bujidao:ar_01"
         }
       }
     },

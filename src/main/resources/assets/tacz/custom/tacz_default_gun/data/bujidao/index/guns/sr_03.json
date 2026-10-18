@@ -1,0 +1,9 @@
+{
+  "name": "bujidao.gun.sr_03.name",
+  "tooltip": "bujidao.gun.sr_03.desc",
+  "data": "bujidao:sr_03_data",
+  "display": "bujidao:sr_03_display",
+  "type": "sniper",
+  "item_type": "modern_kinetic",
+  "sort": 9
+}

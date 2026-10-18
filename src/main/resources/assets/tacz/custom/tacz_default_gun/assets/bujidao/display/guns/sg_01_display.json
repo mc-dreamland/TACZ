@@ -1,0 +1,84 @@
+{
+  "model": "bujidao:gun/sg_01_geo",
+  "texture": "bujidao:gun/uv/sg_01",
+  "iron_zoom": 1.33,
+  "zoom_model_fov": 45,
+  "ammo_count_style": "normal",
+  "damage_style": "per_projectile",
+  "show_crosshair": false,
+  "transform": {
+    "scale": {
+      "thirdperson": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "ground": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "fixed": [
+        1.2,
+        1.2,
+        1.2
+      ]
+    }
+  },
+  "animation": "bujidao:sg_01",
+  "state_machine": "bujidao:sg_01_state_machine",
+  "use_default_animation": "rifle",
+  "third_person_animation": "default",
+  "hud": "bujidao:gun/hud/sg_01",
+  "slot": "bujidao:gun/slot/sg_01",
+  "muzzle_flash": {
+    "texture": "bujidao:flash/sg_01_flash",
+    "scale": 0.75
+  },
+  "ammo": {
+    "tracer_color": "#FF8888"
+  },
+  "shell": {
+    "initial_velocity": [
+      5,
+      2,
+      1
+    ],
+    "random_velocity": [
+      1,
+      1,
+      0.25
+    ],
+    "acceleration": [
+      0,
+      -10,
+      0
+    ],
+    "angular_velocity": [
+      360,
+      -1200,
+      90
+    ],
+    "living_time": 1
+  },
+  "state_machine_param": {
+    "intro": 0.72,
+    "intro_empty": 2,
+    "loop": 0.675,
+    "ending": 0.74,
+    "bolt_time": 1.15,
+    "intro_empty_feed": 1.07,
+    "loop_feed": 0.46,
+    "bolt_feed_time": 0.72,
+    "shoot_time": 0.6838,
+    "shoot_feed_time": 0.53,
+    "shoot_includes_bolt": true
+  },
+  "player_animator_3rd": "tacz:rifle_default.player_animation",
+  "sounds": {
+    "shoot": "tacz:m870/m870_shoot",
+    "shoot_3p": "tacz:m870/m870_shoot_3p",
+    "silence": "tacz:m870/m870_silence",
+    "silence_3p": "tacz:m870/m870_silence_3p"
+  }
+}

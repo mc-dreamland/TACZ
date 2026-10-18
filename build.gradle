@@ -158,6 +158,20 @@ tasks.named('jar', Jar).configure {
     }
 }
 
+def gunPackZip = tasks.register('gunPackZip', Zip) {
+    group = 'distribution'
+    description = 'Packages the complete built-in gun pack for installation in the tacz directory.'
+    from layout.projectDirectory.dir('src/main/resources/assets/tacz/custom/tacz_default_gun')
+    archiveFileName = 'tacz-bjd-gunpack.zip'
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.named('assemble').configure {
+    dependsOn gunPackZip
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
     options.release = 21

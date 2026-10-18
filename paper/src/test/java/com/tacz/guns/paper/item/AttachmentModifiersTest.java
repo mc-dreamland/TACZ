@@ -1,8 +1,9 @@
 package com.tacz.guns.paper.item;
 
 import com.google.gson.*;
+import com.tacz.guns.paper.pack.DefaultGunPack;
 import org.junit.jupiter.api.Test;
-import java.nio.file.*;
+import java.io.InputStream;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,21 +31,21 @@ class AttachmentModifiersTest {
         assertEquals(9, raw.getAsJsonObject("bullet").get("damage").getAsInt(), "Catalog data must remain immutable");
     }
     @Test void everyBundledAttachmentFormulaIsSupported() throws Exception {
-        Path directory = Path.of("../src/main/resources/assets/tacz/custom/tacz_default_gun/data/tacz/data/attachments");
-        try (var files = Files.walk(directory)) {
-            List<Path> paths = files.filter(path -> path.toString().endsWith(".json")).toList(); assertFalse(paths.isEmpty());
-            for (Path path : paths) assertDoesNotThrow(() -> AttachmentModifiers.validate(JsonParser.parseString(Files.readString(path))), path.toString());
-        }
+        DefaultGunPack pack = bundledPack();
+        assertFalse(pack.attachments().isEmpty());
+        pack.attachments().forEach((id, data) -> assertDoesNotThrow(() -> AttachmentModifiers.validate(data), id));
     }
     @Test void everyBundledGunAcceptsItsAllowedDefaultAttachments() throws Exception {
-        Path root = Path.of("../src/main/resources/assets/tacz/custom/tacz_default_gun/data/tacz");
-        List<JsonObject> attachments;
-        try (var paths = Files.walk(root.resolve("data/attachments"))) { attachments = paths.filter(p -> p.toString().endsWith(".json")).map(p -> { try { return json(Files.readString(p)); } catch (Exception e) { throw new RuntimeException(e); } }).toList(); }
-        try (var paths = Files.walk(root.resolve("data/guns"))) {
-            for (Path path : paths.filter(p -> p.toString().endsWith(".json")).toList()) {
-                JsonObject gun = json(Files.readString(path));
-                for (JsonObject attachment : attachments) assertDoesNotThrow(() -> AttachmentModifiers.apply(gun, "semi", List.of(attachment)), path + " / " + attachment);
-            }
+        DefaultGunPack pack = bundledPack();
+        assertFalse(pack.guns().isEmpty());
+        pack.guns().forEach((gunId, gun) -> pack.attachments().forEach((attachmentId, attachment) ->
+                assertDoesNotThrow(() -> AttachmentModifiers.apply(gun, "semi", List.of(attachment)), gunId + " / " + attachmentId)));
+    }
+    private static DefaultGunPack bundledPack() throws Exception {
+        DefaultGunPack pack = new DefaultGunPack(null);
+        try (InputStream input = DefaultGunPack.class.getResourceAsStream("/default-pack.zip")) {
+            assertNotNull(input); pack.load(input);
         }
+        return pack;
     }
 }

@@ -1,0 +1,65 @@
+{
+  "model": "bujidao:gun/sr_02_geo",
+  "texture": "bujidao:gun/uv/sr_02",
+  "iron_zoom": 1.33,
+  "zoom_model_fov": 45,
+  "ammo_count_style": "normal",
+  "damage_style": "per_projectile",
+  "show_crosshair": false,
+  "transform": {
+    "scale": {
+      "thirdperson": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "ground": [
+        0.6,
+        0.6,
+        0.6
+      ],
+      "fixed": [
+        1.2,
+        1.2,
+        1.2
+      ]
+    }
+  },
+  "animation": "bujidao:sr_02",
+  "state_machine": "tacz:default_state_machine",
+  "use_default_animation": "rifle",
+  "third_person_animation": "default",
+  "hud": "bujidao:gun/hud/sr_02",
+  "slot": "bujidao:gun/slot/sr_02",
+  "muzzle_flash": {
+    "texture": "bujidao:flash/sr_02_flash",
+    "scale": 0
+  },
+  "ammo": {
+    "tracer_color": "#FF8888",
+    "particle": {
+      "name": "minecraft:flame",
+      "delta": [
+        0.045,
+        0.045,
+        0.045
+      ],
+      "speed": 0.015,
+      "life_time": 12,
+      "min_distance": 0.25,
+      "count": 3
+    }
+  },
+  "player_animator_3rd": "tacz:rifle_default.player_animation",
+  "sounds": {
+    "shoot": "tacz:ak47/ak47_shoot",
+    "shoot_3p": "tacz:ak47/ak47_shoot_3p",
+    "silence": "tacz:ak47/ak47_silence",
+    "silence_3p": "tacz:ak47/ak47_silence_3p",
+    "dry_fire": "tacz:dry_fire",
+    "fire_select": "tacz:fire_select",
+    "head_hit": "tacz:head_hit",
+    "flesh_hit": "tacz:flesh_hit",
+    "kill": "tacz:kill"
+  }
+}
