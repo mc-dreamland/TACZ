@@ -8,7 +8,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.RegistryOps;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.util.CraftingHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,24 +22,24 @@ import org.jetbrains.annotations.Nullable;
  * by the client screen and the server menu immediately before the result is used.</p>
  */
 public class GunSmithTableResult {
-    private static final ResourceLocation EMPTY_GROUP = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
+    private static final Identifier EMPTY_GROUP = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
     public static final String GUN = "gun";
     public static final String AMMO = "ammo";
     public static final String ATTACHMENT = "attachment";
     public static final String CUSTOM = "custom";
 
     private ItemStack result;
-    private ResourceLocation group;
+    private Identifier group;
     @Nullable
     private final RawGunTableResult rawResult;
     @Nullable
     private final JsonElement customResult;
     @Nullable
-    private final ResourceLocation groupOverride;
+    private final Identifier groupOverride;
     private boolean initialized;
     @Nullable private JsonObject recipeJson;
 
-    public GunSmithTableResult(ItemStack result, @Nullable ResourceLocation group) {
+    public GunSmithTableResult(ItemStack result, @Nullable Identifier group) {
         this.result = result == null ? ItemStack.EMPTY : result;
         this.group = group == null ? EMPTY_GROUP : group;
         this.rawResult = null;
@@ -48,7 +48,7 @@ public class GunSmithTableResult {
         this.initialized = true;
     }
 
-    public GunSmithTableResult(RawGunTableResult raw, @Nullable ResourceLocation group) {
+    public GunSmithTableResult(RawGunTableResult raw, @Nullable Identifier group) {
         this.result = ItemStack.EMPTY;
         this.group = group == null ? EMPTY_GROUP : group;
         this.rawResult = raw;
@@ -57,7 +57,7 @@ public class GunSmithTableResult {
         this.initialized = false;
     }
 
-    public GunSmithTableResult(JsonElement json, @Nullable ResourceLocation group) {
+    public GunSmithTableResult(JsonElement json, @Nullable Identifier group) {
         this.result = ItemStack.EMPTY;
         this.group = group == null ? EMPTY_GROUP : group;
         this.rawResult = null;
@@ -100,7 +100,7 @@ public class GunSmithTableResult {
         return result;
     }
 
-    public ResourceLocation getGroup() {
+    public Identifier getGroup() {
         return group;
     }
 }

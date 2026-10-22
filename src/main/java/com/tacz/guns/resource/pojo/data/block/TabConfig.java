@@ -9,7 +9,7 @@ import com.tacz.guns.api.item.builder.AttachmentItemBuilder;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
 import com.tacz.guns.init.ModItems;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -25,42 +25,42 @@ import java.util.function.Supplier;
  * "Components not bound yet" 导致服务端/客户端进世界崩溃。
  * 现在解析阶段只捕获原始 JSON，ItemStack 构造推迟到 GUI 运行时（届时组件已 bind）。
  */
-public record TabConfig(ResourceLocation id, String name, Supplier<ItemStack> icon) {
-    public static final ResourceLocation TAB_AMMO = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "ammo");
+public record TabConfig(Identifier id, String name, Supplier<ItemStack> icon) {
+    public static final Identifier TAB_AMMO = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "ammo");
 
-    public static final ResourceLocation TAB_PISTOL = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pistol");
-    public static final ResourceLocation TAB_SNIPER = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "sniper");
-    public static final ResourceLocation TAB_RIFLE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "rifle");
-    public static final ResourceLocation TAB_SHOTGUN = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "shotgun");
-    public static final ResourceLocation TAB_SMG = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "smg");
-    public static final ResourceLocation TAB_RPG = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "rpg");
-    public static final ResourceLocation TAB_MG = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "mg");
+    public static final Identifier TAB_PISTOL = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pistol");
+    public static final Identifier TAB_SNIPER = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "sniper");
+    public static final Identifier TAB_RIFLE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "rifle");
+    public static final Identifier TAB_SHOTGUN = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "shotgun");
+    public static final Identifier TAB_SMG = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "smg");
+    public static final Identifier TAB_RPG = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "rpg");
+    public static final Identifier TAB_MG = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "mg");
 
-    public static final ResourceLocation TAB_SCOPE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "scope");
-    public static final ResourceLocation TAB_MUZZLE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle");
-    public static final ResourceLocation TAB_STOCK = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "stock");
-    public static final ResourceLocation TAB_GRIP = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "grip");
-    public static final ResourceLocation TAB_EXTENDED_MAG = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag");
-    public static final ResourceLocation TAB_LASER = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "laser");
+    public static final Identifier TAB_SCOPE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "scope");
+    public static final Identifier TAB_MUZZLE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle");
+    public static final Identifier TAB_STOCK = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "stock");
+    public static final Identifier TAB_GRIP = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "grip");
+    public static final Identifier TAB_EXTENDED_MAG = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag");
+    public static final Identifier TAB_LASER = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "laser");
 
-    public static final ResourceLocation TAB_MISC = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "misc");
-    public static final ResourceLocation TAB_EMPTY = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
+    public static final Identifier TAB_MISC = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "misc");
+    public static final Identifier TAB_EMPTY = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
 
     public static final List<TabConfig> DEFAULT_TABS = List.of(
             new TabConfig(TabConfig.TAB_AMMO, "tacz.type.ammo.name", () -> AmmoItemBuilder.create().setId(DefaultAssets.DEFAULT_AMMO_ID).build()),
-            new TabConfig(TabConfig.TAB_PISTOL, "tacz.type.pistol.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "hg_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_SNIPER, "tacz.type.sniper.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "sr_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_RIFLE, "tacz.type.rifle.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_SHOTGUN, "tacz.type.shotgun.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "sg_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_SMG, "tacz.type.smg.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_RPG, "tacz.type.rpg.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_MG, "tacz.type.mg.name", () -> GunItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_SCOPE, "tacz.type.scope.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "scope_acog_ta31")).build()),
-            new TabConfig(TabConfig.TAB_MUZZLE, "tacz.type.muzzle.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle_compensator_trident")).build()),
-            new TabConfig(TabConfig.TAB_STOCK, "tacz.type.stock.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "stock_militech_b5")).build()),
-            new TabConfig(TabConfig.TAB_GRIP, "tacz.type.grip.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "grip_magpul_afg_2")).build()),
-            new TabConfig(TabConfig.TAB_EXTENDED_MAG, "tacz.type.extended_mag.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag_3")).build()),
-            new TabConfig(TabConfig.TAB_LASER, "tacz.type.laser.name", () -> AttachmentItemBuilder.create().setId(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact")).build()),
+            new TabConfig(TabConfig.TAB_PISTOL, "tacz.type.pistol.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "hg_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_SNIPER, "tacz.type.sniper.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "sr_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_RIFLE, "tacz.type.rifle.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_SHOTGUN, "tacz.type.shotgun.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "sg_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_SMG, "tacz.type.smg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_RPG, "tacz.type.rpg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_MG, "tacz.type.mg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
+            new TabConfig(TabConfig.TAB_SCOPE, "tacz.type.scope.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "scope_acog_ta31")).build()),
+            new TabConfig(TabConfig.TAB_MUZZLE, "tacz.type.muzzle.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle_compensator_trident")).build()),
+            new TabConfig(TabConfig.TAB_STOCK, "tacz.type.stock.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "stock_militech_b5")).build()),
+            new TabConfig(TabConfig.TAB_GRIP, "tacz.type.grip.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "grip_magpul_afg_2")).build()),
+            new TabConfig(TabConfig.TAB_EXTENDED_MAG, "tacz.type.extended_mag.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag_3")).build()),
+            new TabConfig(TabConfig.TAB_LASER, "tacz.type.laser.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact")).build()),
             new TabConfig(TabConfig.TAB_MISC, "tacz.type.misc.name", () -> new net.minecraft.world.item.ItemStack(ModItems.GUN_SMITH_TABLE.get()))
     );
 
@@ -74,7 +74,7 @@ public record TabConfig(ResourceLocation id, String name, Supplier<ItemStack> ic
             if (!object.has("id") || !object.get("id").isJsonPrimitive()) {
                 throw new JsonParseException("TabConfig must have an id");
             }
-            ResourceLocation id = context.deserialize(object.get("id"), ResourceLocation.class);
+            Identifier id = context.deserialize(object.get("id"), Identifier.class);
             // 只捕获原始 JSON，不在重载阶段构造 ItemStack（避免 "Components not bound yet"）
             final JsonObject iconObj = object.has("icon") && object.get("icon").isJsonObject()
                     ? object.getAsJsonObject("icon") : null;

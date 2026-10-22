@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Makes Iris 1.10.7 run one late hand pass for a deferred TACZ scope reticle.
+ * Makes Iris 1.10.7/1.10.8 run one late hand pass for a deferred TACZ scope reticle.
  *
  * <p>{@code HandRenderer#renderTranslucent} normally returns early unless vanilla finds a
  * translucent held block. A TACZ gun is not a {@code BlockItem}, so the reticle captured in

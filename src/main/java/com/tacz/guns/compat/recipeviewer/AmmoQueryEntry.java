@@ -5,7 +5,7 @@ import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
 import com.tacz.guns.resource.index.CommonAmmoIndex;
 import com.tacz.guns.resource.index.CommonGunIndex;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -29,7 +29,7 @@ public final class AmmoQueryEntry {
     private final List<ItemStack> gunStacks;
     private final List<ItemStack> extraGunStacks;
 
-    private AmmoQueryEntry(ResourceLocation ammoId, List<ItemStack> compatibleGuns) {
+    private AmmoQueryEntry(Identifier ammoId, List<ItemStack> compatibleGuns) {
         this.ammoStack = AmmoItemBuilder.create().setId(ammoId).build();
         int visibleCount = Math.min(compatibleGuns.size(), MAX_GUN_SHOW_COUNT);
         this.gunStacks = List.copyOf(compatibleGuns.subList(0, visibleCount));
@@ -38,30 +38,30 @@ public final class AmmoQueryEntry {
 
     /** Builds one query display per ammunition that is used by at least one loaded gun. */
     public static List<AmmoQueryEntry> getAllAmmoQueryEntries() {
-        List<Map.Entry<ResourceLocation, CommonGunIndex>> gunIndexes =
+        List<Map.Entry<Identifier, CommonGunIndex>> gunIndexes =
                 new ArrayList<>(TimelessAPI.getAllCommonGunIndex());
         gunIndexes.sort(Comparator
-                .comparingInt((Map.Entry<ResourceLocation, CommonGunIndex> entry) -> entry.getValue().getSort())
+                .comparingInt((Map.Entry<Identifier, CommonGunIndex> entry) -> entry.getValue().getSort())
                 .thenComparing(entry -> entry.getKey().toString()));
 
-        Map<ResourceLocation, List<ItemStack>> gunsByAmmo = new HashMap<>();
-        for (Map.Entry<ResourceLocation, CommonGunIndex> entry : gunIndexes) {
+        Map<Identifier, List<ItemStack>> gunsByAmmo = new HashMap<>();
+        for (Map.Entry<Identifier, CommonGunIndex> entry : gunIndexes) {
             ItemStack gunStack = GunItemBuilder.create().setId(entry.getKey()).build();
             if (gunStack.isEmpty()) {
                 continue;
             }
-            ResourceLocation ammoId = entry.getValue().getGunData().getAmmoId();
+            Identifier ammoId = entry.getValue().getGunData().getAmmoId();
             gunsByAmmo.computeIfAbsent(ammoId, ignored -> new ArrayList<>()).add(gunStack);
         }
 
-        List<Map.Entry<ResourceLocation, CommonAmmoIndex>> ammoIndexes =
+        List<Map.Entry<Identifier, CommonAmmoIndex>> ammoIndexes =
                 new ArrayList<>(TimelessAPI.getAllCommonAmmoIndex());
         ammoIndexes.sort(Comparator
-                .comparingInt((Map.Entry<ResourceLocation, CommonAmmoIndex> entry) -> entry.getValue().getSort())
+                .comparingInt((Map.Entry<Identifier, CommonAmmoIndex> entry) -> entry.getValue().getSort())
                 .thenComparing(entry -> entry.getKey().toString()));
 
         List<AmmoQueryEntry> queries = new ArrayList<>();
-        for (Map.Entry<ResourceLocation, CommonAmmoIndex> entry : ammoIndexes) {
+        for (Map.Entry<Identifier, CommonAmmoIndex> entry : ammoIndexes) {
             List<ItemStack> compatibleGuns = gunsByAmmo.get(entry.getKey());
             if (compatibleGuns != null && !compatibleGuns.isEmpty()) {
                 queries.add(new AmmoQueryEntry(entry.getKey(), compatibleGuns));

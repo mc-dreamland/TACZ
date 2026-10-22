@@ -11,7 +11,7 @@ import com.tacz.guns.crafting.result.GunSmithTableResult;
 import com.tacz.guns.resource.CommonAssetsManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
@@ -29,7 +29,7 @@ public final class GunSmithTableSerializer {
             json -> parse(json, GunSmithTableIngredient.class), value -> encode(value::toJson));
 
     public static final MapCodec<GunSmithTableRecipe> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-            ResourceLocation.CODEC.optionalFieldOf("recipe_id", ResourceLocation.fromNamespaceAndPath("tacz", "unbound_recipe"))
+            Identifier.CODEC.optionalFieldOf("recipe_id", Identifier.fromNamespaceAndPath("tacz", "unbound_recipe"))
                     .forGetter(GunSmithTableRecipe::getId),
             RESULT_CODEC.fieldOf("result").forGetter(GunSmithTableRecipe::getResult),
             INGREDIENT_CODEC.listOf().fieldOf("materials").forGetter(GunSmithTableRecipe::getInputs)
@@ -55,7 +55,7 @@ public final class GunSmithTableSerializer {
     public static final StreamCodec<RegistryFriendlyByteBuf, GunSmithTableRecipe> STREAM_CODEC = new StreamCodec<>() {
         @Override
         public GunSmithTableRecipe decode(RegistryFriendlyByteBuf buffer) {
-            ResourceLocation recipeId = buffer.readResourceLocation();
+            Identifier recipeId = buffer.readIdentifier();
             int size = buffer.readVarInt();
             if (size < 0 || size > 1024) throw new IllegalArgumentException("Invalid gun-smith material count: " + size);
             List<GunSmithTableIngredient> ingredients = new ArrayList<>(size);
@@ -63,21 +63,21 @@ public final class GunSmithTableSerializer {
                 ingredients.add(new GunSmithTableIngredient(Ingredient.CONTENTS_STREAM_CODEC.decode(buffer), buffer.readVarInt()));
             }
             ItemStack result = ItemStack.STREAM_CODEC.decode(buffer);
-            ResourceLocation group = buffer.readResourceLocation();
+            Identifier group = buffer.readIdentifier();
             return new GunSmithTableRecipe(recipeId, new GunSmithTableResult(result, group), ingredients);
         }
 
         @Override
         public void encode(RegistryFriendlyByteBuf buffer, GunSmithTableRecipe recipe) {
             recipe.init();
-            buffer.writeResourceLocation(recipe.getId());
+            buffer.writeIdentifier(recipe.getId());
             buffer.writeVarInt(recipe.getInputs().size());
             for (GunSmithTableIngredient ingredient : recipe.getInputs()) {
                 Ingredient.CONTENTS_STREAM_CODEC.encode(buffer, ingredient.getIngredientOrThrow());
                 buffer.writeVarInt(ingredient.getCount());
             }
             ItemStack.STREAM_CODEC.encode(buffer, recipe.getResult().getResult());
-            buffer.writeResourceLocation(recipe.getResult().getGroup());
+            buffer.writeIdentifier(recipe.getResult().getGroup());
         }
     };
 

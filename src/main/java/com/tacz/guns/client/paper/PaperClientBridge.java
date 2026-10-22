@@ -18,7 +18,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
@@ -39,11 +39,11 @@ import java.util.Set;
 
 @EventBusSubscriber(modid = GunMod.MOD_ID, value = Dist.CLIENT)
 public final class PaperClientBridge {
-    private static final ResourceLocation CHANNEL = ResourceLocation.parse(BridgeProtocol.CHANNEL);
+    private static final Identifier CHANNEL = Identifier.parse(BridgeProtocol.CHANNEL);
     private static final PackTransfer.Receiver TRANSFER = new PackTransfer.Receiver();
     private static final Map<Integer, JsonObject> STATES = new HashMap<>();
     private static final Map<String, Set<String>> CATALOG = new HashMap<>();
-    private static Map<ResourceLocation, String> workbenchRecipes = Map.of();
+    private static Map<Identifier, String> workbenchRecipes = Map.of();
     private static boolean active;
     private static boolean connected;
     private static String nonce = "";
@@ -62,7 +62,7 @@ public final class PaperClientBridge {
         });
     }
     public static boolean active() { return active; }
-    public static Map<ResourceLocation, String> workbenchRecipes() { return workbenchRecipes; }
+    public static Map<Identifier, String> workbenchRecipes() { return workbenchRecipes; }
     @Nullable public static JsonObject state(int entityId) { return STATES.get(entityId); }
 
     @SubscribeEvent public static void login(ClientPlayerNetworkEvent.LoggingIn event) {
@@ -82,7 +82,7 @@ public final class PaperClientBridge {
             if (minecraft.getConnection() == null) return;
             minecraft.getConnection().send(new ServerboundCustomPayloadPacket(new MinecraftRegisterPayload(Set.of(CHANNEL))));
             JsonObject hello = new JsonObject();
-            hello.addProperty("client", "tacz-neoforge-1.21.10");
+            hello.addProperty("client", "tacz-neoforge-1.21.11");
             send("hello", hello);
         }
     }
@@ -145,12 +145,12 @@ public final class PaperClientBridge {
     }
 
     private static void installPack(JsonObject bundle) {
-        Map<DataType, Map<ResourceLocation, String>> cache = new EnumMap<>(DataType.class);
+        Map<DataType, Map<Identifier, String>> cache = new EnumMap<>(DataType.class);
         Map<String, Set<String>> catalog = new HashMap<>();
         for (Map.Entry<String, JsonElement> group : bundle.getAsJsonObject("data").entrySet()) {
-            Map<ResourceLocation, String> entries = new HashMap<>();
+            Map<Identifier, String> entries = new HashMap<>();
             for (Map.Entry<String, JsonElement> entry : group.getValue().getAsJsonObject().entrySet())
-                entries.put(ResourceLocation.parse(entry.getKey()), entry.getValue().getAsString());
+                entries.put(Identifier.parse(entry.getKey()), entry.getValue().getAsString());
             cache.put(DataType.valueOf(group.getKey()), entries);
             String kind = switch (group.getKey()) {
                 case "GUN_INDEX" -> "gun";
@@ -204,8 +204,9 @@ public final class PaperClientBridge {
     }
 
     private static void send(String type, JsonObject data) {
-        if (Minecraft.getInstance().getConnection() != null)
-            Minecraft.getInstance().getConnection().send(new ServerboundCustomPayloadPacket(new PaperBridgePayload(BridgeProtocol.encode(type, data))));
+        // Bukkit announces its incoming channels asynchronously after login. Until then,
+        // leave the hello retry pending instead of sending an unregistered payload.
+        com.tacz.guns.network.NetworkHandler.sendToServer(new PaperBridgePayload(BridgeProtocol.encode(type, data)));
     }
 
     public static void reset() {

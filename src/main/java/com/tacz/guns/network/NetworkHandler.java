@@ -6,7 +6,7 @@ import com.tacz.guns.network.message.event.*;
 import com.tacz.guns.network.message.handshake.Acknowledge;
 import com.tacz.guns.network.message.handshake.ServerMessageSyncedEntityDataMapping;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ConfigurationTask;
@@ -23,6 +23,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public class NetworkHandler {
     private static final String VERSION = "1.0.5";
@@ -81,8 +82,26 @@ public class NetworkHandler {
         }
     }
 
-    public static void sendToServer(CustomPacketPayload message) {
-        net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(message);
+    /** Optional play payloads require the remote side to advertise their exact channel. */
+    public static boolean canSendToServer(CustomPacketPayload.Type<?> type) {
+        var listener = net.minecraft.client.Minecraft.getInstance().getConnection();
+        return listener != null && listener.getConnection().isConnected()
+                && net.neoforged.neoforge.network.registration.NetworkRegistry.hasChannel(listener, type.id());
+    }
+
+    public static boolean sendToServer(CustomPacketPayload message) {
+        var listener = net.minecraft.client.Minecraft.getInstance().getConnection();
+        if (listener == null || !listener.getConnection().isConnected()) return false;
+        return sendIfSupported(message,
+                id -> net.neoforged.neoforge.network.registration.NetworkRegistry.hasChannel(listener, id),
+                payload -> listener.send(payload));
+    }
+
+    static boolean sendIfSupported(CustomPacketPayload message, Predicate<Identifier> hasChannel,
+                                   Consumer<CustomPacketPayload> sender) {
+        if (!hasChannel.test(message.type().id())) return false;
+        sender.accept(message);
+        return true;
     }
 
     public static void sendToClientPlayer(CustomPacketPayload message, Player player) {
@@ -111,7 +130,7 @@ public class NetworkHandler {
 
     public static class Task implements ICustomConfigurationTask {
         public static final ConfigurationTask.Type TYPE = new ConfigurationTask.Type(
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "configuration")
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "configuration")
         );
 
         @Override

@@ -40,7 +40,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.neoforged.neoforge.common.NeoForge;
 
 public final class ClientPacketHandlers {
@@ -200,6 +200,6 @@ public final class ClientPacketHandlers {
         // Notify the server to update its baseTimestamp too, preventing unbounded
         // timestamp drift between client and server that makes every shoot fail the
         // network timestamp check (alpha out of [-300, 300+2*tick]).
-        ClientPacketDistributor.sendToServer(ClientMessageSyncBaseTimestamp.INSTANCE);
+        NetworkHandler.sendToServer(ClientMessageSyncBaseTimestamp.INSTANCE);
     }
 }

@@ -75,7 +75,10 @@ repositories {
     maven {
         name = 'BlameJared'
         url = 'https://maven.blamejared.com'
-        content { includeGroup 'mezz.jei' }
+        content {
+            includeGroup 'mezz.jei'
+            includeGroup 'net.mezzdev.config'
+        }
     }
     maven {
         name = 'Shedaniel'
@@ -125,18 +128,18 @@ dependencies {
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
     implementation "me.shedaniel.cloth:cloth-config-neoforge:${cloth_config_version}"
     compileOnly "maven.modrinth:shoulder-surfing-reloaded:${shoulder_surfing_version}"
-    compileOnly "curse.maven:player-animation-library-${player_animation_project}:${player_animation_file}"
-    compileOnly files('libs/controllable-neoforge-1.21.10-0.25.4-release.jar')
-    compileOnly files('libs/framework-neoforge-1.21.10-0.13.5-signed.jar')
+    compileOnly "maven.modrinth:player-animation-library:${player_animation_version}"
+    compileOnly "curse.maven:controllable-317269:${controllable_file}"
+    compileOnly "curse.maven:framework-549225:${framework_file}"
 
     testImplementation platform('org.junit:junit-bom:5.11.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // Mixin and MixinExtras are supplied by NeoForge; do not embed Forge variants.
-    // KubeJS has no compatible 1.21.10 release. Its sources and discovery metadata
+    // KubeJS remains outside this port. Its sources and discovery metadata
     // are preserved under optional-integrations/kubejs and are not in this artifact.
-    // Forge 1.20.1 jars in libs/ cannot be used on this compile/runtime classpath.
+    // Older user-provided jars in libs/ are not used on the compile/runtime classpath.
 }
 
 tasks.named('processResources', ProcessResources).configure {

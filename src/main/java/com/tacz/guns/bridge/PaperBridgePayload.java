@@ -5,7 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -13,7 +13,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 /** Raw Bukkit plugin-message bytes: the bridge protocol has no byte-array length prefix. */
 @EventBusSubscriber(modid = GunMod.MOD_ID)
 public record PaperBridgePayload(byte[] data) implements CustomPacketPayload {
-    public static final Type<PaperBridgePayload> TYPE = new Type<>(ResourceLocation.parse(BridgeProtocol.CHANNEL));
+    public static final Type<PaperBridgePayload> TYPE = new Type<>(Identifier.parse(BridgeProtocol.CHANNEL));
     public static final StreamCodec<FriendlyByteBuf, PaperBridgePayload> STREAM_CODEC = StreamCodec.of(
             (buffer, payload) -> buffer.writeBytes(payload.data),
             buffer -> {

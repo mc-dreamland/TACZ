@@ -7,13 +7,13 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.function.Consumer;
 
 public class ResultButton extends Button {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
     private final ItemStack stack;
     private boolean isSelected = false;
 
@@ -23,7 +23,7 @@ public class ResultButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics gui, int pMouseX, int pMouseY, float pPartialTick) {
         if (isSelected) {
             if (isHoveredOrFocused()) {
                 gui.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, this.getX() - 1, this.getY() - 1, 52, 229, this.width + 2, this.height + 2, 256, 256);

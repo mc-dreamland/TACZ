@@ -18,7 +18,7 @@ public class ArmedEntityRenderStateMixin implements TaczArmedRenderState {
 
     @Inject(method = "extractArmedEntityRenderState", at = @At("TAIL"))
     private static void tacz$captureStacks(LivingEntity entity, ArmedEntityRenderState state,
-                                          ItemModelResolver resolver, CallbackInfo ci) {
+                                          ItemModelResolver resolver, float partialTick, CallbackInfo ci) {
         ((TaczArmedRenderState) state).tacz$setHeldStacks(entity.getMainHandItem(), entity.getOffhandItem());
     }
 

@@ -11,7 +11,7 @@ import com.tacz.guns.block.entity.StatueBlockEntity;
 import com.tacz.guns.block.entity.TargetBlockEntity;
 
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -53,7 +53,7 @@ public class ModBlocks {
             TILE_ENTITIES.register("statue", () -> new BlockEntityType<>(StatueBlockEntity::new, STATUE.get()));
 
     public static final TagKey<Block> BULLET_IGNORE_BLOCKS =
-            TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "bullet_ignore"));
+            TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "bullet_ignore"));
 
     private static BlockBehaviour.Properties wood(BlockBehaviour.Properties properties) {
         return properties.sound(SoundType.WOOD).strength(2.0F, 3.0F).noOcclusion().pushReaction(PushReaction.DESTROY);

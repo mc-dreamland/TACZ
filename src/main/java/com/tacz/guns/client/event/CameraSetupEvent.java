@@ -32,7 +32,7 @@ import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -89,7 +89,7 @@ public class CameraSetupEvent {
         if (!event.usedConfiguredFov()) {
             return; // 只修改世界渲染的 fov，因此如果是手部渲染 fov 事件，则返回
         }
-        Entity entity = event.getCamera().getEntity();
+        Entity entity = event.getCamera().entity();
         if (entity instanceof LivingEntity livingEntity) {
             ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
             if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
@@ -116,7 +116,7 @@ public class CameraSetupEvent {
         if (event.usedConfiguredFov()) {
             return; // 只修改手部物品的 fov，因此如果是世界渲染 fov 事件，则返回
         }
-        Entity entity = event.getCamera().getEntity();
+        Entity entity = event.getCamera().entity();
         if (entity instanceof LivingEntity livingEntity) {
             ItemStack stack = KeepingItemRenderer.getRenderer().getCurrentItem();
             if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
@@ -124,7 +124,7 @@ public class CameraSetupEvent {
                 event.setFOV(fov);
                 return;
             }
-            ResourceLocation scopeItemId = iGun.getAttachmentId(stack, AttachmentType.SCOPE);
+            Identifier scopeItemId = iGun.getAttachmentId(stack, AttachmentType.SCOPE);
             if (scopeItemId.equals(DefaultAssets.EMPTY_ATTACHMENT_ID)) {
                 scopeItemId = iGun.getBuiltInAttachmentId(stack, AttachmentType.SCOPE);
             }
@@ -170,7 +170,7 @@ public class CameraSetupEvent {
             if (cacheProperty == null) {
                 return;
             }
-            ResourceLocation gunId = iGun.getGunId(mainHandItem);
+            Identifier gunId = iGun.getGunId(mainHandItem);
             Optional<ClientGunIndex> gunIndexOptional = TimelessAPI.getClientGunIndex(gunId);
             if (gunIndexOptional.isEmpty()) {
                 return;

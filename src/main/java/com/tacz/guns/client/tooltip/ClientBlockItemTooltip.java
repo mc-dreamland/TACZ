@@ -11,14 +11,14 @@ import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class ClientBlockItemTooltip implements ClientTooltipComponent {
-    private final ResourceLocation blockId;
+    private final Identifier blockId;
     private final List<Component> components = Lists.newArrayList();
     private @Nullable MutableComponent packInfo;
 

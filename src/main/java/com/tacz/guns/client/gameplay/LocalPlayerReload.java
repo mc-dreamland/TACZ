@@ -15,9 +15,9 @@ import com.tacz.guns.network.message.ClientMessagePlayerCancelReload;
 import com.tacz.guns.network.message.ClientMessagePlayerReloadGun;
 import com.tacz.guns.resource.pojo.data.gun.Bolt;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 public class LocalPlayerReload {
@@ -32,6 +32,9 @@ public class LocalPlayerReload {
     public void cancelReload() {
         if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
             com.tacz.guns.client.paper.PaperClientGameplay.action("cancel_reload");
+            return;
+        }
+        if (!NetworkHandler.canSendToServer(ClientMessagePlayerCancelReload.TYPE)) {
             return;
         }
         ItemStack mainHandItem = player.getMainHandItem();
@@ -53,18 +56,21 @@ public class LocalPlayerReload {
             return;
         }
         // 发包通知服务器
-        ClientPacketDistributor.sendToServer(ClientMessagePlayerCancelReload.INSTANCE);
+        NetworkHandler.sendToServer(ClientMessagePlayerCancelReload.INSTANCE);
         // 执行本地取消换弹逻辑
         this.triggerClientReloadCancelAnimation(display);
     }
 
     public void reload() {
+        if (!NetworkHandler.canSendToServer(ClientMessagePlayerReloadGun.TYPE)) {
+            return;
+        }
         // 暂定只有主手可以装弹
         ItemStack mainHandItem = player.getMainHandItem();
         if (!(mainHandItem.getItem() instanceof AbstractGunItem gunItem)) {
             return;
         }
-        ResourceLocation gunId = gunItem.getGunId(mainHandItem);
+        Identifier gunId = gunItem.getGunId(mainHandItem);
         GunData gunData = TimelessAPI.getClientGunIndex(gunId).map(ClientGunIndex::getGunData).orElse(null);
         if (gunData == null) {
             return;
@@ -103,7 +109,7 @@ public class LocalPlayerReload {
             return;
         }
         // 发包通知服务器
-        ClientPacketDistributor.sendToServer(ClientMessagePlayerReloadGun.INSTANCE);
+        NetworkHandler.sendToServer(ClientMessagePlayerReloadGun.INSTANCE);
         // 执行客户端 reload 相关内容
         this.triggerClientReloadAnimation(gunItem, display, gunData, mainHandItem);
     }

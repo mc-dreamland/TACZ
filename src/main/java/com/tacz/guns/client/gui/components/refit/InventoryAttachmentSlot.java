@@ -39,7 +39,7 @@ public class InventoryAttachmentSlot extends Button implements IStackTooltip {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
         int x = getX(), y = getY();
         if (isHoveredOrFocused()) {
             graphics.blit(RenderPipelines.GUI_TEXTURED, GunRefitScreen.SLOT_TEXTURE, x, y, 0, 0, width, height, 18, 18);

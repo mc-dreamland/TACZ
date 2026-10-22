@@ -4,7 +4,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.network.message.ClientMessagePlayerZoom;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -41,7 +41,7 @@ public class ZoomKey {
                 if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
                     com.tacz.guns.client.paper.PaperClientGameplay.action("zoom");
                 } else {
-                    net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(ClientMessagePlayerZoom.INSTANCE);
+                    return NetworkHandler.sendToServer(ClientMessagePlayerZoom.INSTANCE);
                 }
                 return true;
             }
@@ -59,7 +59,7 @@ public class ZoomKey {
             if (com.tacz.guns.client.paper.PaperClientBridge.active()) {
                     com.tacz.guns.client.paper.PaperClientGameplay.action("zoom");
                 } else {
-                    net.neoforged.neoforge.client.network.ClientPacketDistributor.sendToServer(ClientMessagePlayerZoom.INSTANCE);
+                    NetworkHandler.sendToServer(ClientMessagePlayerZoom.INSTANCE);
                 }
         }
     }

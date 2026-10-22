@@ -2,8 +2,6 @@ package com.tacz.guns.api.client.gameplay;
 
 import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.client.gameplay.LocalPlayerDataHolder;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
 
@@ -11,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
  * 客户端枪械操纵者
  * 目前仅用于 LocalPlayer
  */
-@OnlyIn(Dist.CLIENT)
+
 public interface IClientPlayerGunOperator {
     /**
      * LocalPlayer 通过 Mixin 的方式实现了这个接口

@@ -27,7 +27,6 @@ import com.tacz.guns.network.message.ClientMessageUnloadAttachment;
 import com.tacz.guns.sound.SoundManager;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
 import com.tacz.guns.util.LaserColorUtil;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphics;
@@ -36,7 +35,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 
@@ -48,10 +47,10 @@ import java.util.Locale;
 import static com.tacz.guns.client.paper.GunResolver.integer;
 import static com.tacz.guns.client.paper.GunResolver.string;
 public class GunRefitScreen extends Screen {
-    public static final ResourceLocation SLOT_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot.png");
-    public static final ResourceLocation TURN_PAGE_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_turn_page.png");
-    public static final ResourceLocation UNLOAD_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_unload.png");
-    public static final ResourceLocation ICONS_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot_icons.png");
+    public static final Identifier SLOT_TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot.png");
+    public static final Identifier TURN_PAGE_TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_turn_page.png");
+    public static final Identifier UNLOAD_TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_unload.png");
+    public static final Identifier ICONS_TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/refit_slot_icons.png");
 
     public static final int ICON_UV_SIZE = 32;
     public static final int SLOT_SIZE = 18;
@@ -306,9 +305,10 @@ public class GunRefitScreen extends Screen {
                 }
                 InventoryAttachmentSlot button = new InventoryAttachmentSlot(startX, currentY, i, inventory, b -> {
                     int slotIndex = ((InventoryAttachmentSlot) b).getSlotIndex();
-                    SoundPlayManager.playerRefitSound(inventory.getItem(slotIndex), player, SoundManager.INSTALL_SOUND);
                     ClientMessageRefitGun message = new ClientMessageRefitGun(slotIndex, inventory.getSelectedSlot(), RefitTransform.getCurrentTransformType());
-                    ClientPacketDistributor.sendToServer(message);
+                    if (NetworkHandler.sendToServer(message)) {
+                        SoundPlayManager.playerRefitSound(inventory.getItem(slotIndex), player, SoundManager.INSTALL_SOUND);
+                    }
                 });
                 this.addRenderableWidget(button);
                 currentY = currentY + SLOT_SIZE;
@@ -346,7 +346,7 @@ public class GunRefitScreen extends Screen {
                 if (string(entry, "kind", "").equals("attachment")
                         && type.name().equalsIgnoreCase(string(entry, "type", ""))
                         && (slot >= 0 && slot < 36 || slot == 40)
-                        && ResourceLocation.tryParse(string(entry, "id", "")) != null) candidates.add(entry);
+                        && Identifier.tryParse(string(entry, "id", "")) != null) candidates.add(entry);
             }
         }
         int totalPage = Math.max(0, (candidates.size() - 1) / INVENTORY_ATTACHMENT_SLOT_COUNT);
@@ -358,7 +358,7 @@ public class GunRefitScreen extends Screen {
             JsonObject entry = candidates.get(i);
             int slot = integer(entry, "slot", -1);
             ItemStack icon = new ItemStack(ModItems.ATTACHMENT.get());
-            ((com.tacz.guns.api.item.IAttachment) icon.getItem()).setAttachmentId(icon, ResourceLocation.parse(string(entry, "id", "")));
+            ((com.tacz.guns.api.item.IAttachment) icon.getItem()).setAttachmentId(icon, Identifier.parse(string(entry, "id", "")));
             InventoryAttachmentSlot button = new InventoryAttachmentSlot(startX, startY + (i - pageStart) * SLOT_SIZE, slot, icon, ignored -> {
                 JsonObject request = new JsonObject();
                 request.addProperty("attachmentSlot", slot);
@@ -543,9 +543,10 @@ public class GunRefitScreen extends Screen {
                         }
                         int freeSlot = inventory.getFreeSlot();
                         if (freeSlot != -1) {
-                            SoundPlayManager.playerRefitSound(attachmentItem, player, SoundManager.UNINSTALL_SOUND);
                             ClientMessageUnloadAttachment message = new ClientMessageUnloadAttachment(inventory.getSelectedSlot(), RefitTransform.getCurrentTransformType());
-                            ClientPacketDistributor.sendToServer(message);
+                            if (NetworkHandler.sendToServer(message)) {
+                                SoundPlayManager.playerRefitSound(attachmentItem, player, SoundManager.UNINSTALL_SOUND);
+                            }
                         } else {
                             player.displayClientMessage(Component.translatable("gui.tacz.gun_refit.unload.no_space"), false);
                         }
@@ -594,7 +595,7 @@ public class GunRefitScreen extends Screen {
             ItemStack gun = player.getMainHandItem();
             if (ItemBehavior.of(player.getMainHandItem()) instanceof IGun) {
                 ClientMessageLaserColor message = new ClientMessageLaserColor(gun, player.getInventory().getSelectedSlot());
-                ClientPacketDistributor.sendToServer(message);
+                NetworkHandler.sendToServer(message);
             }
         }
         super.onClose();

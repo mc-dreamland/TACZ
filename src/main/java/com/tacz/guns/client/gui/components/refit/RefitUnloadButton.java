@@ -16,7 +16,7 @@ public class RefitUnloadButton extends Button implements IComponentTooltip {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
         int x = getX(), y = getY();
         if (isHoveredOrFocused()) {
             graphics.blit(RenderPipelines.GUI_TEXTURED, GunRefitScreen.UNLOAD_TEXTURE, x, y, 0, 0, width, height, 80, 80, 160, 80);

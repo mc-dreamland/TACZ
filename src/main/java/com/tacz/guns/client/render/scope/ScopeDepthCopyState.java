@@ -1,6 +1,8 @@
 package com.tacz.guns.client.render.scope;
 
+import com.mojang.blaze3d.opengl.GlSampler;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.tacz.guns.GunMod;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -9,6 +11,7 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL33;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -186,6 +189,7 @@ public final class ScopeDepthCopyState {
             int previousActiveTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
             GL13.glActiveTexture(GL13.GL_TEXTURE0 + unit.unit());
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, unit.previousBinding());
+            GL33.glBindSampler(unit.unit(), unit.previousSampler());
             GL13.glActiveTexture(previousActiveTexture);
         }
         OVERRIDDEN_UNITS.clear();
@@ -473,9 +477,15 @@ public final class ScopeDepthCopyState {
         int previousActiveTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         GL13.glActiveTexture(GL13.GL_TEXTURE0 + textureUnit);
         int previousBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        int previousSampler = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        // 1.21.11 samples through separate sampler objects. A previously bound Iris/vanilla
+        // sampler would override the depth texture's nearest/clamp parameters and could enable
+        // comparison sampling; use the shared ordinary-depth sampler and restore it in end().
+        GlSampler sampler = (GlSampler) RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST);
+        GL33.glBindSampler(textureUnit, sampler.getId());
         GL13.glActiveTexture(previousActiveTexture);
-        OVERRIDDEN_UNITS.add(new OverriddenUnit(textureUnit, previousBinding));
+        OVERRIDDEN_UNITS.add(new OverriddenUnit(textureUnit, previousBinding, previousSampler));
         return textureUnit;
     }
 
@@ -600,7 +610,7 @@ public final class ScopeDepthCopyState {
     private record TextureAllocation(int externalFormat, int type) {
     }
 
-    private record OverriddenUnit(int unit, int previousBinding) {
+    private record OverriddenUnit(int unit, int previousBinding, int previousSampler) {
     }
 
     /** A private sampleable depth texture plus the depth-only FBO wrapped around it. */
@@ -665,6 +675,10 @@ public final class ScopeDepthCopyState {
                 );
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+                // The shared sampler uses mipmap minification even with max LOD 0. Declare
+                // this private depth copy as a complete, single-level texture.
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_BASE_LEVEL, 0);
+                GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
                 GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_COMPARE_MODE, GL11.GL_NONE);

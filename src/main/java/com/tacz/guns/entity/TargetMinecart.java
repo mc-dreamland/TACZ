@@ -19,14 +19,14 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.vehicle.AbstractMinecart;
+import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.EntityHitResult;
@@ -40,7 +40,7 @@ public class TargetMinecart extends AbstractMinecart implements ITargetEntity {
     public static EntityType<TargetMinecart> TYPE = EntityType.Builder.<TargetMinecart>of(TargetMinecart::new, MobCategory.MISC)
             .sized(0.75F, 2.4F)
             .clientTrackingRange(8)
-            .build(ResourceKey.create(Registries.ENTITY_TYPE, ResourceLocation.fromNamespaceAndPath("tacz", "target_minecart")));
+            .build(ResourceKey.create(Registries.ENTITY_TYPE, Identifier.fromNamespaceAndPath("tacz", "target_minecart")));
 
     private @Nullable GameProfile gameProfile = null;
 
@@ -105,7 +105,7 @@ public class TargetMinecart extends AbstractMinecart implements ITargetEntity {
     @Override
     protected void destroy(ServerLevel level, DamageSource source) {
         this.remove(Entity.RemovalReason.KILLED);
-        if (level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+        if (level.getGameRules().get(GameRules.ENTITY_DROPS)) {
             ItemStack itemStack = new ItemStack(ModItems.TARGET_MINECART.get());
             if (this.hasCustomName()) {
                 itemStack.set(DataComponents.CUSTOM_NAME, this.getCustomName());

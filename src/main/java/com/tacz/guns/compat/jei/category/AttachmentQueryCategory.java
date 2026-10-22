@@ -16,13 +16,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 
 public class AttachmentQueryCategory implements IRecipeCategory<AttachmentQueryEntry> {
-    public static final IRecipeType<AttachmentQueryEntry> ATTACHMENT_QUERY = IRecipeType.create(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "attachment_query"), AttachmentQueryEntry.class);
+    public static final IRecipeType<AttachmentQueryEntry> ATTACHMENT_QUERY = IRecipeType.create(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "attachment_query"), AttachmentQueryEntry.class);
     public static final int MAX_GUN_SHOW_COUNT = 60;
     private static final Component TITLE = Component.translatable("jei.tacz.attachment_query.title");
     private final IDrawable slotDraw;

@@ -8,7 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
@@ -24,19 +24,19 @@ public class GunSmithTableBlockEntity extends BlockEntity {
     private static final String ID_TAG = "BlockId";
 
     @Nullable
-    private ResourceLocation id = null;
+    private Identifier id = null;
 
     public GunSmithTableBlockEntity(BlockPos pos, BlockState blockState) {
         super(ModBlocks.GUN_SMITH_TABLE_BE.get(), pos, blockState);
     }
 
-    public void setId(ResourceLocation id) {
+    public void setId(Identifier id) {
         this.id = id;
         this.setChanged();
     }
 
     @Nullable
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return id;
     }
 
@@ -51,7 +51,7 @@ public class GunSmithTableBlockEntity extends BlockEntity {
         super.loadAdditional(input);
         String raw = input.getStringOr(ID_TAG, "");
         if (!raw.isEmpty()) {
-            this.id = ResourceLocation.tryParse(raw);
+            this.id = Identifier.tryParse(raw);
         } else {
             // Leave the id unset for naturally placed/legacy tables. The block implementation
             // resolves the physical workbench to the corresponding gun-pack index id.

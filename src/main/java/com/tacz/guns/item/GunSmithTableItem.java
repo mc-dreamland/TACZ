@@ -7,10 +7,9 @@ import com.tacz.guns.client.renderer.item.GunSmithTableItemRenderer;
 import com.tacz.guns.client.resource.index.ClientBlockIndex;
 import com.tacz.guns.inventory.tooltip.BlockItemTooltip;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -41,7 +40,7 @@ public class GunSmithTableItem extends BlockItem implements BlockItemDataAccesso
     // 本文件即 2026-08-21 专服 /give 崩溃的第一现场）。
     // 详见 AbstractGunItem#getName 注释与 records/SERVER_TEST_20260821_DEDICATED.md。
     public Component getName(@Nonnull ItemStack stack) {
-        ResourceLocation blockId = this.getBlockId(stack);
+        Identifier blockId = this.getBlockId(stack);
         var blockIndex = TimelessAPI.getCommonBlockIndex(blockId);
         if (blockIndex.isPresent() && blockIndex.get().getPojo().getName() != null) {
             return Component.translatable(blockIndex.get().getPojo().getName());
@@ -52,7 +51,7 @@ public class GunSmithTableItem extends BlockItem implements BlockItemDataAccesso
 //    @Override
 //    @OnlyIn(Dist.CLIENT)
 //    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> components, TooltipFlag isAdvanced) {
-//        ResourceLocation blockId = this.getBlockId(stack);
+//        Identifier blockId = this.getBlockId(stack);
 //        TimelessAPI.getClientBlockIndex(blockId).ifPresent(index -> {
 //            String tooltipKey = index.getTooltipKey();
 //            if (tooltipKey != null) {

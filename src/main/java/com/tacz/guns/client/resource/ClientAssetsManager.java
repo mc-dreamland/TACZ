@@ -32,7 +32,7 @@ import com.tacz.guns.resource.manager.ScriptManager;
 import com.tacz.guns.resource.serialize.IdentifierSerializer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.PreparableReloadListener.PreparationBarrier;
 import net.minecraft.server.packs.resources.PreparableReloadListener.SharedState;
@@ -57,7 +57,7 @@ public enum ClientAssetsManager {
     INSTANCE;
     public static final Gson GSON = new GsonBuilder()
             .setStrictness(com.google.gson.Strictness.LENIENT)
-            .registerTypeAdapter(ResourceLocation.class, new IdentifierSerializer())
+            .registerTypeAdapter(Identifier.class, new IdentifierSerializer())
             .registerTypeAdapter(CubesItem.class, new CubesItem.Deserializer())
             .registerTypeAdapter(Vector3f.class, new Vector3fSerializer())
             .registerTypeAdapter(CommonTransformObject.class, new CommonTransformObject.Serializer())
@@ -105,7 +105,7 @@ public enum ClientAssetsManager {
         }
     }
 
-    private ResourceLocation keyOf(PreparableReloadListener listener) {
+    private Identifier keyOf(PreparableReloadListener listener) {
         if (listener instanceof JsonDataManager<?> json) {
             return json.ID;
         }
@@ -121,7 +121,7 @@ public enum ClientAssetsManager {
         if (listener instanceof ClientIndexReloadListener) {
             return ClientIndexReloadListener.ID;
         }
-        return ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, listener.getClass().getSimpleName().toLowerCase());
+        return Identifier.fromNamespaceAndPath(GunMod.MOD_ID, listener.getClass().getSimpleName().toLowerCase());
     }
 
     private <T extends PreparableReloadListener> T remember(T listener) {
@@ -130,7 +130,7 @@ public enum ClientAssetsManager {
     }
 
     private static final class ClientIndexReloadListener implements PreparableReloadListener {
-        static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "client_index_manager_reload");
+        static final Identifier ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "client_index_manager_reload");
 
         @Override
         public CompletableFuture<Void> reload(SharedState sharedState, Executor backgroundExecutor, PreparationBarrier barrier, Executor gameExecutor) {
@@ -139,50 +139,50 @@ public enum ClientAssetsManager {
     }
 
     @Nullable
-    public GunDisplay getGunDisplay(ResourceLocation id) {
+    public GunDisplay getGunDisplay(Identifier id) {
         return gunDisplay.getData(id);
     }
 
-    public Set<Map.Entry<ResourceLocation, GunDisplay>> getGunDisplays() {
+    public Set<Map.Entry<Identifier, GunDisplay>> getGunDisplays() {
         return gunDisplay.getAllData().entrySet();
     }
 
-    public Set<ResourceLocation> getGunDisplayIds() {
+    public Set<Identifier> getGunDisplayIds() {
         return gunDisplay.getAllData().keySet();
     }
 
     @Nullable
-    public AttachmentDisplay getAttachmentDisplay(ResourceLocation id) {
+    public AttachmentDisplay getAttachmentDisplay(Identifier id) {
         return attachmentDisplay.getData(id);
     }
 
     @Nullable
-    public AmmoDisplay getAmmoDisplay(ResourceLocation id) {
+    public AmmoDisplay getAmmoDisplay(Identifier id) {
         return ammoDisplay.getData(id);
     }
 
     @Nullable
-    public BlockDisplay getBlockDisplay(ResourceLocation id) {
+    public BlockDisplay getBlockDisplay(Identifier id) {
         return blockDisplay.getData(id);
     }
 
     @Nullable
-    public BedrockModelPOJO getBedrockModelPOJO(ResourceLocation id) {
+    public BedrockModelPOJO getBedrockModelPOJO(Identifier id) {
         return bedrockModel.getData(id);
     }
 
     @Nullable
-    public BedrockAnimationFile getBedrockAnimations(ResourceLocation id) {
+    public BedrockAnimationFile getBedrockAnimations(Identifier id) {
         return bedrockAnimation.getData(id);
     }
 
     @Nullable
-    public LuaTable getScript(ResourceLocation id) {
+    public LuaTable getScript(Identifier id) {
         return scriptManager.getScript(id);
     }
 
     @Nullable
-    public AnimationStructure getGltfAnimation(ResourceLocation id) {
+    public AnimationStructure getGltfAnimation(Identifier id) {
         return gltfAnimation.getGltfAnimation(id);
     }
 
@@ -192,7 +192,7 @@ public enum ClientAssetsManager {
     }
 
     @Nullable
-    public PackInfo getPackInfo(@Nullable ResourceLocation namespace) {
+    public PackInfo getPackInfo(@Nullable Identifier namespace) {
         if (namespace == null) {
             return null;
         }

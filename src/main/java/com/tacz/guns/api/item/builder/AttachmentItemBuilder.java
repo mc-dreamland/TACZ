@@ -5,12 +5,12 @@ import com.tacz.guns.api.item.ItemBehavior;
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.IAttachment;
 import com.tacz.guns.init.ModItems;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 public class AttachmentItemBuilder {
     private int count = 1;
-    private ResourceLocation attachmentId = DefaultAssets.DEFAULT_ATTACHMENT_ID;
+    private Identifier attachmentId = DefaultAssets.DEFAULT_ATTACHMENT_ID;
 
     private AttachmentItemBuilder() {
     }
@@ -24,13 +24,13 @@ public class AttachmentItemBuilder {
         return this;
     }
 
-    public AttachmentItemBuilder setId(ResourceLocation id) {
+    public AttachmentItemBuilder setId(Identifier id) {
         this.attachmentId = id;
         return this;
     }
 
     @Deprecated
-    public AttachmentItemBuilder setSkinId(ResourceLocation skinId) {
+    public AttachmentItemBuilder setSkinId(Identifier skinId) {
         return this;
     }
 

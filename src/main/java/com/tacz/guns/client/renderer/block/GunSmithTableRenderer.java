@@ -13,14 +13,15 @@ import com.tacz.guns.client.resource.index.ClientBlockIndex;
 import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.resource.CommonAssetsManager;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -46,7 +47,7 @@ public class GunSmithTableRenderer implements BlockEntityRenderer<GunSmithTableB
     }
 
     public Optional<ClientBlockIndex> getIndex(GunSmithTableBlockEntity blockEntity) {
-        ResourceLocation id = blockEntity.getId();
+        Identifier id = blockEntity.getId();
         if (id != null && !id.equals(DefaultAssets.EMPTY_BLOCK_ID)) {
             Optional<ClientBlockIndex> indexed = TimelessAPI.getClientBlockIndex(id);
             if (indexed.isPresent()) {
@@ -58,7 +59,7 @@ public class GunSmithTableRenderer implements BlockEntityRenderer<GunSmithTableB
 
     public static Optional<ClientBlockIndex> getIndex(ItemStack stack) {
         if (ItemBehavior.of(stack) instanceof IBlock iBlock) {
-            ResourceLocation id = iBlock.getBlockId(stack);
+            Identifier id = iBlock.getBlockId(stack);
             if (!id.equals(DefaultAssets.EMPTY_BLOCK_ID)) {
                 Optional<ClientBlockIndex> indexed = TimelessAPI.getClientBlockIndex(id);
                 if (indexed.isPresent()) {
@@ -73,7 +74,7 @@ public class GunSmithTableRenderer implements BlockEntityRenderer<GunSmithTableB
     }
 
     private static Optional<ClientBlockIndex> getIndexByPhysicalBlock(net.minecraft.world.level.block.Block block) {
-        ResourceLocation physicalId = BuiltInRegistries.BLOCK.getKey(block);
+        Identifier physicalId = BuiltInRegistries.BLOCK.getKey(block);
         return CommonAssetsManager.get().getAllBlocks().stream()
                 .filter(entry -> physicalId.equals(entry.getValue().getPojo().getId()))
                 .map(entry -> TimelessAPI.getClientBlockIndex(entry.getKey()))
@@ -104,7 +105,7 @@ public class GunSmithTableRenderer implements BlockEntityRenderer<GunSmithTableB
             return;
         }
         BedrockModel model = index.getModel();
-        ResourceLocation texture = index.getTexture();
+        Identifier texture = index.getTexture();
         if (model == null) {
             return;
         }
@@ -116,8 +117,8 @@ public class GunSmithTableRenderer implements BlockEntityRenderer<GunSmithTableB
         poseStack.mulPose(Axis.ZN.rotationDegrees(180));
         poseStack.mulPose(Axis.YN.rotationDegrees(state.rotation));
         RenderType renderType = RenderConfig.BLOCK_ENTITY_TRANSLUCENT.get() ?
-                RenderType.entityTranslucent(texture) :
-                RenderType.entityCutout(texture);
+                RenderTypes.entityTranslucent(texture) :
+                RenderTypes.entityCutout(texture);
         model.submit(poseStack, ItemDisplayContext.NONE, collector, renderType, combinedLightIn, combinedOverlayIn);
         poseStack.popPose();
     }

@@ -9,7 +9,7 @@ import com.tacz.guns.resource.pojo.data.attachment.AttachmentData;
 import com.tacz.guns.resource.pojo.data.block.BlockData;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.resource.pojo.data.recipe.TableRecipe;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 import org.luaj.vm2.LuaTable;
 
@@ -17,36 +17,36 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ICommonResourceProvider {
-    @Nullable GunData getGunData(ResourceLocation id);
+    @Nullable GunData getGunData(Identifier id);
 
-    @Nullable AttachmentData getAttachmentData(ResourceLocation attachmentId);
+    @Nullable AttachmentData getAttachmentData(Identifier attachmentId);
 
-    @Nullable BlockData getBlockData(ResourceLocation id);
+    @Nullable BlockData getBlockData(Identifier id);
 
-    @Nullable RecipeFilter getRecipeFilter(ResourceLocation id);
+    @Nullable RecipeFilter getRecipeFilter(Identifier id);
 
-    @Nullable CommonGunIndex getGunIndex(ResourceLocation gunId);
+    @Nullable CommonGunIndex getGunIndex(Identifier gunId);
 
-    @Nullable CommonAmmoIndex getAmmoIndex(ResourceLocation ammoId);
+    @Nullable CommonAmmoIndex getAmmoIndex(Identifier ammoId);
 
-    @Nullable CommonAttachmentIndex getAttachmentIndex(ResourceLocation attachmentId);
+    @Nullable CommonAttachmentIndex getAttachmentIndex(Identifier attachmentId);
 
-    @Nullable CommonBlockIndex getBlockIndex(ResourceLocation blockId);
+    @Nullable CommonBlockIndex getBlockIndex(Identifier blockId);
 
     @Nullable
-    public LuaTable getScript(ResourceLocation scriptId);
+    public LuaTable getScript(Identifier scriptId);
 
-    Set<Map.Entry<ResourceLocation, CommonGunIndex>> getAllGuns();
+    Set<Map.Entry<Identifier, CommonGunIndex>> getAllGuns();
 
-    Set<Map.Entry<ResourceLocation, CommonAmmoIndex>> getAllAmmos();
+    Set<Map.Entry<Identifier, CommonAmmoIndex>> getAllAmmos();
 
-    Set<Map.Entry<ResourceLocation, CommonAttachmentIndex>> getAllAttachments();
+    Set<Map.Entry<Identifier, CommonAttachmentIndex>> getAllAttachments();
 
-    Set<Map.Entry<ResourceLocation, CommonBlockIndex>> getAllBlocks();
+    Set<Map.Entry<Identifier, CommonBlockIndex>> getAllBlocks();
 
-    Set<String> getAttachmentTags(ResourceLocation registryName);
+    Set<String> getAttachmentTags(Identifier registryName);
 
-    Set<String> getAllowAttachmentTags(ResourceLocation registryName);
+    Set<String> getAllowAttachmentTags(Identifier registryName);
 
     /**
      * 枪械工作台配方。
@@ -60,7 +60,7 @@ public interface ICommonResourceProvider {
      * <p>因此工作台界面所需的配方必须由 mod 自己同步过来，
      * 走既有的 {@code DataType.RECIPES} 通道（该枚举此前被声明但从未接线）。</p>
      */
-    @Nullable TableRecipe getTableRecipe(ResourceLocation recipeId);
+    @Nullable TableRecipe getTableRecipe(Identifier recipeId);
 
-    Set<Map.Entry<ResourceLocation, TableRecipe>> getAllTableRecipes();
+    Set<Map.Entry<Identifier, TableRecipe>> getAllTableRecipes();
 }

@@ -7,7 +7,7 @@ import com.tacz.guns.network.message.event.ServerMessageGunReload;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
@@ -15,7 +15,7 @@ import org.jetbrains.annotations.NotNull;
 public class ClientMessagePlayerReloadGun implements CustomPacketPayload {
     public static final ClientMessagePlayerReloadGun INSTANCE = new ClientMessagePlayerReloadGun();
     public static final CustomPacketPayload.Type<ClientMessagePlayerReloadGun> TYPE = new CustomPacketPayload.Type<>(
-        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "client_player_reload")
+        Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "client_player_reload")
     );
     public static final StreamCodec<RegistryFriendlyByteBuf, ClientMessagePlayerReloadGun> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 

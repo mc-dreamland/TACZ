@@ -10,9 +10,10 @@ import com.tacz.guns.client.resource.pojo.display.block.BlockTransformParser;
 import net.minecraft.client.renderer.block.model.ItemTransforms;
 import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -35,7 +36,7 @@ public class GunSmithTableItemRenderer implements BuiltinItemRendererRegistry.Dy
     public void renderByItem(@Nonnull ItemStack stack, @Nonnull ItemDisplayContext transformType, @Nonnull PoseStack poseStack, @Nonnull SubmitNodeCollector collector, int pPackedLight, int pPackedOverlay) {
         GunSmithTableRenderer.getIndex(stack).ifPresentOrElse(index -> {
             BedrockModel model = index.getModel();
-            ResourceLocation texture = index.getTexture();
+            Identifier texture = index.getTexture();
             if (model == null) {
                 return;
             }
@@ -63,13 +64,13 @@ public class GunSmithTableItemRenderer implements BuiltinItemRendererRegistry.Dy
 
             poseStack.translate(0.5, 1.5, 0.5);
             poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-            RenderType renderType = RenderType.entityTranslucent(texture);
+            RenderType renderType = RenderTypes.entityTranslucent(texture);
             model.submit(poseStack, transformType, collector, renderType, pPackedLight, pPackedOverlay);
             poseStack.popPose();
         }, () -> {
             poseStack.translate(0.5, 1.5, 0.5);
             poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-            collector.submitCustomGeometry(poseStack, RenderType.entityTranslucent(MissingTextureAtlasSprite.getLocation()), (pose, buffer) -> {
+            collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucent(MissingTextureAtlasSprite.getLocation()), (pose, buffer) -> {
                 // 26.2: 必须使用回调参数 pose（= 提交那一刻 poseStack.last().copy() 的快照），
                 // 而不是外层 poseStack —— 回调执行时它早已被 popPose/复用，
                 // 结果就是图标被画到错误位置（物品栏一片空白）。

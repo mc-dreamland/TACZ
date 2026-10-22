@@ -5,7 +5,7 @@ import com.tacz.guns.util.TacPathVisitor;
 import com.zigythebird.playeranimcore.animation.Animation;
 import com.zigythebird.playeranimcore.loading.UniversalAnimLoader;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
@@ -26,25 +26,25 @@ import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-/** Preserves TACZ's legacy player_animator/&lt;file&gt;.json grouping on PAL 1.2.5. */
+/** Preserves TACZ's legacy player_animator/&lt;file&gt;.json grouping on PAL 1.1.11. */
 // NeoForge: registered via AddClientReloadListenersEvent#addListener(ID, listener)
 // (the Fabric build implements IdentifiableResourceReloadListener instead).
-public final class PalAssetManager extends SimplePreparableReloadListener<Map<ResourceLocation, Map<String, Animation>>> {
+public final class PalAssetManager extends SimplePreparableReloadListener<Map<Identifier, Map<String, Animation>>> {
     public static final PalAssetManager INSTANCE = new PalAssetManager();
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pal_asset_manager");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pal_asset_manager");
 
     private static final Pattern ZIP_PATTERN = Pattern.compile("^(\\w+)/player_animator/([\\w/]+)\\.json$");
     private final FileToIdConverter converter = new FileToIdConverter("player_animator", ".json");
-    private final Map<ResourceLocation, Map<String, Animation>> animations = new HashMap<>();
+    private final Map<Identifier, Map<String, Animation>> animations = new HashMap<>();
 
     private PalAssetManager() {
     }
 
-    public synchronized boolean contains(ResourceLocation fileId) {
+    public synchronized boolean contains(Identifier fileId) {
         return animations.containsKey(fileId);
     }
 
-    public synchronized Optional<Animation> get(ResourceLocation fileId, String animationName) {
+    public synchronized Optional<Animation> get(Identifier fileId, String animationName) {
         Map<String, Animation> file = animations.get(fileId);
         return file == null ? Optional.empty() : Optional.ofNullable(file.get(normalize(animationName)));
     }
@@ -53,7 +53,7 @@ public final class PalAssetManager extends SimplePreparableReloadListener<Map<Re
         animations.clear();
     }
 
-    public synchronized void put(ResourceLocation fileId, InputStream input) throws IOException {
+    public synchronized void put(Identifier fileId, InputStream input) throws IOException {
         animations.put(fileId, normalize(UniversalAnimLoader.loadAnimations(input)));
     }
 
@@ -66,7 +66,7 @@ public final class PalAssetManager extends SimplePreparableReloadListener<Map<Re
         if (entry == null) {
             return false;
         }
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath(matcher.group(1), matcher.group(2));
+        Identifier id = Identifier.fromNamespaceAndPath(matcher.group(1), matcher.group(2));
         try (InputStream input = zipFile.getInputStream(entry)) {
             put(id, input);
             return true;
@@ -96,10 +96,10 @@ public final class PalAssetManager extends SimplePreparableReloadListener<Map<Re
     }
 
     @Override
-    protected @NotNull Map<ResourceLocation, Map<String, Animation>> prepare(ResourceManager manager, ProfilerFiller profiler) {
-        Map<ResourceLocation, Map<String, Animation>> output = new HashMap<>();
-        for (Map.Entry<ResourceLocation, Resource> entry : converter.listMatchingResources(manager).entrySet()) {
-            ResourceLocation fileId = converter.fileToId(entry.getKey());
+    protected @NotNull Map<Identifier, Map<String, Animation>> prepare(ResourceManager manager, ProfilerFiller profiler) {
+        Map<Identifier, Map<String, Animation>> output = new HashMap<>();
+        for (Map.Entry<Identifier, Resource> entry : converter.listMatchingResources(manager).entrySet()) {
+            Identifier fileId = converter.fileToId(entry.getKey());
             try (InputStream input = entry.getValue().open()) {
                 output.put(fileId, normalize(UniversalAnimLoader.loadAnimations(input)));
             } catch (IOException | RuntimeException exception) {
@@ -110,7 +110,7 @@ public final class PalAssetManager extends SimplePreparableReloadListener<Map<Re
     }
 
     @Override
-    protected synchronized void apply(Map<ResourceLocation, Map<String, Animation>> prepared,
+    protected synchronized void apply(Map<Identifier, Map<String, Animation>> prepared,
                                       ResourceManager manager,
                                       ProfilerFiller profiler) {
         animations.clear();

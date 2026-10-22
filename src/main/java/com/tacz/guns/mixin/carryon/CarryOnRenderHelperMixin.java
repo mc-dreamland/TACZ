@@ -5,7 +5,7 @@ import com.tacz.guns.api.item.nbt.BlockItemDataAccessor;
 import com.tacz.guns.block.entity.GunSmithTableBlockEntity;
 import com.tacz.guns.compat.carryon.CarryOnReflection;
 import com.tacz.guns.item.GunSmithTableItem;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -32,7 +32,7 @@ public abstract class CarryOnRenderHelperMixin {
         BlockEntity carriedBlockEntity = CarryOnReflection.getCarriedBlockEntity(
                 player, player.blockPosition(), player.level().registryAccess());
         if (carriedBlockEntity instanceof GunSmithTableBlockEntity tableBlockEntity) {
-            ResourceLocation blockId = tableBlockEntity.getId();
+            Identifier blockId = tableBlockEntity.getId();
             if (blockId != null && !DefaultAssets.EMPTY_BLOCK_ID.equals(blockId)) {
                 accessor.setBlockId(renderStack, blockId);
                 cir.setReturnValue(renderStack);

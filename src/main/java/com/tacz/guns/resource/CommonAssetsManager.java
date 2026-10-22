@@ -49,7 +49,7 @@ import com.tacz.guns.resource.serialize.PairSerializer;
 import com.tacz.guns.resource.serialize.Vec3Serializer;
 import com.tacz.guns.util.AllowAttachmentTagMatcher;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -76,7 +76,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Evidence: AddServerReloadListenersEvent#addListener(ResourceLocation, PreparableReloadListener) ②
+ * Evidence: AddServerReloadListenersEvent#addListener(Identifier, PreparableReloadListener) ②
  * PreparableReloadListener.reload(SharedState, Executor, PreparationBarrier, Executor) ①
  */
 @EventBusSubscriber(modid = GunMod.MOD_ID)
@@ -84,7 +84,7 @@ public class CommonAssetsManager implements ICommonResourceProvider {
     private static CommonAssetsManager INSTANCE;
     public static final Gson GSON = new GsonBuilder()
             .setStrictness(Strictness.LENIENT)
-            .registerTypeAdapter(ResourceLocation.class, new IdentifierSerializer())
+            .registerTypeAdapter(Identifier.class, new IdentifierSerializer())
             .registerTypeAdapter(Pair.class, new PairSerializer())
             .registerTypeAdapter(GunSmithTableIngredient.class, new GunSmithTableIngredientSerializer())
             .registerTypeAdapter(GunSmithTableResult.class, new GunSmithTableResultSerializer())
@@ -118,7 +118,7 @@ public class CommonAssetsManager implements ICommonResourceProvider {
     public void reloadAndRegister(AddServerReloadListenersEvent event) {
         AtomicInteger anon = new AtomicInteger();
         java.util.function.Consumer<PreparableReloadListener> register = listener -> {
-            ResourceLocation key;
+            Identifier key;
             if (listener instanceof com.tacz.guns.resource.manager.JsonDataManager<?> json) {
                 key = json.ID;
             } else {
@@ -126,7 +126,7 @@ public class CommonAssetsManager implements ICommonResourceProvider {
                 if (name.isEmpty() || name.contains("$")) {
                     name = "listener_" + anon.incrementAndGet();
                 }
-                key = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, name.toLowerCase(Locale.ROOT));
+                key = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, name.toLowerCase(Locale.ROOT));
             }
             event.addListener(key, listener);
         };
@@ -165,10 +165,10 @@ public class CommonAssetsManager implements ICommonResourceProvider {
         return listener;
     }
 
-    public Map<DataType, Map<ResourceLocation, String>> getNetworkCache() {
-        ImmutableMap.Builder<DataType, Map<ResourceLocation, String>> builder = ImmutableMap.builder();
+    public Map<DataType, Map<Identifier, String>> getNetworkCache() {
+        ImmutableMap.Builder<DataType, Map<Identifier, String>> builder = ImmutableMap.builder();
         for (INetworkCacheReloadListener listener : listeners) {
-            Map<ResourceLocation, String> cache = listener.getNetworkCache();
+            Map<Identifier, String> cache = listener.getNetworkCache();
             if (cache != null) {
                 builder.put(listener.getType(), cache);
             }
@@ -178,36 +178,36 @@ public class CommonAssetsManager implements ICommonResourceProvider {
 
     @Nullable
     @Override
-    public GunData getGunData(ResourceLocation id) {
+    public GunData getGunData(Identifier id) {
         return gunData == null ? null : gunData.getData(id);
     }
 
     @Nullable
     @Override
-    public AttachmentData getAttachmentData(ResourceLocation id) {
+    public AttachmentData getAttachmentData(Identifier id) {
         return attachmentData == null ? null : attachmentData.getData(id);
     }
 
     @Nullable
     @Override
-    public BlockData getBlockData(ResourceLocation id) {
+    public BlockData getBlockData(Identifier id) {
         return blockData == null ? null : blockData.getData(id);
     }
 
     @Override
     @Nullable
-    public RecipeFilter getRecipeFilter(ResourceLocation id) {
+    public RecipeFilter getRecipeFilter(Identifier id) {
         return recipeFilterManager == null ? null : recipeFilterManager.getFilter(id);
     }
 
-    public Set<ResourceLocation> getLootInjectionTargets() {
+    public Set<Identifier> getLootInjectionTargets() {
         if (lootInjectionManager == null) {
             return Set.of();
         }
         return lootInjectionManager.getInjectionTargets();
     }
 
-    public List<LootTableInjection> getLootTableInjections(ResourceLocation lootTable) {
+    public List<LootTableInjection> getLootTableInjections(Identifier lootTable) {
         if (lootInjectionManager == null) {
             return List.of();
         }
@@ -216,70 +216,70 @@ public class CommonAssetsManager implements ICommonResourceProvider {
 
     @Nullable
     @Override
-    public CommonGunIndex getGunIndex(ResourceLocation gunId) {
+    public CommonGunIndex getGunIndex(Identifier gunId) {
         return gunIndex == null ? null : gunIndex.getData(gunId);
     }
 
     @Override
-    public Set<Map.Entry<ResourceLocation, CommonGunIndex>> getAllGuns() {
+    public Set<Map.Entry<Identifier, CommonGunIndex>> getAllGuns() {
         return gunIndex == null ? Set.of() : gunIndex.getAllData().entrySet();
     }
 
     @Nullable
     @Override
-    public CommonAmmoIndex getAmmoIndex(ResourceLocation ammoId) {
+    public CommonAmmoIndex getAmmoIndex(Identifier ammoId) {
         return ammoIndex == null ? null : ammoIndex.getData(ammoId);
     }
 
     @Override
-    public Set<Map.Entry<ResourceLocation, CommonAmmoIndex>> getAllAmmos() {
+    public Set<Map.Entry<Identifier, CommonAmmoIndex>> getAllAmmos() {
         return ammoIndex == null ? Set.of() : ammoIndex.getAllData().entrySet();
     }
 
     @Nullable
     @Override
-    public CommonAttachmentIndex getAttachmentIndex(ResourceLocation attachmentId) {
+    public CommonAttachmentIndex getAttachmentIndex(Identifier attachmentId) {
         return attachmentIndex == null ? null : attachmentIndex.getData(attachmentId);
     }
 
     @Override
-    public Set<Map.Entry<ResourceLocation, CommonAttachmentIndex>> getAllAttachments() {
+    public Set<Map.Entry<Identifier, CommonAttachmentIndex>> getAllAttachments() {
         return attachmentIndex == null ? Set.of() : attachmentIndex.getAllData().entrySet();
     }
 
     @Override
-    public LuaTable getScript(ResourceLocation scriptId) {
+    public LuaTable getScript(Identifier scriptId) {
         return scriptManager.getScript(scriptId);
     }
 
     @Nullable
     @Override
-    public CommonBlockIndex getBlockIndex(ResourceLocation blockId) {
+    public CommonBlockIndex getBlockIndex(Identifier blockId) {
         return blockIndex == null ? null : blockIndex.getData(blockId);
     }
 
     @Override
-    public TableRecipe getTableRecipe(ResourceLocation recipeId) {
+    public TableRecipe getTableRecipe(Identifier recipeId) {
         return tableRecipe == null ? null : tableRecipe.getData(recipeId);
     }
 
     @Override
-    public Set<Map.Entry<ResourceLocation, TableRecipe>> getAllTableRecipes() {
+    public Set<Map.Entry<Identifier, TableRecipe>> getAllTableRecipes() {
         return tableRecipe == null ? java.util.Collections.emptySet() : tableRecipe.getAllData().entrySet();
     }
 
     @Override
-    public Set<Map.Entry<ResourceLocation, CommonBlockIndex>> getAllBlocks() {
+    public Set<Map.Entry<Identifier, CommonBlockIndex>> getAllBlocks() {
         return blockIndex == null ? Set.of() : blockIndex.getAllData().entrySet();
     }
 
     @Override
-    public Set<String> getAttachmentTags(ResourceLocation registryName) {
+    public Set<String> getAttachmentTags(Identifier registryName) {
         return attachmentsTagManager == null ? Set.of() : attachmentsTagManager.getAttachmentTags(registryName);
     }
 
     @Override
-    public Set<String> getAllowAttachmentTags(ResourceLocation registryName) {
+    public Set<String> getAllowAttachmentTags(Identifier registryName) {
         return attachmentsTagManager == null ? Set.of() : attachmentsTagManager.getAllowAttachmentTags(registryName);
     }
 
@@ -318,7 +318,7 @@ public class CommonAssetsManager implements ICommonResourceProvider {
                     .filter(holder -> holder.value().getType() == ModRecipe.GUN_SMITH_TABLE_CRAFTING.get())
                     .map(holder -> {
                         GunSmithTableRecipe recipe = (GunSmithTableRecipe) holder.value();
-                        recipe.bindId(holder.id().location());
+                        recipe.bindId(holder.id().identifier());
                         return recipe;
                     })
                     .toList();

@@ -8,7 +8,7 @@ import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.IAmmoBox;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.item.properties.select.SelectItemModelProperty;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -55,7 +55,7 @@ import javax.annotation.Nullable;
  */
 public record AmmoBoxStatueProperty() implements SelectItemModelProperty<Integer> {
 
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "ammo_statue");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "ammo_statue");
 
     public static final MapCodec<AmmoBoxStatueProperty> MAP_CODEC =
             MapCodec.unit(new AmmoBoxStatueProperty());

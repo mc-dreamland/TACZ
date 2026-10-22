@@ -37,7 +37,7 @@ public class GunLevelUpToast implements Toast {
     @Override
     public void render(GuiGraphics gui, Font font, long timeSinceLastVisible) {
         gui.fill(0, 0, width(), height(), 0xDD1F1F1F);
-        gui.submitOutline(0, 0, width(), height(), 0xFFFFCC55);
+        gui.renderOutline(0, 0, width(), height(), 0xFFFFCC55);
         if (!icon.isEmpty()) {
             gui.renderItem(icon, 8, 8);
         }

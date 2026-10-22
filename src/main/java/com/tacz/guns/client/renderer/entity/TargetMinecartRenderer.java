@@ -15,9 +15,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.client.renderer.entity.AbstractMinecartRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.MinecartRenderState;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 
 import java.util.Optional;
@@ -61,7 +62,7 @@ public class TargetMinecartRenderer extends AbstractMinecartRenderer<TargetMinec
 
     /** 扩展 vanilla 状态，额外携带皮肤所需的 GameProfile。 */
     public static class TargetMinecartRenderState extends MinecartRenderState {
-        public ResourceLocation skinTexture;
+        public Identifier skinTexture;
     }
 
     @Override
@@ -78,7 +79,7 @@ public class TargetMinecartRenderer extends AbstractMinecartRenderer<TargetMinec
         return InternalAssetLoader.getBedrockModel(InternalAssetLoader.TARGET_MINECART_MODEL_LOCATION);
     }
 
-    public ResourceLocation getTextureLocation(TargetMinecart minecart) {
+    public Identifier getTextureLocation(TargetMinecart minecart) {
         return InternalAssetLoader.ENTITY_EMPTY_TEXTURE;
     }
 
@@ -108,13 +109,13 @@ public class TargetMinecartRenderer extends AbstractMinecartRenderer<TargetMinec
             stack.mulPose(Axis.ZN.rotationDegrees(180));
             stack.mulPose(Axis.YN.rotationDegrees(90));
 
-            RenderType renderType = RenderType.entityTranslucent(InternalAssetLoader.TARGET_MINECART_TEXTURE_LOCATION);
+            RenderType renderType = RenderTypes.entityTranslucent(InternalAssetLoader.TARGET_MINECART_TEXTURE_LOCATION);
             model.submit(stack, ItemDisplayContext.NONE, collector, renderType, packedLight, OverlayTexture.NO_OVERLAY);
 
-            ResourceLocation skin = state instanceof TargetMinecartRenderState t ? t.skinTexture : null;
+            Identifier skin = state instanceof TargetMinecartRenderState t ? t.skinTexture : null;
             if (skin != null) {
                 stack.translate(0, 1, -4.5 / 16d);
-                RenderType skullRenderType = RenderType.entityTranslucent(skin);
+                RenderType skullRenderType = RenderTypes.entityTranslucent(skin);
 
                 headModel.visible = true;
                 submitHead(headModel, stack, collector, skullRenderType, packedLight);

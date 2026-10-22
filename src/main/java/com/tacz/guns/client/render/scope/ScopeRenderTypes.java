@@ -3,15 +3,18 @@ package com.tacz.guns.client.render.scope;
 import com.mojang.blaze3d.pipeline.BlendFunction;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.DepthTestFunction;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.textures.FilterMode;
 import com.mojang.blaze3d.vertex.MeshData;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.compat.iris.IrisCompat;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.TextureTransform;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import javax.annotation.Nullable;
 import java.util.Collections;
@@ -25,22 +28,22 @@ import java.util.Set;
 public final class ScopeRenderTypes {
 
     private static final Map<RenderType, RenderType> APERTURE_COPY_BODIES = new IdentityHashMap<>();
-    private static final Map<ResourceLocation, RenderType> DEPTH_APERTURES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> DEPTH_CLEANUPS = new HashMap<>();
+    private static final Map<Identifier, RenderType> DEPTH_APERTURES = new HashMap<>();
+    private static final Map<Identifier, RenderType> DEPTH_CLEANUPS = new HashMap<>();
     /** Ordinary/vanilla reticles: retain restored world depth after their draw. */
-    private static final Map<ResourceLocation, RenderType> ETCHED_RETICLES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> VISIBLE_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> ETCHED_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> VISIBLE_RETICLES = new HashMap<>();
     /** Iris late-pass reticles: write near depth only after all world translucency has completed. */
-    private static final Map<ResourceLocation, RenderType> LATE_ETCHED_RETICLES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> LATE_VISIBLE_RETICLES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> LATE_OCULAR_RINGS = new HashMap<>();
+    private static final Map<Identifier, RenderType> LATE_ETCHED_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> LATE_VISIBLE_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> LATE_OCULAR_RINGS = new HashMap<>();
     /** Iris 1.10.7 final-overlay types: draw after every shader-pack composite/final pass. */
-    private static final Map<ResourceLocation, RenderType> FINAL_ETCHED_RETICLES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> FINAL_VISIBLE_RETICLES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> FINAL_OCULAR_RINGS = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> VIEWMODEL_CUTOUT_TYPES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> FLASH_TRANSLUCENT_TYPES = new HashMap<>();
-    private static final Map<ResourceLocation, RenderType> FLASH_SWIRL_TYPES = new HashMap<>();
+    private static final Map<Identifier, RenderType> FINAL_ETCHED_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> FINAL_VISIBLE_RETICLES = new HashMap<>();
+    private static final Map<Identifier, RenderType> FINAL_OCULAR_RINGS = new HashMap<>();
+    private static final Map<Identifier, RenderType> VIEWMODEL_CUTOUT_TYPES = new HashMap<>();
+    private static final Map<Identifier, RenderType> FLASH_TRANSLUCENT_TYPES = new HashMap<>();
+    private static final Map<Identifier, RenderType> FLASH_SWIRL_TYPES = new HashMap<>();
 
     /**
      * 1.21.11 的 {@code DepthTestFunction} 没有 {@code ALWAYS}。
@@ -158,7 +161,7 @@ public final class ScopeRenderTypes {
         return APERTURE_COPY_BODIES.computeIfAbsent(base, ScopeRenderTypes::createApertureCopyType);
     }
 
-    public static RenderType depthAperture(ResourceLocation texture) {
+    public static RenderType depthAperture(Identifier texture) {
         // This method is called while extracting an active first-person ocular, before the gun's
         // functional muzzle-flash node is visited. The flag only selects a masked RenderType;
         // draw-time validation still fails open when a depth copy is unavailable.
@@ -166,25 +169,25 @@ public final class ScopeRenderTypes {
         return DEPTH_APERTURES.computeIfAbsent(texture, ScopeRenderTypes::createDepthApertureType);
     }
 
-    public static RenderType depthCleanup(ResourceLocation texture) {
+    public static RenderType depthCleanup(Identifier texture) {
         return DEPTH_CLEANUPS.computeIfAbsent(texture, ScopeRenderTypes::createDepthCleanupType);
     }
 
-    public static RenderType etchedReticle(ResourceLocation texture) {
+    public static RenderType etchedReticle(Identifier texture) {
         return ETCHED_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createEtchedReticleType);
     }
 
-    public static RenderType visibleReticle(ResourceLocation texture) {
+    public static RenderType visibleReticle(Identifier texture) {
         return VISIBLE_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createVisibleReticleType);
     }
 
     /** Iris-only late etched reticle: writes foreground depth after world translucency. */
-    public static RenderType lateEtchedReticle(ResourceLocation texture) {
+    public static RenderType lateEtchedReticle(Identifier texture) {
         return LATE_ETCHED_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createLateEtchedReticleType);
     }
 
     /** Iris-only late illuminated reticle: writes foreground depth after world translucency. */
-    public static RenderType lateVisibleReticle(ResourceLocation texture) {
+    public static RenderType lateVisibleReticle(Identifier texture) {
         return LATE_VISIBLE_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createLateVisibleReticleType);
     }
 
@@ -193,22 +196,22 @@ public final class ScopeRenderTypes {
      * separate from the normal entity-cutout type: Iris must select {@code HAND_TRANSLUCENT} even
      * though the rim itself remains opaque cutout geometry.
      */
-    public static RenderType lateOcularRing(ResourceLocation texture) {
+    public static RenderType lateOcularRing(Identifier texture) {
         return LATE_OCULAR_RINGS.computeIfAbsent(texture, ScopeRenderTypes::createLateOcularRingType);
     }
 
     /** Final post-composite etched reticle; only selected for the verified Iris 1.10.7 path. */
-    public static RenderType finalEtchedReticle(ResourceLocation texture) {
+    public static RenderType finalEtchedReticle(Identifier texture) {
         return FINAL_ETCHED_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createFinalEtchedReticleType);
     }
 
     /** Final post-composite illuminated reticle; only selected for the verified Iris 1.10.7 path. */
-    public static RenderType finalVisibleReticle(ResourceLocation texture) {
+    public static RenderType finalVisibleReticle(Identifier texture) {
         return FINAL_VISIBLE_RETICLES.computeIfAbsent(texture, ScopeRenderTypes::createFinalVisibleReticleType);
     }
 
     /** Final post-composite physical rim, emitted after final reticle geometry. */
-    public static RenderType finalOcularRing(ResourceLocation texture) {
+    public static RenderType finalOcularRing(Identifier texture) {
         return FINAL_OCULAR_RINGS.computeIfAbsent(texture, ScopeRenderTypes::createFinalOcularRingType);
     }
 
@@ -216,7 +219,7 @@ public final class ScopeRenderTypes {
      * Replaces an ordinary first-person gun/attachment cutout type only after an ocular was queued.
      * All other contexts and failed aperture cycles retain the caller's original behavior.
      */
-    public static RenderType clipForViewmodel(RenderType original, ResourceLocation texture, boolean applies) {
+    public static RenderType clipForViewmodel(RenderType original, Identifier texture, boolean applies) {
         if (!applies || !apertureScheduledForViewmodel) {
             return original;
         }
@@ -229,12 +232,12 @@ public final class ScopeRenderTypes {
     }
 
     /** Muzzle-flash background quad: retain vanilla appearance outside the ocular, discard inside. */
-    public static RenderType flashTranslucentClipped(ResourceLocation texture) {
+    public static RenderType flashTranslucentClipped(Identifier texture) {
         return FLASH_TRANSLUCENT_TYPES.computeIfAbsent(texture, ScopeRenderTypes::createFlashTranslucentType);
     }
 
     /** Muzzle-flash additive glow: retain vanilla energy-swirl appearance outside the ocular. */
-    public static RenderType flashSwirlClipped(ResourceLocation texture) {
+    public static RenderType flashSwirlClipped(Identifier texture) {
         return FLASH_SWIRL_TYPES.computeIfAbsent(texture, ScopeRenderTypes::createFlashSwirlType);
     }
 
@@ -246,22 +249,30 @@ public final class ScopeRenderTypes {
         );
     }
 
-    /** The target renderer binds Sampler0..11; slots 1/2 are overwritten by overlay/lightmap. */
-    private static RenderStateShard.MultiTextureStateShard scopeTextures(ResourceLocation texture) {
-        var builder = RenderStateShard.MultiTextureStateShard.builder();
-        for (int slot = 0; slot <= 6; slot++) builder.add(texture, false);
-        return builder.build();
+    /**
+     * Bind the model texture and placeholders for the extra depth samplers. The encoder hook
+     * replaces depth bindings only after vanilla/Iris has selected the actual draw program.
+     * RenderSetup applies explicit textures after overlay/lightmap, so Sampler1/2 must remain
+     * owned by useOverlay/useLightmap rather than being filled with the model texture.
+     */
+    private static RenderSetup.RenderSetupBuilder scopeSetup(RenderPipeline pipeline, Identifier texture) {
+        var builder = RenderSetup.builder(pipeline)
+                .withTexture("Sampler0", texture);
+        for (String sampler : pipeline.getSamplers()) {
+            if (!sampler.equals("Sampler0") && !sampler.equals("Sampler1") && !sampler.equals("Sampler2")) {
+                builder.withTexture(sampler, texture,
+                        () -> RenderSystem.getSamplerCache().getClampToEdge(FilterMode.NEAREST));
+            }
+        }
+        return builder;
     }
 
-    private static RenderType createDepthApertureType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(false);
-        RenderPipeline pipeline = DEPTH_APERTURE_PIPELINE;
-        boolean crumbling = false, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_depth_aperture_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createDepthApertureType(Identifier texture) {
+        RenderSetup setup = scopeSetup(DEPTH_APERTURE_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_depth_aperture_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_depth_aperture",
                 base,
@@ -269,15 +280,12 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createDepthCleanupType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(false);
-        RenderPipeline pipeline = DEPTH_CLEANUP_PIPELINE;
-        boolean crumbling = false, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_depth_cleanup_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createDepthCleanupType(Identifier texture) {
+        RenderSetup setup = scopeSetup(DEPTH_CLEANUP_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_depth_cleanup_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_depth_cleanup",
                 base,
@@ -285,15 +293,12 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createEtchedReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(false);
-        RenderPipeline pipeline = ETCHED_RETICLE_PIPELINE;
-        boolean crumbling = false, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_etched_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createEtchedReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(ETCHED_RETICLE_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_etched_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_etched_reticle",
                 base,
@@ -301,14 +306,14 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createVisibleReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = VISIBLE_RETICLE_PIPELINE;
-        boolean crumbling = true, sorting = true;
-        RenderType base = RenderType.create("tacz_scope_visible_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createVisibleReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(VISIBLE_RETICLE_PIPELINE, texture)
+                .useOverlay()
+                .affectsCrumbling()
+                .sortOnUpload()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_visible_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_visible_reticle",
                 base,
@@ -316,15 +321,12 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createLateEtchedReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(false);
-        RenderPipeline pipeline = LATE_ETCHED_RETICLE_PIPELINE;
-        boolean crumbling = false, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_late_etched_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createLateEtchedReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(LATE_ETCHED_RETICLE_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_late_etched_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_late_etched_reticle",
                 base,
@@ -332,14 +334,14 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createLateVisibleReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = LATE_VISIBLE_RETICLE_PIPELINE;
-        boolean crumbling = true, sorting = true;
-        RenderType base = RenderType.create("tacz_scope_late_visible_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createLateVisibleReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(LATE_VISIBLE_RETICLE_PIPELINE, texture)
+                .useOverlay()
+                .affectsCrumbling()
+                .sortOnUpload()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_late_visible_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_late_visible_reticle",
                 base,
@@ -347,29 +349,25 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createLateOcularRingType(ResourceLocation texture) {
+    private static RenderType createLateOcularRingType(Identifier texture) {
         // Bytecode-equivalent to RenderType.entityCutout(texture, true). The pipeline differs
         // only in Iris classification, so the opaque rim retains its vanilla material state while
         // being submitted after the world translucent pass.
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = LATE_OCULAR_RING_PIPELINE;
-        boolean crumbling = true, sorting = false;
-        return RenderType.create("tacz_scope_late_ocular_ring", 1536, crumbling, sorting, pipeline, setup);
+        RenderSetup setup = scopeSetup(LATE_OCULAR_RING_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .affectsCrumbling()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        return RenderType.create("tacz_scope_late_ocular_ring", setup);
     }
 
-    private static RenderType createFinalEtchedReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(false);
-        RenderPipeline pipeline = FINAL_ETCHED_RETICLE_PIPELINE;
-        boolean crumbling = false, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_final_etched_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createFinalEtchedReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(FINAL_ETCHED_RETICLE_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_final_etched_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_final_etched_reticle",
                 base,
@@ -377,14 +375,14 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createFinalVisibleReticleType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = FINAL_VISIBLE_RETICLE_PIPELINE;
-        boolean crumbling = true, sorting = true;
-        RenderType base = RenderType.create("tacz_scope_final_visible_reticle_base", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createFinalVisibleReticleType(Identifier texture) {
+        RenderSetup setup = scopeSetup(FINAL_VISIBLE_RETICLE_PIPELINE, texture)
+                .useOverlay()
+                .affectsCrumbling()
+                .sortOnUpload()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_final_visible_reticle_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_final_visible_reticle",
                 base,
@@ -392,28 +390,26 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createFinalOcularRingType(ResourceLocation texture) {
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = FINAL_OCULAR_RING_PIPELINE;
-        boolean crumbling = true, sorting = false;
-        return RenderType.create("tacz_scope_final_ocular_ring", 1536, crumbling, sorting, pipeline, setup);
+    private static RenderType createFinalOcularRingType(Identifier texture) {
+        RenderSetup setup = scopeSetup(FINAL_OCULAR_RING_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .affectsCrumbling()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        return RenderType.create("tacz_scope_final_ocular_ring", setup);
     }
 
-    private static RenderType createViewmodelCutoutType(ResourceLocation texture) {
+    private static RenderType createViewmodelCutoutType(Identifier texture) {
         // Bytecode-equivalent to RenderType.entityCutout(texture, true), plus the two depth
         // samplers consumed by the outside-aperture branch.
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = VIEWMODEL_CUTOUT_PIPELINE;
-        boolean crumbling = true, sorting = false;
-        RenderType base = RenderType.create("tacz_scope_viewmodel_cutout_base", 1536, crumbling, sorting, pipeline, setup);
+        RenderSetup setup = scopeSetup(VIEWMODEL_CUTOUT_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .affectsCrumbling()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_viewmodel_cutout_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_viewmodel_cutout",
                 base,
@@ -421,17 +417,17 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createFlashTranslucentType(ResourceLocation texture) {
+    private static RenderType createFlashTranslucentType(Identifier texture) {
         // Bytecode-equivalent to RenderType.entityTranslucent(texture, true), with two placeholder
         // depth samplers added. ScopeDepthCopyState replaces those bindings at the real draw boundary.
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .createCompositeState(true);
-        RenderPipeline pipeline = FLASH_TRANSLUCENT_PIPELINE;
-        boolean crumbling = true, sorting = true;
-        RenderType base = RenderType.create("tacz_scope_flash_translucent_base", 1536, crumbling, sorting, pipeline, setup);
+        RenderSetup setup = scopeSetup(FLASH_TRANSLUCENT_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .affectsCrumbling()
+                .sortOnUpload()
+                .setOutline(RenderSetup.OutlineProperty.AFFECTS_OUTLINE)
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_flash_translucent_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_flash_translucent",
                 base,
@@ -439,18 +435,16 @@ public final class ScopeRenderTypes {
         );
     }
 
-    private static RenderType createFlashSwirlType(ResourceLocation texture) {
+    private static RenderType createFlashSwirlType(Identifier texture) {
         // Exact RenderType.energySwirl setup: animated UV transform, lightmap/overlay bindings and
         // upload sorting are preserved; only the depth-mask samplers are additional.
-        RenderType.CompositeState setup = RenderType.CompositeState.builder()
-                .setTextureState(scopeTextures(texture))
-                .setLightmapState(new RenderStateShard.LightmapStateShard(true))
-                .setOverlayState(new RenderStateShard.OverlayStateShard(true))
-                .setTexturingState(new RenderStateShard.OffsetTexturingStateShard(1.0F, 1.0F))
-                .createCompositeState(false);
-        RenderPipeline pipeline = FLASH_SWIRL_PIPELINE;
-        boolean crumbling = false, sorting = true;
-        RenderType base = RenderType.create("tacz_scope_flash_swirl_base", 1536, crumbling, sorting, pipeline, setup);
+        RenderSetup setup = scopeSetup(FLASH_SWIRL_PIPELINE, texture)
+                .useLightmap()
+                .useOverlay()
+                .setTextureTransform(new TextureTransform.OffsetTextureTransform(1.0F, 1.0F))
+                .sortOnUpload()
+                .createRenderSetup();
+        RenderType base = RenderType.create("tacz_scope_flash_swirl_base", setup);
         return new DepthCopyRenderType(
                 "tacz_scope_flash_swirl",
                 base,
@@ -461,7 +455,7 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createDepthAperturePipeline() {
         RenderPipeline source = RenderPipelines.ENTITY_CUTOUT;
         RenderPipeline.Builder builder = clonePipeline(source,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_depth_aperture"));
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_depth_aperture"));
 
         // 1.21.11 没有 ColorTargetState/DepthStencilState 这两个聚合对象，
         // 等价状态在 Builder 上是扁平的 withColorWrite / withDepthWrite /
@@ -480,8 +474,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createDepthCleanupPipeline() {
         RenderPipeline source = RenderPipelines.ENTITY_CUTOUT;
         RenderPipeline.Builder builder = clonePipeline(source,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_depth_cleanup"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_depth_cleanup"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_depth_cleanup"));
         builder.withSampler(ScopeDepthCopyState.SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -500,9 +494,9 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createEtchedReticlePipeline() {
         RenderPipeline source = RenderPipelines.ENTITY_CUTOUT;
         RenderPipeline.Builder builder = clonePipeline(source,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_etched_reticle"));
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_etched_reticle"));
         // entity.fsh clone plus the ocular screen-space mask branch at the top of main().
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -533,9 +527,9 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createVisibleReticlePipeline() {
         RenderPipeline source = RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE;
         RenderPipeline.Builder builder = clonePipeline(source,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_visible_reticle"));
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_visible_reticle"));
         // Same entity.fsh clone plus ocular mask; under Iris the equivalent branch is injected.
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -559,8 +553,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createLateEtchedReticlePipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_etched_reticle"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_etched_reticle"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -577,8 +571,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createLateVisibleReticlePipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_visible_reticle"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_visible_reticle"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -594,7 +588,7 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createLateOcularRingPipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_ocular_ring"));
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_ocular_ring"));
         // The rim must win over any reticle edge pixel drawn immediately before it. It is a late
         // foreground layer, so GL_ALWAYS + depthWrite=true is safe here and also marks it near for
         // shader-pack post-processing.
@@ -615,8 +609,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createFinalEtchedReticlePipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_etched_reticle"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_etched_reticle"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_final"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -631,8 +625,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createFinalVisibleReticlePipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_visible_reticle"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_visible_reticle"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_final"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -647,8 +641,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createFinalOcularRingPipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_ocular_ring"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_ocular_ring"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_ring_final"));
         builder.withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST);
         builder.withDepthWrite(false);
@@ -661,8 +655,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createViewmodelCutoutPipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_viewmodel_cutout"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_viewmodel_cutout"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_flash_clip"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -675,8 +669,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createFlashTranslucentPipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_TRANSLUCENT,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_flash_translucent"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_flash_translucent"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_flash_clip"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -689,8 +683,8 @@ public final class ScopeRenderTypes {
     private static RenderPipeline createFlashSwirlPipeline() {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENERGY_SWIRL,
-                ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_flash_swirl"));
-        builder.withFragmentShader(ResourceLocation.fromNamespaceAndPath(
+                Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_flash_swirl"));
+        builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_flash_clip"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
         builder.withSampler(ScopeDepthCopyState.APERTURE_SAMPLER_UNIFORM);
@@ -708,7 +702,7 @@ public final class ScopeRenderTypes {
         return type.pipeline().getBlendFunction().isPresent();
     }
 
-    private static RenderPipeline.Builder clonePipeline(RenderPipeline source, ResourceLocation location) {
+    private static RenderPipeline.Builder clonePipeline(RenderPipeline source, Identifier location) {
         RenderPipeline.Builder builder = RenderPipeline.builder()
                 .withLocation(location)
                 .withVertexShader(source.getVertexShader())
@@ -735,7 +729,7 @@ public final class ScopeRenderTypes {
         } else {
             builder.withoutBlend();
         }
-        builder.withColorWrite(source.isWriteColor());
+        builder.withColorWrite(source.isWriteColor(), source.isWriteAlpha());
         builder.withDepthTestFunction(source.getDepthTestFunction());
         builder.withDepthWrite(source.isWriteDepth());
         builder.withDepthBias(source.getDepthBiasScaleFactor(), source.getDepthBiasConstant());
@@ -763,7 +757,7 @@ public final class ScopeRenderTypes {
         private DepthCopyRenderType(String name,
                                     RenderType wrapped,
                                     ScopeDepthCopyState.Operation operation) {
-            super(name, wrapped.bufferSize(), wrapped.affectsCrumbling(), wrapped.sortOnUpload(), wrapped::setupRenderState, wrapped::clearRenderState);
+            super(name, wrapped.state);
             this.wrapped = wrapped;
             this.operation = operation;
         }

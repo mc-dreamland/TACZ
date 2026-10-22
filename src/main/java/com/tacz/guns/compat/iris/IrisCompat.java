@@ -4,14 +4,13 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.init.CompatRegistry;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
 import java.util.HashSet;
 import java.util.Set;
 
-/** Optional Iris 1.9.7 integration for Minecraft 1.21.10. Reflection keeps Iris optional. */
+/** Optional Iris 1.10.7/1.10.8 integration for Minecraft 1.21.11. Reflection keeps Iris optional. */
 public final class IrisCompat {
     private static final Set<RenderPipeline> ASSIGNED_SCOPE_PIPELINES = new HashSet<>();
     private static boolean loggedScopePipelineFailure;
@@ -66,12 +65,15 @@ public final class IrisCompat {
     }
 
     /**
-     * The post-final-composite overlay hook was bytecode-audited against Iris 1.10.7 only.
+     * The post-final-composite overlay hook was bytecode-audited against Iris 1.10.7 and 1.10.8.
      * Other Iris versions keep the R8/R9 HAND_TRANSLUCENT fallback.
      */
     public static boolean supportsFinalScopeOverlay() {
         return ModList.get().getModContainerById(CompatRegistry.IRIS)
-                .map(container -> container.getModInfo().getVersion().toString().startsWith("1.10.7"))
+                .map(container -> {
+                    String version = container.getModInfo().getVersion().toString().split("\\+", 2)[0];
+                    return version.equals("1.10.7") || version.equals("1.10.8");
+                })
                 .orElse(false);
     }
 

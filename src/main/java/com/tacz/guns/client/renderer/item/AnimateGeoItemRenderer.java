@@ -18,9 +18,10 @@ import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
@@ -67,7 +68,7 @@ public abstract class AnimateGeoItemRenderer<M extends BedrockAnimatedModel, CTX
         this.renderByItem(stack, mode, matrices, collector, light, overlay);
     }
 
-    public ResourceLocation textureLocation;
+    public Identifier textureLocation;
 
     public AnimateGeoItemRenderer() {
     }
@@ -85,12 +86,12 @@ public abstract class AnimateGeoItemRenderer<M extends BedrockAnimatedModel, CTX
         return stateMachine;
     }
 
-    public ResourceLocation getTextureLocation(ItemStack stack) {
+    public Identifier getTextureLocation(ItemStack stack) {
         return textureLocation;
     }
 
     public RenderType getRenderType(ItemStack stack) {
-        return RenderType.entityCutout(getTextureLocation(stack));
+        return RenderTypes.entityCutout(getTextureLocation(stack));
     }
 
     public boolean needReInit(ItemStack stack) {
@@ -284,7 +285,7 @@ public abstract class AnimateGeoItemRenderer<M extends BedrockAnimatedModel, CTX
             poseStack.translate(0.5, 1.5f, 0.5);
             // 基岩版模型是上下颠倒的，需要翻转过来。
             poseStack.mulPose(Axis.ZP.rotationDegrees(180f));
-            model.submit(poseStack, ctx, collector, RenderType.entityCutout(
+            model.submit(poseStack, ctx, collector, RenderTypes.entityCutout(
                     getTextureLocation(stack)
             ), light, overlay);
             poseStack.popPose();

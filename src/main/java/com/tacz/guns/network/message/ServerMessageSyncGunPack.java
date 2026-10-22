@@ -8,7 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
@@ -18,11 +18,11 @@ import java.util.Map;
 
 public class ServerMessageSyncGunPack implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<ServerMessageSyncGunPack> TYPE = new CustomPacketPayload.Type<>(
-        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_sync_gun_pack")
+        Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "server_sync_gun_pack")
     );
     public static final StreamCodec<FriendlyByteBuf, ServerMessageSyncGunPack> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.map(HashMap::new, ByteBufCodecs.fromCodec(DataType.CODEC),
-            ByteBufCodecs.map(HashMap::new, ResourceLocation.STREAM_CODEC, ByteBufCodecs.STRING_UTF8)),
+            ByteBufCodecs.map(HashMap::new, Identifier.STREAM_CODEC, ByteBufCodecs.STRING_UTF8)),
         ServerMessageSyncGunPack::getCache,
         ServerMessageSyncGunPack::new
     );
@@ -32,9 +32,9 @@ public class ServerMessageSyncGunPack implements CustomPacketPayload {
         return TYPE;
     }
 
-    public final Map<DataType, Map<ResourceLocation, String>> cache;
+    public final Map<DataType, Map<Identifier, String>> cache;
 
-    public ServerMessageSyncGunPack(Map<DataType, Map<ResourceLocation, String>> cache) {
+    public ServerMessageSyncGunPack(Map<DataType, Map<Identifier, String>> cache) {
         this.cache = cache;
     }
 
@@ -43,7 +43,7 @@ public class ServerMessageSyncGunPack implements CustomPacketPayload {
     }
 
 
-    public Map<DataType, Map<ResourceLocation, String>> getCache() {
+    public Map<DataType, Map<Identifier, String>> getCache() {
         return cache;
     }
 

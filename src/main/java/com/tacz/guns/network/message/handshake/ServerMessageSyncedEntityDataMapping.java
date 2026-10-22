@@ -9,7 +9,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.Marker;
@@ -20,7 +20,7 @@ import java.util.*;
 
 public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder implements IMessage {
     public static final CustomPacketPayload.Type<ServerMessageSyncedEntityDataMapping> TYPE = new CustomPacketPayload.Type<>(
-        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_synced_entity_data_mapping")
+        Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "server_synced_entity_data_mapping")
     );
     public static final StreamCodec<FriendlyByteBuf, ServerMessageSyncedEntityDataMapping> STREAM_CODEC = StreamCodec.of(
         ServerMessageSyncedEntityDataMapping::encode,
@@ -33,13 +33,13 @@ public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder imple
     }
 
     public static final Marker HANDSHAKE = MarkerManager.getMarker("TACZ_HANDSHAKE");
-    public final Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap;
+    public final Map<Identifier, List<Pair<Identifier, Integer>>> keyMap;
 
     public ServerMessageSyncedEntityDataMapping() {
         this.keyMap = new HashMap<>();
     }
 
-    private ServerMessageSyncedEntityDataMapping(Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap) {
+    private ServerMessageSyncedEntityDataMapping(Map<Identifier, List<Pair<Identifier, Integer>>> keyMap) {
         this.keyMap = keyMap;
     }
 
@@ -48,18 +48,18 @@ public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder imple
         buffer.writeInt(keys.size());
         keys.forEach(key -> {
             int id = SyncedEntityData.instance().getInternalId(key);
-            buffer.writeResourceLocation(key.classKey().id());
-            buffer.writeResourceLocation(key.id());
+            buffer.writeIdentifier(key.classKey().id());
+            buffer.writeIdentifier(key.id());
             buffer.writeVarInt(id);
         });
     }
 
     public static ServerMessageSyncedEntityDataMapping decode(FriendlyByteBuf buffer) {
         int size = buffer.readInt();
-        Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> keyMap = new HashMap<>();
+        Map<Identifier, List<Pair<Identifier, Integer>>> keyMap = new HashMap<>();
         for (int i = 0; i < size; i++) {
-            ResourceLocation classId = buffer.readResourceLocation();
-            ResourceLocation keyId = buffer.readResourceLocation();
+            Identifier classId = buffer.readIdentifier();
+            Identifier keyId = buffer.readIdentifier();
             int id = buffer.readVarInt();
             keyMap.computeIfAbsent(classId, c -> new ArrayList<>()).add(Pair.of(keyId, id));
         }
@@ -82,7 +82,7 @@ public class ServerMessageSyncedEntityDataMapping extends LoginIndexHolder imple
         });
     }
 
-    public Map<ResourceLocation, List<Pair<ResourceLocation, Integer>>> getKeyMap() {
+    public Map<Identifier, List<Pair<Identifier, Integer>>> getKeyMap() {
         return this.keyMap;
     }
 }

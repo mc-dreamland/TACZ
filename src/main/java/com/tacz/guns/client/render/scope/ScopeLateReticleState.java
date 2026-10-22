@@ -5,7 +5,7 @@ import com.tacz.guns.GunMod;
 import com.tacz.guns.client.renderer.snapshot.BedrockRenderSnapshot;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 
 import java.util.ArrayList;
 import java.util.List;

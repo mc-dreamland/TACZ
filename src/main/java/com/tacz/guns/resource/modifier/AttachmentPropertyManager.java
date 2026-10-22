@@ -14,7 +14,7 @@ import com.tacz.guns.event.ChangeGunPropertyEvent;
 import com.tacz.guns.resource.manager.AttachmentScriptManager;
 import com.tacz.guns.resource.modifier.custom.*;
 import com.tacz.guns.resource.pojo.data.attachment.Modifier;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
@@ -53,7 +53,7 @@ public class AttachmentPropertyManager {
         if (!(ItemBehavior.of(gunItem) instanceof IGun iGun)) {
             return;
         }
-        ResourceLocation gunId = iGun.getGunId(gunItem);
+        Identifier gunId = iGun.getGunId(gunItem);
         TimelessAPI.getCommonGunIndex(gunId).ifPresent(index -> {
             AttachmentCacheProperty cacheProperty = new AttachmentCacheProperty();
             // 发布事件

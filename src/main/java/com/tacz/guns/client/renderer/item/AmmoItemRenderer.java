@@ -13,9 +13,10 @@ import com.tacz.guns.client.model.bedrock.BedrockPart;
 import com.tacz.guns.client.resource.pojo.TransformScale;
 import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Vector3f;
@@ -67,17 +68,17 @@ public class AmmoItemRenderer implements BuiltinItemRendererRegistry.DynamicItem
         if (!(ItemBehavior.of(stack) instanceof IAmmo iAmmo)) {
             return;
         }
-        ResourceLocation ammoId = iAmmo.getAmmoId(stack);
+        Identifier ammoId = iAmmo.getAmmoId(stack);
         poseStack.pushPose();
         TimelessAPI.getClientAmmoIndex(ammoId).ifPresentOrElse(ammoIndex -> {
             // 先获取 3D 模型，如果为空，统一使用 GUI 渲染
             BedrockAmmoModel ammoModel = ammoIndex.getAmmoModel();
-            ResourceLocation modelTexture = ammoIndex.getModelTextureLocation();
+            Identifier modelTexture = ammoIndex.getModelTextureLocation();
             // GUI 特殊渲染
             if (transformType == GUI || ammoModel == null || modelTexture == null) {
                 poseStack.translate(0.5, 1.5, 0.5);
                 poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-                collector.submitCustomGeometry(poseStack, RenderType.entityTranslucent(ammoIndex.getSlotTextureLocation()), (pose, buffer) -> {
+                collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucent(ammoIndex.getSlotTextureLocation()), (pose, buffer) -> {
                     // 26.2: 必须使用回调参数 pose（= 提交那一刻 poseStack.last().copy() 的快照），
                     // 而不是外层 poseStack —— 回调执行时它早已被 popPose/复用，
                     // 结果就是图标被画到错误位置（物品栏一片空白）。
@@ -98,13 +99,13 @@ public class AmmoItemRenderer implements BuiltinItemRendererRegistry.DynamicItem
             // 应用 display 数据中的缩放
             applyScaleTransform(transformType, ammoIndex.getTransform().getScale(), poseStack);
             // 渲染子弹盒模型
-            RenderType renderType = RenderType.entityCutout(modelTexture);
+            RenderType renderType = RenderTypes.entityCutout(modelTexture);
             ammoModel.submit(poseStack, transformType, collector, renderType, pPackedLight, pPackedOverlay);
         }, () -> {
             // 没有这个 ammoID，渲染个错误材质提醒别人
             poseStack.translate(0.5, 1.5, 0.5);
             poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-            collector.submitCustomGeometry(poseStack, RenderType.entityTranslucent(MissingTextureAtlasSprite.getLocation()), (pose, buffer) -> {
+            collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucent(MissingTextureAtlasSprite.getLocation()), (pose, buffer) -> {
                 // 26.2: 必须使用回调参数 pose（= 提交那一刻 poseStack.last().copy() 的快照），
                 // 而不是外层 poseStack —— 回调执行时它早已被 popPose/复用，
                 // 结果就是图标被画到错误位置（物品栏一片空白）。

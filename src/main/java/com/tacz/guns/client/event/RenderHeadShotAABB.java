@@ -1,6 +1,6 @@
 package com.tacz.guns.client.event;
 
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 
 import net.neoforged.neoforge.client.event.RenderLivingEvent;
 import com.tacz.guns.config.client.RenderConfig;
@@ -8,7 +8,7 @@ import com.tacz.guns.config.util.HeadShotAABBConfigRead;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.debug.DebugScreenEntries;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 
 public class RenderHeadShotAABB {
@@ -21,7 +21,7 @@ public class RenderHeadShotAABB {
             return;
         }
         var renderState = event.getRenderState();
-        ResourceLocation entityId = BuiltInRegistries.ENTITY_TYPE.getKey(renderState.entityType);
+        Identifier entityId = BuiltInRegistries.ENTITY_TYPE.getKey(renderState.entityType);
         AABB aabb = HeadShotAABBConfigRead.getAABB(entityId);
         if (aabb == null) {
             float width = renderState.boundingBoxWidth;
@@ -30,7 +30,7 @@ public class RenderHeadShotAABB {
             aabb = new AABB(-width / 2, eyeHeight - 0.25, -width / 2, width / 2, eyeHeight + 0.25, width / 2).inflate(0.01);
         }
         AABB finalAabb = aabb;
-        event.getSubmitNodeCollector().submitCustomGeometry(event.getPoseStack(), RenderType.lines(), (entryPose, consumer) -> {
+        event.getSubmitNodeCollector().submitCustomGeometry(event.getPoseStack(), RenderTypes.lines(), (entryPose, consumer) -> {
             com.mojang.blaze3d.vertex.PoseStack tempPose = new com.mojang.blaze3d.vertex.PoseStack();
             tempPose.last().pose().set(entryPose.pose());
             tempPose.last().normal().set(entryPose.normal());
@@ -69,14 +69,14 @@ public class RenderHeadShotAABB {
     }
 
     private static void drawEdge(org.joml.Matrix4f matrix, org.joml.Matrix3f normal, com.mojang.blaze3d.vertex.VertexConsumer consumer, double x1, double y1, double z1, double x2, double y2, double z2, float r, float g, float b, float a) {
-        // 26.1 线渲染格式 = POSITION_COLOR_NORMAL_LINE_WIDTH：每个顶点都必须写 LineWidth，
+        // 1.21.11 线渲染格式 = POSITION_COLOR_NORMAL_LINE_WIDTH：每个顶点都必须写 LineWidth，
         // 缺失即抛 "Missing elements in vertex: LineWidth"（r15 崩溃，crash 2026-08-21 13:46）。
         // 宽度 2.5F = 原版 F3+B 碰撞箱 GizmoStyle.DEFAULT_WIDTH。
         org.joml.Vector4f pos = new org.joml.Vector4f((float) x1, (float) y1, (float) z1, 1.0f).mul(matrix);
         org.joml.Vector3f norm = new org.joml.Vector3f((float) (x2 - x1), (float) (y2 - y1), (float) (z2 - z1)).normalize().mul(normal);
-        consumer.addVertex(pos.x(), pos.y(), pos.z()).setColor(r, g, b, a).setNormal(norm.x(), norm.y(), norm.z());
+        consumer.addVertex(pos.x(), pos.y(), pos.z()).setColor(r, g, b, a).setNormal(norm.x(), norm.y(), norm.z()).setLineWidth(2.5F);
 
         pos = new org.joml.Vector4f((float) x2, (float) y2, (float) z2, 1.0f).mul(matrix);
-        consumer.addVertex(pos.x(), pos.y(), pos.z()).setColor(r, g, b, a).setNormal(norm.x(), norm.y(), norm.z());
+        consumer.addVertex(pos.x(), pos.y(), pos.z()).setColor(r, g, b, a).setNormal(norm.x(), norm.y(), norm.z()).setLineWidth(2.5F);
     }
 }

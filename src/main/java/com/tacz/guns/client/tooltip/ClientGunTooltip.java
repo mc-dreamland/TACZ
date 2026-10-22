@@ -26,7 +26,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -66,7 +66,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
     public ClientGunTooltip(GunTooltip tooltip) {
         this.gun = tooltip.getGun();
         this.iGun = tooltip.getIGun();
-        ResourceLocation ammoId = tooltip.getAmmoId();
+        Identifier ammoId = tooltip.getAmmoId();
         this.gunIndex = tooltip.getGunIndex();
         this.display = TimelessAPI.getGunDisplay(gun).orElse(null);
         this.ammo = AmmoItemBuilder.create().setId(ammoId).build();
@@ -228,7 +228,7 @@ public class ClientGunTooltip implements ClientTooltipComponent {
 
 
         if (shouldShow(GunTooltipPart.PACK_INFO)) {
-            ResourceLocation gunId = iGun.getGunId(gun);
+            Identifier gunId = iGun.getGunId(gun);
             PackInfo packInfoObject = ClientAssetsManager.INSTANCE.getPackInfo(gunId);
             if (packInfoObject != null) {
                 packInfo = Component.translatable(packInfoObject.getName()).withStyle(style -> style.withColor(0x5555FF)).withStyle(style -> style.withItalic(true));

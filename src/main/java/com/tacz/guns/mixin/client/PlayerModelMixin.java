@@ -3,7 +3,7 @@ package com.tacz.guns.mixin.client;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.animation.third.InnerThirdPersonManager;
 import net.minecraft.client.model.HumanoidModel;
-import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.player.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;

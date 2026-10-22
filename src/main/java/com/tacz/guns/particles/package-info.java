@@ -1,5 +1,4 @@
-@ParametersAreNonnullByDefault
+@NullMarked
 package com.tacz.guns.particles;
 
-
-import javax.annotation.ParametersAreNonnullByDefault;
+import org.jspecify.annotations.NullMarked;

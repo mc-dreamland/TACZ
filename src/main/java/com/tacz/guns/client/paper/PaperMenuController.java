@@ -3,13 +3,13 @@ package com.tacz.guns.client.paper;
 import com.google.gson.JsonObject;
 import com.tacz.guns.bridge.InventoryMenuSession;
 import com.tacz.guns.client.gui.GunSmithTableScreen;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
 
 import static com.tacz.guns.client.paper.GunResolver.*;
@@ -39,7 +39,7 @@ public final class PaperMenuController implements GunSmithTableScreen.PaperActio
     public JsonObject data() { return session.data(); }
     public boolean pending() { return session.pending() || session.closed(); }
 
-    public void craft(ResourceLocation recipe) {
+    public void craft(Identifier recipe) {
         JsonObject arguments = new JsonObject();
         arguments.addProperty("recipe", recipe.toString());
         arguments.addProperty("count", 1);

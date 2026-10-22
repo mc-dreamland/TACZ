@@ -14,7 +14,7 @@ import com.tacz.guns.inventory.tooltip.AmmoBoxTooltip;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -49,7 +49,7 @@ public class AmmoBoxItem extends Item implements AmmoBoxItemDataAccessor {
         if (action == ClickAction.SECONDARY) {
             // 点击的格子
             ItemStack slotItem = slot.getItem();
-            ResourceLocation boxAmmoId = this.getAmmoId(ammoBox);
+            Identifier boxAmmoId = this.getAmmoId(ammoBox);
 
             // 格子为空，那就是取出物品
             if (slotItem.isEmpty()) {
@@ -91,7 +91,7 @@ public class AmmoBoxItem extends Item implements AmmoBoxItemDataAccessor {
                 if (isAllTypeCreative(ammoBox)) {
                     return false;
                 }
-                ResourceLocation slotAmmoId = iAmmo.getAmmoId(slotItem);
+                Identifier slotAmmoId = iAmmo.getAmmoId(slotItem);
                 // 格子里的子弹 ID 不对，不能放
                 if (slotAmmoId.equals(DefaultAssets.EMPTY_AMMO_ID)) {
                     return false;
@@ -145,7 +145,7 @@ public class AmmoBoxItem extends Item implements AmmoBoxItemDataAccessor {
             int capacity = ItemNbtUtils.getTag(stack).getIntOr("PaperBoxCapacity", 0);
             return capacity <= 0 ? 0 : Math.min(13, Math.max(0, (int) Math.round(13d * this.getAmmoCount(stack) / capacity)));
         }
-        ResourceLocation ammoId = this.getAmmoId(stack);
+        Identifier ammoId = this.getAmmoId(stack);
         int ammoCount = this.getAmmoCount(stack);
         int boxLevelMultiplier = this.getAmmoLevel(stack) + 1;
         double widthPercent = TimelessAPI.getCommonAmmoIndex(ammoId).map(index -> {
@@ -209,7 +209,7 @@ public class AmmoBoxItem extends Item implements AmmoBoxItemDataAccessor {
         if (!(stack.getItem() instanceof IAmmoBox iAmmoBox)) {
             return Optional.empty();
         }
-        ResourceLocation ammoId = iAmmoBox.getAmmoId(stack);
+        Identifier ammoId = iAmmoBox.getAmmoId(stack);
         if (ammoId.equals(DefaultAssets.EMPTY_AMMO_ID)) {
             return Optional.empty();
         }

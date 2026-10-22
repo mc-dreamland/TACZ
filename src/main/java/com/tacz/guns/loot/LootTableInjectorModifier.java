@@ -6,7 +6,7 @@ import com.tacz.guns.init.ModLootModifiers;
 import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.pojo.data.loot.LootTableInjection;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
@@ -31,7 +31,7 @@ public class LootTableInjectorModifier extends LootModifier {
             return generatedLoot;
         }
 
-        ResourceLocation lootTableId = context.getQueriedLootTableId();
+        Identifier lootTableId = context.getQueriedLootTableId();
         List<LootTableInjection> injections = manager.getLootTableInjections(lootTableId);
         if (injections.isEmpty()) {
             return generatedLoot;

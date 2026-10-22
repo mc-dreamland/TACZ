@@ -3,7 +3,7 @@ package com.tacz.guns.entity.sync.core;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.util.ValueIOSerializable;
@@ -83,8 +83,8 @@ public class DataHolder implements ValueIOSerializable {
         this.dataMap.clear();
         this.dirty = false;
         for (CompoundTag data : input.listOrEmpty("Entries", CompoundTag.CODEC)) {
-            ResourceLocation classId = ResourceLocation.tryParse(data.getStringOr("ClassKey", ""));
-            ResourceLocation keyId = ResourceLocation.tryParse(data.getStringOr("DataKey", ""));
+            Identifier classId = Identifier.tryParse(data.getStringOr("ClassKey", ""));
+            Identifier keyId = Identifier.tryParse(data.getStringOr("DataKey", ""));
             Tag value = data.get("Value");
             if (classId == null || keyId == null || value == null) continue;
             SyncedClassKey<?> classKey = SyncedEntityData.instance().getClassKey(classId);

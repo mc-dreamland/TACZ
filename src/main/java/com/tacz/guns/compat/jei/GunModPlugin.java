@@ -19,7 +19,7 @@ import mezz.jei.api.registration.IRecipeCategoryRegistration;
 import mezz.jei.api.registration.IRecipeRegistration;
 import mezz.jei.api.registration.ISubtypeRegistration;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
@@ -30,9 +30,9 @@ import java.util.Objects;
 
 @JeiPlugin
 public class GunModPlugin implements IModPlugin {
-    private static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "jei");
+    private static final Identifier UID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "jei");
 
-    private Map<ResourceLocation, IRecipeType<GunSmithTableRecipe>> recipeTypeMap = new HashMap<>();
+    private Map<Identifier, IRecipeType<GunSmithTableRecipe>> recipeTypeMap = new HashMap<>();
 
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
@@ -41,7 +41,7 @@ public class GunModPlugin implements IModPlugin {
         for (var entry : map) {
             BlockItem item = entry.getValue().getBlock();
             ItemStack icon = BlockItemBuilder.create(item).setId(entry.getKey()).build();
-            IRecipeType<GunSmithTableRecipe> type = IRecipeType.create(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "gun_smith_table/" + entry.getKey().toString().replace(':', '_')), GunSmithTableRecipe.class);
+            IRecipeType<GunSmithTableRecipe> type = IRecipeType.create(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "gun_smith_table/" + entry.getKey().toString().replace(':', '_')), GunSmithTableRecipe.class);
             registration.addRecipeCategories(new GunSmithTableCategory(registration.getJeiHelpers().getGuiHelper(), icon, type, item.getName(icon)));
             recipeTypeMap.put(entry.getKey(), type);
         }
@@ -104,7 +104,7 @@ public class GunModPlugin implements IModPlugin {
     }
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         return UID;
     }
 }

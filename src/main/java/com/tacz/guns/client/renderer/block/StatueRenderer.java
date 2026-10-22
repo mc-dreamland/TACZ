@@ -7,18 +7,19 @@ import com.tacz.guns.block.entity.StatueBlockEntity;
 import com.tacz.guns.client.model.bedrock.BedrockModel;
 import com.tacz.guns.client.resource.InternalAssetLoader;
 import com.tacz.guns.config.client.RenderConfig;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -90,8 +91,8 @@ public class StatueRenderer implements BlockEntityRenderer<StatueBlockEntity, St
             poseStack.mulPose(Axis.ZN.rotationDegrees(180));
 
             RenderType renderType = RenderConfig.BLOCK_ENTITY_TRANSLUCENT.get() ?
-                    RenderType.entityTranslucent(getTextureLocation()) :
-                    RenderType.entityCutout(getTextureLocation());
+                    RenderTypes.entityTranslucent(getTextureLocation()) :
+                    RenderTypes.entityCutout(getTextureLocation());
             model.submit(poseStack, ItemDisplayContext.NONE, collector, renderType, combinedLightIn, combinedOverlayIn);
 
             poseStack.scale(0.5f, 0.5f, 0.5f);
@@ -110,7 +111,7 @@ public class StatueRenderer implements BlockEntityRenderer<StatueBlockEntity, St
         });
     }
 
-    public static ResourceLocation getTextureLocation() {
+    public static Identifier getTextureLocation() {
         return InternalAssetLoader.STATUE_TEXTURE_LOCATION;
     }
 

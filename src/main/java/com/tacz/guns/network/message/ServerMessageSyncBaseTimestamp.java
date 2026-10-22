@@ -4,7 +4,7 @@ import com.tacz.guns.GunMod;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.apache.logging.log4j.Marker;
@@ -16,7 +16,7 @@ import java.util.Objects;
 public class ServerMessageSyncBaseTimestamp implements CustomPacketPayload {
     public static final ServerMessageSyncBaseTimestamp INSTANCE = new ServerMessageSyncBaseTimestamp();
     public static final CustomPacketPayload.Type<ServerMessageSyncBaseTimestamp> TYPE = new CustomPacketPayload.Type<>(
-        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_sync_base_timestamp")
+        Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "server_sync_base_timestamp")
     );
     public static final StreamCodec<RegistryFriendlyByteBuf, ServerMessageSyncBaseTimestamp> STREAM_CODEC = StreamCodec.unit(INSTANCE);
 

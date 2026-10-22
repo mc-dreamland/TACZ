@@ -18,7 +18,7 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.InputWithModifiers;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 
 import java.util.*;
@@ -31,7 +31,7 @@ public class GunPackList extends ContainerObjectSelectionList<GunPackList.Entry>
     private final EditBox byName;
 
     public GunPackList(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight,
-                       Map<ResourceLocation, List<ResourceLocation>> recipes, GunSmithTableScreen parent) {
+                       Map<Identifier, List<Identifier>> recipes, GunSmithTableScreen parent) {
         // 【本轮修复：过滤器面板整个不可用】
         //
         // 26.2 的 AbstractSelectionList 构造签名是（字节码确认）：
@@ -54,7 +54,7 @@ public class GunPackList extends ContainerObjectSelectionList<GunPackList.Entry>
         this.centerListVertically = false;
         this.parent = parent;
         Set<String> namespaces = new HashSet<>();
-        for (List<ResourceLocation> entry : recipes.values()) {
+        for (List<Identifier> entry : recipes.values()) {
             entry.forEach((resourceLocation) -> namespaces.add(resourceLocation.getNamespace()));
         }
 
@@ -208,14 +208,14 @@ public class GunPackList extends ContainerObjectSelectionList<GunPackList.Entry>
      * {@code Checkbox#extractContents} 完全一致（字节码逐条对照）。</p>
      */
     public static class Checkbox extends AbstractButton {
-        private static final ResourceLocation CHECKBOX_SPRITE =
-                ResourceLocation.withDefaultNamespace("widget/checkbox");
-        private static final ResourceLocation CHECKBOX_HIGHLIGHTED_SPRITE =
-                ResourceLocation.withDefaultNamespace("widget/checkbox_highlighted");
-        private static final ResourceLocation CHECKBOX_SELECTED_SPRITE =
-                ResourceLocation.withDefaultNamespace("widget/checkbox_selected");
-        private static final ResourceLocation CHECKBOX_SELECTED_HIGHLIGHTED_SPRITE =
-                ResourceLocation.withDefaultNamespace("widget/checkbox_selected_highlighted");
+        private static final Identifier CHECKBOX_SPRITE =
+                Identifier.withDefaultNamespace("widget/checkbox");
+        private static final Identifier CHECKBOX_HIGHLIGHTED_SPRITE =
+                Identifier.withDefaultNamespace("widget/checkbox_highlighted");
+        private static final Identifier CHECKBOX_SELECTED_SPRITE =
+                Identifier.withDefaultNamespace("widget/checkbox_selected");
+        private static final Identifier CHECKBOX_SELECTED_HIGHLIGHTED_SPRITE =
+                Identifier.withDefaultNamespace("widget/checkbox_selected_highlighted");
         protected boolean selected;
         protected final boolean showLabel;
         private String id;
@@ -260,10 +260,10 @@ public class GunPackList extends ContainerObjectSelectionList<GunPackList.Entry>
         }
 
         @Override
-        protected void renderWidget(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        protected void renderContents(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
             Minecraft minecraft = Minecraft.getInstance();
             Font font = minecraft.font;
-            ResourceLocation sprite;
+            Identifier sprite;
             if (this.selected) {
                 sprite = this.isFocused() ? CHECKBOX_SELECTED_HIGHLIGHTED_SPRITE : CHECKBOX_SELECTED_SPRITE;
             } else {

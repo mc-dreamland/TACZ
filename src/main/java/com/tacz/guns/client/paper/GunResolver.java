@@ -14,7 +14,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.CustomData;
 import com.tacz.guns.util.ItemNbtUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.LivingEntity;
@@ -189,7 +189,7 @@ public final class GunResolver {
                     try {
                         AttachmentType type = AttachmentType.valueOf(entry.getKey().toUpperCase(Locale.ROOT));
                         String attachment = entry.getValue().getAsString();
-                        if (ResourceLocation.tryParse(attachment) == null) continue;
+                        if (Identifier.tryParse(attachment) == null) continue;
                         CompoundTag attachmentTag = new CompoundTag();
                         attachmentTag.putString("AttachmentId", attachment);
                         attachmentTag.putInt("ZoomNumber", integer(current, "zoom", 0));

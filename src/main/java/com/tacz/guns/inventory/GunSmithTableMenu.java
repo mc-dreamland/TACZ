@@ -12,7 +12,7 @@ import com.tacz.guns.resource.filter.RecipeFilter;
 import com.tacz.guns.resource.index.CommonBlockIndex;
 import com.tacz.guns.resource.pojo.data.recipe.TableRecipe;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.MenuType;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.minecraft.server.level.ServerLevel;
@@ -29,19 +29,19 @@ import java.util.List;
 
 public class GunSmithTableMenu extends AbstractContainerMenu {
     public static final MenuType<GunSmithTableMenu> TYPE = IMenuTypeExtension.create(
-            (windowId, inv, buf) -> new GunSmithTableMenu(windowId, inv, buf.readResourceLocation()));
+            (windowId, inv, buf) -> new GunSmithTableMenu(windowId, inv, buf.readIdentifier()));
 
-    private final ResourceLocation blockId;
+    private final Identifier blockId;
     private final RecipeFilter filter;
 
-    public GunSmithTableMenu(int id, Inventory inventory, @Nullable ResourceLocation resourceLocation) {
+    public GunSmithTableMenu(int id, Inventory inventory, @Nullable Identifier resourceLocation) {
         super(TYPE, id);
         this.blockId = resourceLocation;
         this.filter = TimelessAPI.getCommonBlockIndex(getBlockId()).map(CommonBlockIndex::getFilter).orElse(null);
     }
 
     @Nullable
-    public ResourceLocation getBlockId() {
+    public Identifier getBlockId() {
         return blockId;
     }
 
@@ -83,7 +83,7 @@ public class GunSmithTableMenu extends AbstractContainerMenu {
      * 仍然只有「当前方块页签里真实存在」的配方才允许合成。
      */
     @Nullable
-    private GunSmithTableRecipe getRecipe(ResourceLocation recipeId) {
+    private GunSmithTableRecipe getRecipe(Identifier recipeId) {
         if (!DefaultAssets.DEFAULT_BLOCK_ID.equals(getBlockId()) || SyncConfig.ENABLE_TABLE_FILTER.get()) {
             if (filter != null && !filter.contains(recipeId)) {
                 return null;
@@ -112,7 +112,7 @@ public class GunSmithTableMenu extends AbstractContainerMenu {
         return gunSmithTableRecipe;
     }
 
-    public void doCraft(ResourceLocation recipeId, Player player) {
+    public void doCraft(Identifier recipeId, Player player) {
         // 仍然要求服务端环境：合成必须由服务端权威执行（生成掉落物、扣材料）。
         // 配方数据本身已改从 CommonAssetsManager 取，不再依赖 level 的 RecipeManager，见 getRecipe。
         Level level = player.level();

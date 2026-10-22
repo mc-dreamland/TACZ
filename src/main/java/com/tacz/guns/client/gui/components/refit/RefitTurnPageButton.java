@@ -19,7 +19,7 @@ public class RefitTurnPageButton extends Button implements IComponentTooltip {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
         int x = getX(), y = getY();
         int yOffset = isUpPage ? 0 : 80;
         if (isHoveredOrFocused()) {

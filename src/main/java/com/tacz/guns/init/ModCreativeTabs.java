@@ -14,7 +14,7 @@ import com.tacz.guns.item.AttachmentItem;
 import com.tacz.guns.item.GunSmithTableItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTab;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -45,22 +45,22 @@ public final class ModCreativeTabs {
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_SCOPE_TAB =
             registerAttachmentTab("scope", "tacz.type.scope.name", AttachmentType.SCOPE,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "scope_acog_ta31"), AMMO_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "scope_acog_ta31"), AMMO_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_MUZZLE_TAB =
             registerAttachmentTab("muzzle", "tacz.type.muzzle.name", AttachmentType.MUZZLE,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle_compensator_trident"), ATTACHMENT_SCOPE_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle_compensator_trident"), ATTACHMENT_SCOPE_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_STOCK_TAB =
             registerAttachmentTab("stock", "tacz.type.stock.name", AttachmentType.STOCK,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "stock_militech_b5"), ATTACHMENT_MUZZLE_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "stock_militech_b5"), ATTACHMENT_MUZZLE_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_GRIP_TAB =
             registerAttachmentTab("grip", "tacz.type.grip.name", AttachmentType.GRIP,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "grip_magpul_afg_2"), ATTACHMENT_STOCK_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "grip_magpul_afg_2"), ATTACHMENT_STOCK_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_EXTENDED_MAG_TAB =
             registerAttachmentTab("extended_mag", "tacz.type.extended_mag.name", AttachmentType.EXTENDED_MAG,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag_3"), ATTACHMENT_GRIP_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag_3"), ATTACHMENT_GRIP_TAB);
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ATTACHMENT_LASER_TAB =
             registerAttachmentTab("laser", "tacz.type.laser.name", AttachmentType.LASER,
-                    ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact"), ATTACHMENT_EXTENDED_MAG_TAB);
+                    Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact"), ATTACHMENT_EXTENDED_MAG_TAB);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GUN_PISTOL_TAB =
             registerGunTab("pistol", GunTabType.PISTOL, "bujidao:hg_01", ATTACHMENT_LASER_TAB);
@@ -80,8 +80,8 @@ public final class ModCreativeTabs {
     private ModCreativeTabs() {
     }
 
-    private static CreativeModeTab categoryTab(String titleKey, ResourceLocation iconId,
-                                                ResourceLocation tabBefore,
+    private static CreativeModeTab categoryTab(String titleKey, Identifier iconId,
+                                                Identifier tabBefore,
                                                 java.util.function.Consumer<CreativeModeTab.Output> contents) {
         return CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable(titleKey))
@@ -92,7 +92,7 @@ public final class ModCreativeTabs {
     }
 
     private static DeferredHolder<CreativeModeTab, CreativeModeTab> registerAttachmentTab(
-            String id, String titleKey, AttachmentType type, ResourceLocation iconId,
+            String id, String titleKey, AttachmentType type, Identifier iconId,
             DeferredHolder<CreativeModeTab, CreativeModeTab> tabBefore) {
         return TABS.register(id, () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable(titleKey))
@@ -105,7 +105,7 @@ public final class ModCreativeTabs {
     private static DeferredHolder<CreativeModeTab, CreativeModeTab> registerGunTab(
             String id, GunTabType type, String iconResource,
             DeferredHolder<CreativeModeTab, CreativeModeTab> tabBefore) {
-        ResourceLocation iconId = ResourceLocation.parse(iconResource);
+        Identifier iconId = Identifier.parse(iconResource);
         return TABS.register(id, () -> CreativeModeTab.builder(CreativeModeTab.Row.TOP, 0)
                 .title(Component.translatable("tacz.type." + id + ".name"))
                 .withTabsBefore(tabBefore.getId())

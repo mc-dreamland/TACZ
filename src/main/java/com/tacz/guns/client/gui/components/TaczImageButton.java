@@ -4,7 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * 从一张整图里按 UV 取三态（普通 / 悬停 / 禁用）的贴图按钮。
@@ -52,11 +52,11 @@ public class TaczImageButton extends Button {
     private final int xTexStart;
     private final int yTexStart;
     private final int yDiffTex;
-    private final ResourceLocation texture;
+    private final Identifier texture;
 
     public TaczImageButton(int x, int y, int width, int height,
                            int xTexStart, int yTexStart, int yDiffTex,
-                           ResourceLocation texture, Button.OnPress onPress) {
+                           Identifier texture, Button.OnPress onPress) {
         super(x, y, width, height, CommonComponents.EMPTY, onPress, DEFAULT_NARRATION);
         this.xTexStart = xTexStart;
         this.yTexStart = yTexStart;
@@ -65,7 +65,7 @@ public class TaczImageButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
+    protected void renderContents(GuiGraphics gui, int mouseX, int mouseY, float partialTick) {
         int v = this.yTexStart;
         if (!this.isActive()) {
             v = this.yTexStart + this.yDiffTex * 2;

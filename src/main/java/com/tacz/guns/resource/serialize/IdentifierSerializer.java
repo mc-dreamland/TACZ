@@ -1,18 +1,18 @@
 package com.tacz.guns.resource.serialize;
 
 import com.google.gson.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.lang.reflect.Type;
 
-public class IdentifierSerializer implements JsonSerializer<ResourceLocation>, JsonDeserializer<ResourceLocation> {
+public class IdentifierSerializer implements JsonSerializer<Identifier>, JsonDeserializer<Identifier> {
     @Override
-    public JsonElement serialize(ResourceLocation src, Type typeOfSrc, JsonSerializationContext context) {
+    public JsonElement serialize(Identifier src, Type typeOfSrc, JsonSerializationContext context) {
         return new JsonPrimitive(src.toString());
     }
 
     @Override
-    public ResourceLocation deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-        return ResourceLocation.tryParse(json.getAsString());
+    public Identifier deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+        return Identifier.tryParse(json.getAsString());
     }
 }

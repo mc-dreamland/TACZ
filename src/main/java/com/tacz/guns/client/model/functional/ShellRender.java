@@ -14,8 +14,9 @@ import com.tacz.guns.client.resource.pojo.display.gun.ShellEjection;
 import com.tacz.guns.compat.iris.IrisCompat;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3f;
@@ -40,11 +41,11 @@ public class ShellRender implements IFunctionalSubmitter {
         return cameraFirstPerson == displayContext.firstPerson();
     }
 
-    private static RenderType shellRenderType(ItemDisplayContext displayContext, ResourceLocation texture) {
-        // 26.1.2 第一人称走 RenderType.itemCutout（26.1 才拆出的 ITEM_CUTOUT 管线），
+    private static RenderType shellRenderType(ItemDisplayContext displayContext, Identifier texture) {
+        // 26.1.2 第一人称走 RenderTypes.itemCutout（26.1 才拆出的 ITEM_CUTOUT 管线），
         // 1.21.11 没有该管线，手持物品与实体共用 ENTITY_CUTOUT，因此两分支合一。
         // 保留 displayContext 形参与调用点不变，方便后续需要区分时再拆开。
-        return RenderType.entityCutout(texture);
+        return RenderTypes.entityCutout(texture);
     }
 
     public void addShell(Vector3f randomVelocity) {
@@ -92,7 +93,7 @@ public class ShellRender implements IFunctionalSubmitter {
             return;
         }
         BedrockAmmoModel model = ammoIndex.getShellModel();
-        ResourceLocation texture = ammoIndex.getShellTextureLocation();
+        Identifier texture = ammoIndex.getShellTextureLocation();
         long lifeTime = (long) (shellEjection.getLivingTime() * 1000);
         checkShellQueue(lifeTime);
 

@@ -7,7 +7,7 @@ import com.google.gson.JsonParseException;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -17,14 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-public record LootTableInjection(List<ResourceLocation> lootTables, LootTable lootTable, ResourceLocation id) {
+public record LootTableInjection(List<Identifier> lootTables, LootTable lootTable, Identifier id) {
 
-    public static LootTableInjection fromJson(ResourceLocation fileId, JsonElement element, HolderLookup.Provider registries) {
+    public static LootTableInjection fromJson(Identifier fileId, JsonElement element, HolderLookup.Provider registries) {
         // Legacy gun packs store GunId/AmmoId in set_nbt. These custom fields now
         // belong to the custom_data component read by ItemNbtUtils.
         JsonElement migrated = LegacyLootCompat.migrateSetNbt(element);
         JsonObject object = GsonHelper.convertToJsonObject(migrated, "loot injection");
-        List<ResourceLocation> lootTables = readLootTables(fileId, object);
+        List<Identifier> lootTables = readLootTables(fileId, object);
         if (!object.has("pools")) {
             throw new JsonParseException("Loot injection " + fileId + " must define pools");
         }
@@ -37,14 +37,14 @@ public record LootTableInjection(List<ResourceLocation> lootTables, LootTable lo
         return new LootTableInjection(lootTables, lootTable, fileId);
     }
 
-    private static List<ResourceLocation> readLootTables(ResourceLocation fileId, JsonObject object) {
-        List<ResourceLocation> lootTables = new ArrayList<>();
+    private static List<Identifier> readLootTables(Identifier fileId, JsonObject object) {
+        List<Identifier> lootTables = new ArrayList<>();
         if (object.has("loot_tables")) {
             for (JsonElement table : GsonHelper.getAsJsonArray(object, "loot_tables")) {
-                lootTables.add(ResourceLocation.parse(GsonHelper.convertToString(table, "loot table")));
+                lootTables.add(Identifier.parse(GsonHelper.convertToString(table, "loot table")));
             }
         } else if (object.has("loot_table")) {
-            lootTables.add(ResourceLocation.parse(GsonHelper.getAsString(object, "loot_table")));
+            lootTables.add(Identifier.parse(GsonHelper.getAsString(object, "loot_table")));
         } else {
             throw new JsonParseException("Loot injection " + fileId + " must define loot_table or loot_tables");
         }

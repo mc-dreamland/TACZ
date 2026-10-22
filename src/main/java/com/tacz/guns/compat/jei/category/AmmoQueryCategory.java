@@ -16,7 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -24,7 +24,7 @@ import java.util.List;
 /** Displays every loaded gun that consumes a selected TACZ ammunition type. */
 public final class AmmoQueryCategory implements IRecipeCategory<AmmoQueryEntry> {
     public static final IRecipeType<AmmoQueryEntry> AMMO_QUERY = IRecipeType.create(
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "ammo_query"), AmmoQueryEntry.class);
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "ammo_query"), AmmoQueryEntry.class);
 
     private static final Component TITLE = Component.translatable("jei.tacz.ammo_query.title");
 

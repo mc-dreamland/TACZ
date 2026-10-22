@@ -21,7 +21,7 @@ config = "tacz.carryon.mixins.json"
 [[dependencies.tacz]]
 modId = "neoforge"
 type = "required"
-versionRange = "[${neo_version},21.11)"
+versionRange = "[${neo_version},21.12)"
 ordering = "NONE"
 side = "BOTH"
 
@@ -35,7 +35,7 @@ side = "BOTH"
 [[dependencies.tacz]]
 modId = "shouldersurfing"
 type = "optional"
-versionRange = "[1.21.10-4.17.1,1.21.10-5.0)"
+versionRange = "[1.21.11-5.2.0,1.21.11-6.0)"
 ordering = "NONE"
 side = "CLIENT"
 

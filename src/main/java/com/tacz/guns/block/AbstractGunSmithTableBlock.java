@@ -11,7 +11,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -66,12 +66,12 @@ public abstract class AbstractGunSmithTableBlock extends BaseEntityBlock {
         if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
             BlockPos rootPos = getRootPos(pos, state);
             BlockState rootState = level.getBlockState(rootPos);
-            ResourceLocation tableId = resolveTableId(level, rootPos, rootState);
+            Identifier tableId = resolveTableId(level, rootPos, rootState);
             MenuProvider provider = new SimpleMenuProvider(
                     (containerId, inventory, ignoredPlayer) -> new GunSmithTableMenu(containerId, inventory, tableId),
                     Component.translatable("block.tacz.gun_smith_table")
             );
-            serverPlayer.openMenu(provider, buffer -> buffer.writeResourceLocation(tableId));
+            serverPlayer.openMenu(provider, buffer -> buffer.writeIdentifier(tableId));
         }
         return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
     }
@@ -85,20 +85,20 @@ public abstract class AbstractGunSmithTableBlock extends BaseEntityBlock {
         if (!level.isClientSide() && isRoot(state)
                 && level.getBlockEntity(pos) instanceof GunSmithTableBlockEntity table
                 && stack.getItem() instanceof BlockItemDataAccessor accessor) {
-            ResourceLocation tableId = accessor.getBlockId(stack);
+            Identifier tableId = accessor.getBlockId(stack);
             if (!DefaultAssets.EMPTY_BLOCK_ID.equals(tableId)) {
                 table.setId(tableId);
             }
         }
     }
 
-    private ResourceLocation resolveTableId(Level level, BlockPos rootPos, BlockState rootState) {
+    private Identifier resolveTableId(Level level, BlockPos rootPos, BlockState rootState) {
         if (level.getBlockEntity(rootPos) instanceof GunSmithTableBlockEntity table && table.getId() != null
                 && CommonAssetsManager.get().getBlockIndex(table.getId()) != null) {
             return table.getId();
         }
 
-        ResourceLocation physicalId = BuiltInRegistries.BLOCK.getKey(rootState.getBlock());
+        Identifier physicalId = BuiltInRegistries.BLOCK.getKey(rootState.getBlock());
         return CommonAssetsManager.get().getAllBlocks().stream()
                 .filter(entry -> physicalId.equals(entry.getValue().getPojo().getId()))
                 .map(java.util.Map.Entry::getKey)

@@ -21,7 +21,7 @@ import com.tacz.guns.util.ItemNbtUtils;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import net.minecraft.core.HolderSet;
 import net.minecraft.resources.RegistryOps;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -37,8 +37,8 @@ import java.util.Map;
 public final class PaperWorkbenchRecipes {
     private PaperWorkbenchRecipes() { }
 
-    public static Map<ResourceLocation, GunSmithTableRecipe> load(Map<ResourceLocation, String> source) {
-        Map<ResourceLocation, GunSmithTableRecipe> result = new LinkedHashMap<>();
+    public static Map<Identifier, GunSmithTableRecipe> load(Map<Identifier, String> source) {
+        Map<Identifier, GunSmithTableRecipe> result = new LinkedHashMap<>();
         source.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(entry -> {
             try {
                 JsonObject recipe = JsonParser.parseString(entry.getValue()).getAsJsonObject();
@@ -49,7 +49,7 @@ public final class PaperWorkbenchRecipes {
                 }
                 JsonObject output = recipe.getAsJsonObject("result");
                 String kind = output.get("type").getAsString();
-                ResourceLocation id = ResourceLocation.parse(output.get("id").getAsString());
+                Identifier id = Identifier.parse(output.get("id").getAsString());
                 GunSmithTableResult preview;
                 if (kind.equals("box")) {
                     int level = BridgeItemIdentity.BOX_IDS.indexOf(id.toString());
@@ -66,10 +66,10 @@ public final class PaperWorkbenchRecipes {
                         throw new IllegalArgumentException("Unknown recipe output kind");
                     // Paper creates an ordinary catalog item; client-only recipe NBT must not
                     // advertise extra ammunition or attachments that the transaction never grants.
-                    ResourceLocation group = null;
+                    Identifier group = null;
                     if (output.has("group")) {
                         String raw = output.get("group").getAsString();
-                        group = ResourceLocation.tryParse(raw.contains(":") ? raw : GunMod.MOD_ID + ":" + raw);
+                        group = Identifier.tryParse(raw.contains(":") ? raw : GunMod.MOD_ID + ":" + raw);
                     }
                     preview = new GunSmithTableResult(new RawGunTableResult(kind, id, count(output)), group);
                     preview.init();

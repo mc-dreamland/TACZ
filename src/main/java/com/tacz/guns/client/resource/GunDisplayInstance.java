@@ -31,7 +31,7 @@ import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.commands.arguments.ParticleArgument;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -47,7 +47,7 @@ import java.util.function.BiFunction;
  * 经过处理和校验的枪械显示数据
  */
 public class GunDisplayInstance {
-    private final ResourceLocation displayId;
+    private final Identifier displayId;
     private final GunDisplay display;
     private final Object loadLock = new Object();
 
@@ -68,21 +68,21 @@ public class GunDisplayInstance {
 
     private String thirdPersonAnimation = "empty";
     private BedrockGunModel gunModel;
-    private @Nullable Pair<BedrockGunModel, ResourceLocation> lodModel;
+    private @Nullable Pair<BedrockGunModel, Identifier> lodModel;
 
     private LuaAnimationStateMachine<GunAnimationStateContext> animationStateMachine;
     private @Nullable LuaTable stateMachineParam;
 
-    private @Nullable ResourceLocation playerAnimator3rd = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "rifle_default.player_animation");
+    private @Nullable Identifier playerAnimator3rd = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "rifle_default.player_animation");
     private boolean is3rdFixedHand = false;
-    private Map<String, ResourceLocation> sounds = Maps.newHashMap();
-    private List<ResourceLocation> preloadSounds = Lists.newArrayList();
+    private Map<String, Identifier> sounds = Maps.newHashMap();
+    private List<Identifier> preloadSounds = Lists.newArrayList();
     private GunTransform transform = GunTransform.getDefault();
 
-    private ResourceLocation modelTexture;
-    private ResourceLocation slotTexture = MissingTextureAtlasSprite.getLocation();
-    private ResourceLocation hudTexture = MissingTextureAtlasSprite.getLocation();
-    private @Nullable ResourceLocation hudEmptyTexture;
+    private Identifier modelTexture;
+    private Identifier slotTexture = MissingTextureAtlasSprite.getLocation();
+    private Identifier hudTexture = MissingTextureAtlasSprite.getLocation();
+    private @Nullable Identifier hudEmptyTexture;
 
     private @Nullable ShellEjection shellEjection;
     private @Nullable MuzzleFlash muzzleFlash;
@@ -100,7 +100,7 @@ public class GunDisplayInstance {
     private @Nullable LaserConfig laserConfig;
     private boolean enableTransparency;
 
-    GunDisplayInstance(ResourceLocation displayId, GunDisplay display) {
+    GunDisplayInstance(Identifier displayId, GunDisplay display) {
         this.displayId = displayId;
         this.display = Objects.requireNonNull(display, "display");
         initBase(display);
@@ -109,7 +109,7 @@ public class GunDisplayInstance {
         }
     }
 
-    public static GunDisplayInstance create(ResourceLocation displayId, GunDisplay display) throws IllegalArgumentException {
+    public static GunDisplayInstance create(Identifier displayId, GunDisplay display) throws IllegalArgumentException {
         return new GunDisplayInstance(displayId, display);
     }
 
@@ -407,7 +407,7 @@ public class GunDisplayInstance {
         String modelType = display.getModelType();
         BiFunction<BedrockModelPOJO, BedrockVersion, ? extends BedrockGunModel> constructor = GunModelTypeManager.getModelInstanceConstructor(modelType);
         // 检查模型
-        ResourceLocation modelLocation = display.getModelLocation();
+        Identifier modelLocation = display.getModelLocation();
         Preconditions.checkArgument(modelLocation != null, "display object missing model field");
         BedrockModelPOJO modelPOJO = ClientAssetsManager.INSTANCE.getBedrockModelPOJO(modelLocation);
 
@@ -432,7 +432,7 @@ public class GunDisplayInstance {
 
         // 检查默认材质是否存在
         if (modelTexture == null) {
-            ResourceLocation textureLocation = display.getModelTexture();
+            Identifier textureLocation = display.getModelTexture();
             Preconditions.checkArgument(textureLocation != null, "missing default texture");
             modelTexture = textureLocation;
         }
@@ -450,7 +450,7 @@ public class GunDisplayInstance {
     private void checkLod(GunDisplay display) {
         GunLod gunLod = display.getGunLod();
         if (gunLod != null) {
-            ResourceLocation texture = gunLod.getModelTexture();
+            Identifier texture = gunLod.getModelTexture();
             if (gunLod.getModelLocation() == null) {
                 return;
             }
@@ -475,7 +475,7 @@ public class GunDisplayInstance {
     }
 
     private void checkAnimation(GunDisplay display) {
-        ResourceLocation location = display.getAnimationLocation();
+        Identifier location = display.getAnimationLocation();
         AnimationController controller;
         if (location == null) {
             controller = new AnimationController(Lists.newArrayList(), gunModel);
@@ -494,7 +494,7 @@ public class GunDisplayInstance {
                 controller = new AnimationController(Lists.newArrayList(), gunModel);
             }
             // 将默认动画填入动画控制器
-            ResourceLocation defaultAnimation = display.getDefaultAnimation();
+            Identifier defaultAnimation = display.getDefaultAnimation();
             if (defaultAnimation != null) {
                 BedrockAnimationFile animationFile = ClientAssetsManager.INSTANCE.getBedrockAnimations(defaultAnimation);
                 if (animationFile != null) {
@@ -524,10 +524,10 @@ public class GunDisplayInstance {
             }
         }
         // 初始化动画状态机，将动画控制器封装进去。
-        ResourceLocation stateMachineLocation = display.getStateMachineLocation();
+        Identifier stateMachineLocation = display.getStateMachineLocation();
         if (stateMachineLocation == null) {
             // 如果没指定状态机，则使用默认状态机
-            stateMachineLocation = ResourceLocation.fromNamespaceAndPath("tacz", "default_state_machine");
+            stateMachineLocation = Identifier.fromNamespaceAndPath("tacz", "default_state_machine");
         }
         LuaTable script = ClientAssetsManager.INSTANCE.getScript(stateMachineLocation);
         if (script != null) {
@@ -552,22 +552,22 @@ public class GunDisplayInstance {
     private void checkSounds(GunDisplay display) {
         sounds = Maps.newHashMap();
         preloadSounds = Lists.newArrayList();
-        Map<String, ResourceLocation> soundMaps = display.getSounds();
+        Map<String, Identifier> soundMaps = display.getSounds();
         if (soundMaps == null || soundMaps.isEmpty()) {
             return;
         }
         // 部分音效为默认音效，不存在则需要添加默认音效
-        soundMaps.putIfAbsent(SoundManager.DRY_FIRE_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.DRY_FIRE_SOUND));
-        soundMaps.putIfAbsent(SoundManager.FIRE_SELECT, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FIRE_SELECT));
-        soundMaps.putIfAbsent(SoundManager.HEAD_HIT_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.HEAD_HIT_SOUND));
-        soundMaps.putIfAbsent(SoundManager.FLESH_HIT_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FLESH_HIT_SOUND));
-        soundMaps.putIfAbsent(SoundManager.KILL_SOUND, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.KILL_SOUND));
-        soundMaps.putIfAbsent(SoundManager.MELEE_BAYONET, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_bayonet/melee_bayonet_01"));
-        soundMaps.putIfAbsent(SoundManager.MELEE_STOCK, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_01"));
-        soundMaps.putIfAbsent(SoundManager.MELEE_PUSH, ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_02"));
+        soundMaps.putIfAbsent(SoundManager.DRY_FIRE_SOUND, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.DRY_FIRE_SOUND));
+        soundMaps.putIfAbsent(SoundManager.FIRE_SELECT, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FIRE_SELECT));
+        soundMaps.putIfAbsent(SoundManager.HEAD_HIT_SOUND, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.HEAD_HIT_SOUND));
+        soundMaps.putIfAbsent(SoundManager.FLESH_HIT_SOUND, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.FLESH_HIT_SOUND));
+        soundMaps.putIfAbsent(SoundManager.KILL_SOUND, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, SoundManager.KILL_SOUND));
+        soundMaps.putIfAbsent(SoundManager.MELEE_BAYONET, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "melee_bayonet/melee_bayonet_01"));
+        soundMaps.putIfAbsent(SoundManager.MELEE_STOCK, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_01"));
+        soundMaps.putIfAbsent(SoundManager.MELEE_PUSH, Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "melee_stock/melee_stock_02"));
         sounds.putAll(soundMaps);
 
-        Set<ResourceLocation> preloadSet = new LinkedHashSet<>();
+        Set<Identifier> preloadSet = new LinkedHashSet<>();
         for (String name : GunSoundPreload.DEFAULT_PRELOAD_NAMES) {
             addPreloadSound(preloadSet, name);
         }
@@ -580,11 +580,11 @@ public class GunDisplayInstance {
         preloadSounds.addAll(preloadSet);
     }
 
-    private void addPreloadSound(Set<ResourceLocation> preloadSet, String name) {
+    private void addPreloadSound(Set<Identifier> preloadSet, String name) {
         if (StringUtils.isBlank(name)) {
             return;
         }
-        ResourceLocation soundId = sounds.get(name);
+        Identifier soundId = sounds.get(name);
         if (soundId != null) {
             preloadSet.add(soundId);
         }
@@ -671,7 +671,7 @@ public class GunDisplayInstance {
     }
 
     @Nullable
-    public Pair<BedrockGunModel, ResourceLocation> getLodModel() {
+    public Pair<BedrockGunModel, Identifier> getLodModel() {
         ensureLodLoaded();
         return lodModel;
     }
@@ -687,11 +687,11 @@ public class GunDisplayInstance {
     }
 
     @Nullable
-    public ResourceLocation getSounds(String name) {
+    public Identifier getSounds(String name) {
         return sounds.get(name);
     }
 
-    public List<ResourceLocation> getPreloadSounds() {
+    public List<Identifier> getPreloadSounds() {
         return preloadSounds;
     }
 
@@ -699,20 +699,20 @@ public class GunDisplayInstance {
         return transform;
     }
 
-    public ResourceLocation getSlotTexture() {
+    public Identifier getSlotTexture() {
         return slotTexture;
     }
 
-    public ResourceLocation getHUDTexture() {
+    public Identifier getHUDTexture() {
         return hudTexture;
     }
 
     @Nullable
-    public ResourceLocation getHudEmptyTexture() {
+    public Identifier getHudEmptyTexture() {
         return hudEmptyTexture;
     }
 
-    public ResourceLocation getModelTexture() {
+    public Identifier getModelTexture() {
         ensureModelLoaded();
         return modelTexture != null ? modelTexture : MissingTextureAtlasSprite.getLocation();
     }
@@ -764,12 +764,12 @@ public class GunDisplayInstance {
         return showCrosshair;
     }
 
-    public @Nullable ResourceLocation getPlayerAnimator3rd() {
+    public @Nullable Identifier getPlayerAnimator3rd() {
         return playerAnimator3rd;
     }
 
     /** 诊断/日志用：该 display 的注册 id。 */
-    public ResourceLocation getDisplayId() {
+    public Identifier getDisplayId() {
         return displayId;
     }
 

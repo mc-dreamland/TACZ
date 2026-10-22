@@ -31,10 +31,11 @@ import com.tacz.guns.util.math.MathUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -159,7 +160,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
     }
 
     @Override
-    public ResourceLocation getTextureLocation(ItemStack stack) {
+    public Identifier getTextureLocation(ItemStack stack) {
         return TimelessAPI.getGunDisplay(stack).map(GunDisplayInstance::getModelTexture).orElse(null);
     }
 
@@ -274,8 +275,8 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
             ScopeRenderTypes.beginViewmodelSubmission();
             // 调用枪械模型渲染
             RenderType renderType = display.enablesTransparency()
-                    ? RenderType.entityTranslucent(display.getModelTexture())
-                    : RenderType.entityCutout(display.getModelTexture());
+                    ? RenderTypes.entityTranslucent(display.getModelTexture())
+                    : RenderTypes.entityCutout(display.getModelTexture());
             gunModel.submit(poseStack, stack, ctx, collector, renderType,
                     display.getModelTexture(), light, OverlayTexture.NO_OVERLAY);
             // 缓存枪口位置，为第一人称曳光弹渲染作准备
@@ -365,8 +366,8 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
             }
             // 剩下的渲染
             BedrockGunModel gunModel;
-            ResourceLocation gunTexture;
-            Pair<BedrockGunModel, ResourceLocation> lodModel = gunIndex.getLodModel();
+            Identifier gunTexture;
+            Pair<BedrockGunModel, Identifier> lodModel = gunIndex.getLodModel();
             if (lodModel == null || RenderDistance.inRenderHighPolyModelDistance(poseStack)) {
                 gunModel = gunIndex.getGunModel();
                 gunTexture = gunIndex.getModelTexture();
@@ -387,7 +388,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
             // 应用 display 数据中的缩放
             applyScaleTransform(transformType, gunIndex.getTransform().getScale(), poseStack);
             // 渲染枪械模型
-            RenderType renderType = RenderType.entityCutout(gunTexture);
+            RenderType renderType = RenderTypes.entityCutout(gunTexture);
             gunModel.submit(poseStack, stack, transformType, collector, renderType, pPackedLight, pPackedOverlay);
         }, () -> {
             // 没有这个 gunID，渲染个错误材质提醒别人
@@ -396,10 +397,10 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
         poseStack.popPose();
     }
 
-    private static void renderSlotTexture(PoseStack poseStack, SubmitNodeCollector collector, int packedLight, int packedOverlay, ResourceLocation texture) {
+    private static void renderSlotTexture(PoseStack poseStack, SubmitNodeCollector collector, int packedLight, int packedOverlay, Identifier texture) {
         poseStack.translate(0.5, 1.5, 0.5);
         poseStack.mulPose(Axis.ZN.rotationDegrees(180));
-        collector.submitCustomGeometry(poseStack, RenderType.entityTranslucent(texture), (pose, buffer) -> {
+        collector.submitCustomGeometry(poseStack, RenderTypes.entityTranslucent(texture), (pose, buffer) -> {
             // 26.2: 必须使用回调参数 pose（= 提交那一刻 poseStack.last().copy() 的快照），
             // 而不是外层 poseStack —— 回调执行时它早已被 popPose/复用，
             // 结果就是图标被画到错误位置（物品栏一片空白）。

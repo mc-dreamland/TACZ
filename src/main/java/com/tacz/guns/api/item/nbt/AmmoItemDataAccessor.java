@@ -9,7 +9,7 @@ import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.util.ItemNbtUtils;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nonnull;
@@ -21,17 +21,17 @@ public interface AmmoItemDataAccessor extends IAmmo {
 
     @Override
     @Nonnull
-    default ResourceLocation getAmmoId(ItemStack ammo) {
+    default Identifier getAmmoId(ItemStack ammo) {
         CompoundTag nbt = ItemNbtUtils.getTag(ammo);
         if (nbt.contains(AMMO_ID_TAG)) {
-            ResourceLocation gunId = ResourceLocation.tryParse(nbt.getStringOr(AMMO_ID_TAG, ""));
+            Identifier gunId = Identifier.tryParse(nbt.getStringOr(AMMO_ID_TAG, ""));
             return Objects.requireNonNullElse(gunId, DefaultAssets.EMPTY_AMMO_ID);
         }
         return DefaultAssets.EMPTY_AMMO_ID;
     }
 
     @Override
-    default void setAmmoId(ItemStack ammo, @Nullable ResourceLocation ammoId) {
+    default void setAmmoId(ItemStack ammo, @Nullable Identifier ammoId) {
         ItemNbtUtils.updateTag(ammo, nbt -> {
             if (ammoId != null) {
                 nbt.putString(AMMO_ID_TAG, ammoId.toString());
@@ -55,8 +55,8 @@ public interface AmmoItemDataAccessor extends IAmmo {
     @Override
     default boolean isAmmoOfGun(ItemStack gun, ItemStack ammo) {
         if (ItemBehavior.of(gun) instanceof IGun iGun && ItemBehavior.of(ammo) instanceof IAmmo iAmmo) {
-            ResourceLocation gunId = iGun.getGunId(gun);
-            ResourceLocation ammoId = iAmmo.getAmmoId(ammo);
+            Identifier gunId = iGun.getGunId(gun);
+            Identifier ammoId = iAmmo.getAmmoId(ammo);
             return TimelessAPI.getCommonGunIndex(gunId).map(gunIndex -> gunIndex.getGunData().getAmmoId().equals(ammoId)).orElse(false);
         }
         return false;

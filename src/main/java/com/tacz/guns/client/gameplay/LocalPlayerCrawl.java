@@ -6,9 +6,9 @@ import com.tacz.guns.api.entity.ForcePose;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.network.message.ClientMessagePlayerCrawl;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
 
@@ -26,6 +26,9 @@ public class LocalPlayerCrawl {
     }
 
     public void crawl(boolean isCrawl) {
+        if (!NetworkHandler.canSendToServer(ClientMessagePlayerCrawl.TYPE)) {
+            return;
+        }
         // 持枪才能按键趴下
         ItemStack mainHandItem = player.getMainHandItem();
         if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
@@ -42,11 +45,11 @@ public class LocalPlayerCrawl {
         if (player.isSpectator() || player.isPassenger() || !player.onGround()) {
             return;
         }
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         TimelessAPI.getClientGunIndex(gunId).ifPresent(gunIndex -> {
             this.isCrawling = isCrawl;
             this.crawCooldownTicks = COOLDOWN_TICKS;
-            ClientPacketDistributor.sendToServer(new ClientMessagePlayerCrawl(isCrawl));
+            NetworkHandler.sendToServer(new ClientMessagePlayerCrawl(isCrawl));
         });
     }
 
@@ -68,7 +71,7 @@ public class LocalPlayerCrawl {
             return;
         }
         // 如果获取不到 gunIndex，则取消趴下状态
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         if (TimelessAPI.getCommonGunIndex(gunId).isEmpty()) {
             isCrawling = false;
             this.setCrawlPose();

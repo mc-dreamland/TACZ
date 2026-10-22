@@ -18,8 +18,9 @@ import com.tacz.guns.client.resource.pojo.display.gun.TextShow;
 import com.tacz.guns.client.resource.pojo.model.BedrockModelPOJO;
 import com.tacz.guns.client.resource.pojo.model.BedrockVersion;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -187,7 +188,7 @@ public class BedrockGunModel extends BedrockAnimatedModel {
     private static boolean checkShowMuzzle(BedrockPart bedrockPart, ItemStack attachmentItem) {
         IAttachment iAttachment = IAttachment.getIAttachmentOrNull(attachmentItem);
         if (iAttachment != null) {
-            ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
+            Identifier attachmentId = iAttachment.getAttachmentId(attachmentItem);
             var attachmentIndex = TimelessAPI.getClientAttachmentIndex(attachmentId);
             if (attachmentIndex.isPresent()) {
                 bedrockPart.visible = attachmentIndex.get().isShowMuzzle();
@@ -305,7 +306,7 @@ public class BedrockGunModel extends BedrockAnimatedModel {
                        ItemDisplayContext transformType,
                        SubmitNodeCollector collector,
                        RenderType renderType,
-                       @Nullable ResourceLocation gunTexture,
+                       @Nullable Identifier gunTexture,
                        int light,
                        int overlay) {
         if (!prepareRenderState(gunItem)) {

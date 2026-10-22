@@ -7,7 +7,7 @@ import com.google.gson.stream.JsonReader;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.client.resource.pojo.PackInfo;
 import com.tacz.guns.resource.CommonAssetsManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -28,7 +28,7 @@ public class PackInfoManager extends SimplePreparableReloadListener<Map<String, 
         Map<String, PackInfo> output = Maps.newHashMap();
 
         for (String namespaces : manager.getNamespaces()) {
-            manager.getResource(ResourceLocation.fromNamespaceAndPath(namespaces, PACK_INFO_NAME)).ifPresent(rl -> {
+            manager.getResource(Identifier.fromNamespaceAndPath(namespaces, PACK_INFO_NAME)).ifPresent(rl -> {
                 try (Reader reader = rl.openAsReader()) {
                     // Gun packs are documented and shipped as JSON-with-comments. Gson 2.14 is
                     // strict by default, unlike the older runtime this code was ported from.
@@ -57,6 +57,6 @@ public class PackInfoManager extends SimplePreparableReloadListener<Map<String, 
         return dataMap.get(namespace);
     }
 
-    public static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "packinfo_manager");
+    public static final Identifier ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "packinfo_manager");
 
 }

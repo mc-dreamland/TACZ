@@ -15,9 +15,9 @@ import com.tacz.guns.client.sound.SoundPlayManager;
 import com.tacz.guns.network.message.ClientMessagePlayerMelee;
 import com.tacz.guns.resource.pojo.data.attachment.MeleeData;
 import com.tacz.guns.resource.pojo.data.gun.GunDefaultMeleeData;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 
 import javax.annotation.Nullable;
@@ -33,6 +33,9 @@ public class LocalPlayerMelee {
     }
 
     public void melee() {
+        if (!NetworkHandler.canSendToServer(ClientMessagePlayerMelee.TYPE)) {
+            return;
+        }
         // 检查状态锁
         if (data.clientStateLock) {
             return;
@@ -46,16 +49,16 @@ public class LocalPlayerMelee {
         if (display == null) {
             return;
         }
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         // 先检查枪口有没有近战属性
-        ResourceLocation muzzleId = iGun.getAttachmentId(mainHandItem, AttachmentType.MUZZLE);
+        Identifier muzzleId = iGun.getAttachmentId(mainHandItem, AttachmentType.MUZZLE);
         MeleeData muzzleMeleeData = getMeleeData(muzzleId);
         if (muzzleMeleeData != null) {
             this.doMuzzleMelee(display);
             return;
         }
 
-        ResourceLocation stockId = iGun.getAttachmentId(mainHandItem, AttachmentType.STOCK);
+        Identifier stockId = iGun.getAttachmentId(mainHandItem, AttachmentType.STOCK);
         MeleeData stockMeleeData = getMeleeData(stockId);
         if (stockMeleeData != null) {
             this.doStockMelee(display);
@@ -89,7 +92,7 @@ public class LocalPlayerMelee {
         if (prepareMelee()) {
             SoundPlayManager.playMeleeBayonetSound(player, display);
             // 发送执行近战的数据包，通知服务器
-            ClientPacketDistributor.sendToServer(ClientMessagePlayerMelee.INSTANCE);
+            NetworkHandler.sendToServer(ClientMessagePlayerMelee.INSTANCE);
             // 动画状态机转移状态
             AnimationStateMachine<?> animationStateMachine = display.getAnimationStateMachine();
             if (animationStateMachine != null) {
@@ -102,7 +105,7 @@ public class LocalPlayerMelee {
         if (prepareMelee()) {
             SoundPlayManager.playMeleeStockSound(player, display);
             // 发送执行近战的数据包，通知服务器
-            ClientPacketDistributor.sendToServer(ClientMessagePlayerMelee.INSTANCE);
+            NetworkHandler.sendToServer(ClientMessagePlayerMelee.INSTANCE);
             // 动画状态机转移状态
             AnimationStateMachine<?> animationStateMachine = display.getAnimationStateMachine();
             if (animationStateMachine != null) {
@@ -116,7 +119,7 @@ public class LocalPlayerMelee {
             // 播放音效
             SoundPlayManager.playMeleePushSound(player, display);
             // 发送执行近战的数据包，通知服务器
-            ClientPacketDistributor.sendToServer(ClientMessagePlayerMelee.INSTANCE);
+            NetworkHandler.sendToServer(ClientMessagePlayerMelee.INSTANCE);
             // 动画状态机转移状态
             AnimationStateMachine<?> animationStateMachine = display.getAnimationStateMachine();
             if (animationStateMachine != null) {
@@ -126,7 +129,7 @@ public class LocalPlayerMelee {
     }
 
     @Nullable
-    private MeleeData getMeleeData(ResourceLocation attachmentId) {
+    private MeleeData getMeleeData(Identifier attachmentId) {
         if (DefaultAssets.isEmptyAttachmentId(attachmentId)) {
             return null;
         }

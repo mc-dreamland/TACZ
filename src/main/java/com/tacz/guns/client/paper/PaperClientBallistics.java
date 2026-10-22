@@ -17,7 +17,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.BlockParticleOption;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -83,7 +83,7 @@ public final class PaperClientBallistics {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null || !PaperClientBridge.active()) return;
         ensureWorld(level);
-        if (!level.dimension().location().toString().equals(string(batch, "dimension", ""))) return;
+        if (!level.dimension().identifier().toString().equals(string(batch, "dimension", ""))) return;
         if (!batch.has("records") || !batch.get("records").isJsonArray()) return;
         var records = batch.getAsJsonArray("records");
         if (records.size() > BallisticsBatch.MAX_RECORDS) return;
@@ -121,9 +121,9 @@ public final class PaperClientBallistics {
         if (age >= life) return;
         float gravity = (float) bounded(record, "gravity", 0, 100);
         float friction = (float) bounded(record, "friction", 0, 1);
-        ResourceLocation gun = resource(record, "id", null);
-        ResourceLocation ammo = resource(record, "ammo", null);
-        ResourceLocation display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
+        Identifier gun = resource(record, "id", null);
+        Identifier ammo = resource(record, "ammo", null);
+        Identifier display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
         Entity owner = trackedEntity(level, record, "entity", "ownerUuid");
         EntityKineticBullet bullet = EntityKineticBullet.createClientVisual(level, owner, ammo, gun, display,
                 position, velocity, gravity, friction, life, age, bool(record, "tracer", false));
@@ -198,9 +198,9 @@ public final class PaperClientBallistics {
         Direction face = Direction.valueOf(string(record, "face", "").toUpperCase(Locale.ROOT));
         String key = id + ":block:" + block.asLong() + ":" + face;
         if (!acceptEffect(key) || !level.hasChunkAt(block)) return;
-        ResourceLocation ammo = resource(record, "ammo", null);
-        ResourceLocation gun = resource(record, "id", null);
-        ResourceLocation display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
+        Identifier ammo = resource(record, "ammo", null);
+        Identifier gun = resource(record, "id", null);
+        Identifier display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
         var state = level.getBlockState(block);
         if (state.isAir()) return;
         level.addParticle(new BulletHoleOption(face, block, ammo.toString(), gun.toString(), display.toString()), point.x, point.y, point.z, 0, 0, 0);
@@ -224,8 +224,8 @@ public final class PaperClientBallistics {
         Entity target = trackedEntity(level, record, "target", "targetUuid");
         Entity shooter = trackedEntity(level, record, "entity", "ownerUuid");
         LivingEntity attacker = shooter instanceof LivingEntity living ? living : null;
-        ResourceLocation gun = resource(record, "id", null);
-        ResourceLocation display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
+        Identifier gun = resource(record, "id", null);
+        Identifier display = resource(record, "display", DefaultAssets.DEFAULT_GUN_DISPLAY_ID);
         float amount = (float) bounded(record, "damage", 0, 1_000_000_000);
         boolean headshot = bool(record, "headshot", false);
         float multiplier = (float) bounded(record, "headshotMultiplier", 0, 1000);
@@ -307,7 +307,7 @@ public final class PaperClientBallistics {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != world || !PaperClientBridge.active()) { reset(); return; }
         var dispatcher = mc.getEntityRenderDispatcher();
-        Vec3 camera = event.getCamera().getPosition();
+        Vec3 camera = event.getCamera().position();
         float partial = event.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         for (Visual visual : VISUALS.values()) {
             EntityKineticBullet bullet = visual.bullet;
@@ -371,10 +371,10 @@ public final class PaperClientBallistics {
         return value;
     }
 
-    private static ResourceLocation resource(JsonObject record, String key, @Nullable ResourceLocation fallback) {
+    private static Identifier resource(JsonObject record, String key, @Nullable Identifier fallback) {
         String value = string(record, key, fallback == null ? "" : fallback.toString());
         if (value.length() > 256) throw new IllegalArgumentException("Invalid resource " + key);
-        ResourceLocation result = ResourceLocation.tryParse(value);
+        Identifier result = Identifier.tryParse(value);
         if (result == null) throw new IllegalArgumentException("Invalid resource " + key);
         return result;
     }

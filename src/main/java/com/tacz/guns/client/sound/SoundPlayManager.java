@@ -14,7 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,8 +27,8 @@ public class SoundPlayManager {
     private static final FileToIdConverter TACZ_SOUND_LISTER = new FileToIdConverter("tacz_sounds", ".ogg");
 
     private static final Map<SoundKey, ArrayDeque<TrackedGunSound>> TRACKED_GUN_SOUNDS = new HashMap<>();
-    private static final Map<ResourceLocation, Boolean> SOUND_RESOURCE_EXISTS_CACHE = new HashMap<>();
-    private static final Set<ResourceLocation> MISSING_SOUND_WARNED = new HashSet<>();
+    private static final Map<Identifier, Boolean> SOUND_RESOURCE_EXISTS_CACHE = new HashMap<>();
+    private static final Set<Identifier> MISSING_SOUND_WARNED = new HashSet<>();
 
     private static int soundCleanupTickCounter = 0;
 
@@ -43,12 +43,12 @@ public class SoundPlayManager {
     private static GunSoundInstance tmpSoundInstance = null;
 
     @Nullable
-    public static GunSoundInstance playClientSound(Entity entity, @Nullable ResourceLocation name, float volume, float pitch, int distance, boolean mono) {
+    public static GunSoundInstance playClientSound(Entity entity, @Nullable Identifier name, float volume, float pitch, int distance, boolean mono) {
         return playClientSound(entity, name, volume, pitch, distance, mono, SoundConfig.DEFAULT_SOUND_CONCURRENCY_LIMIT.get(), true, false);
     }
 
     @Nullable
-    private static GunSoundInstance playClientSound(Entity entity, @Nullable ResourceLocation name, float volume, float pitch, int distance, boolean mono, int concurrencyLimit, boolean trackEntity, boolean relative) {
+    private static GunSoundInstance playClientSound(Entity entity, @Nullable Identifier name, float volume, float pitch, int distance, boolean mono, int concurrencyLimit, boolean trackEntity, boolean relative) {
         Minecraft minecraft = Minecraft.getInstance();
         if (name == null || !hasSoundResource(minecraft, name)) {
             return null;
@@ -68,12 +68,12 @@ public class SoundPlayManager {
     }
 
     @Nullable
-    public static GunSoundInstance playClientSound(Entity entity, @Nullable ResourceLocation name, float volume, float pitch, int distance) {
+    public static GunSoundInstance playClientSound(Entity entity, @Nullable Identifier name, float volume, float pitch, int distance) {
         return playClientSound(entity, name, volume, pitch, distance, false);
     }
 
     @Nullable
-    public static GunSoundInstance playAnimationSound(Entity entity, @Nullable ResourceLocation name, float volume, float pitch, int distance) {
+    public static GunSoundInstance playAnimationSound(Entity entity, @Nullable Identifier name, float volume, float pitch, int distance) {
         if (isLocalPlayer(entity)) {
             boolean trackFirstPerson = SoundConfig.FIRST_PERSON_ANIMATION_SOUND_TRACKING.get();
             return playClientSound(entity, name, volume, pitch, distance, false, SoundConfig.HIGH_FREQUENCY_SOUND_CONCURRENCY_LIMIT.get(), trackFirstPerson, !trackFirstPerson);
@@ -100,11 +100,11 @@ public class SoundPlayManager {
         if (iAttachment == null) {
             return;
         }
-        ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
+        Identifier attachmentId = iAttachment.getAttachmentId(attachmentItem);
         TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresent(index -> {
-            Map<String, ResourceLocation> sounds = index.getSounds();
+            Map<String, Identifier> sounds = index.getSounds();
             if (sounds.containsKey(soundName)) {
-                ResourceLocation resourceLocation = sounds.get(soundName);
+                Identifier resourceLocation = sounds.get(soundName);
                 SoundPlayManager.playClientSound(player, resourceLocation, 1.0f, 1.0f, GunConfig.DEFAULT_GUN_OTHER_SOUND_DISTANCE.get());
             }
         });
@@ -203,11 +203,11 @@ public class SoundPlayManager {
         if (level == null || !(level.getEntity(message.getEntityId()) instanceof LivingEntity livingEntity)) {
             return;
         }
-        ResourceLocation gunId = message.getGunId();
-        ResourceLocation gunDisplayId = message.getGunDisplayId();
+        Identifier gunId = message.getGunId();
+        Identifier gunDisplayId = message.getGunDisplayId();
         TimelessAPI.getGunDisplay(gunDisplayId, gunId).ifPresent(index -> {
             String soundName = message.getSoundName();
-            ResourceLocation soundId = index.getSounds(soundName);
+            Identifier soundId = index.getSounds(soundName);
             if (soundId == null) {
                 return;
             }
@@ -238,7 +238,7 @@ public class SoundPlayManager {
         MISSING_SOUND_WARNED.clear();
     }
 
-    private static void limitConcurrentGunSound(Minecraft minecraft, int entityId, ResourceLocation soundId, int limit) {
+    private static void limitConcurrentGunSound(Minecraft minecraft, int entityId, Identifier soundId, int limit) {
         SoundKey key = new SoundKey(entityId, soundId);
         ArrayDeque<TrackedGunSound> sounds = TRACKED_GUN_SOUNDS.get(key);
         if (sounds == null) {
@@ -278,7 +278,7 @@ public class SoundPlayManager {
         }
     }
 
-    private static void trackGunSound(int entityId, UUID entityUuid, ResourceLocation soundId, GunSoundInstance instance) {
+    private static void trackGunSound(int entityId, UUID entityUuid, Identifier soundId, GunSoundInstance instance) {
         SoundKey key = new SoundKey(entityId, soundId);
         TRACKED_GUN_SOUNDS.computeIfAbsent(key, ignored -> new ArrayDeque<>()).addLast(new TrackedGunSound(instance, entityUuid));
     }
@@ -330,19 +330,19 @@ public class SoundPlayManager {
         return entity == Minecraft.getInstance().player;
     }
 
-    private static boolean hasSoundResource(Minecraft minecraft, ResourceLocation soundId) {
+    private static boolean hasSoundResource(Minecraft minecraft, Identifier soundId) {
         boolean exists = SOUND_RESOURCE_EXISTS_CACHE.computeIfAbsent(soundId, id -> {
-            ResourceLocation soundPath = TACZ_SOUND_LISTER.idToFile(id);
+            Identifier soundPath = TACZ_SOUND_LISTER.idToFile(id);
             return minecraft.getResourceManager().getResource(soundPath).isPresent();
         });
         if (!exists && MISSING_SOUND_WARNED.add(soundId)) {
-            ResourceLocation soundPath = TACZ_SOUND_LISTER.idToFile(soundId);
+            Identifier soundPath = TACZ_SOUND_LISTER.idToFile(soundId);
             GunMod.LOGGER.warn("[TACZ Sound] Missing gun sound resource, skipped. sound={}, path={}", soundId, soundPath);
         }
         return exists;
     }
 
-    private record SoundKey(int entityId, ResourceLocation soundId) {
+    private record SoundKey(int entityId, Identifier soundId) {
     }
 
     private record TrackedGunSound(GunSoundInstance instance, UUID entityUuid) {

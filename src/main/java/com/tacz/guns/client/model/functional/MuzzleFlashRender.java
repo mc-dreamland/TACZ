@@ -14,7 +14,8 @@ import com.tacz.guns.client.resource.pojo.display.gun.MuzzleFlash;
 import com.tacz.guns.compat.iris.IrisCompat;
 import com.tacz.guns.resource.modifier.custom.SilenceModifier;
 import it.unimi.dsi.fastutil.Pair;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.item.ItemStack;
 
 public class MuzzleFlashRender implements IFunctionalSubmitter {
@@ -96,10 +97,10 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
                 && ScopeRenderTypes.hasScheduledViewmodelAperture();
         RenderType backgroundType = clipToScopeExterior
                 ? ScopeRenderTypes.flashTranslucentClipped(muzzleFlash.getTexture())
-                : RenderType.entityTranslucent(muzzleFlash.getTexture());
+                : RenderTypes.entityTranslucent(muzzleFlash.getTexture());
         RenderType glowType = clipToScopeExterior
                 ? ScopeRenderTypes.flashSwirlClipped(muzzleFlash.getTexture())
-                : RenderType.energySwirl(muzzleFlash.getTexture(), 1, 1);
+                : RenderTypes.energySwirl(muzzleFlash.getTexture(), 1, 1);
 
         context.add(collector -> {
             PoseStack backgroundPose = new PoseStack();

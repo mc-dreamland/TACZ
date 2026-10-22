@@ -21,7 +21,7 @@ import com.tacz.guns.client.input.ReloadKey;
 import com.tacz.guns.client.input.ShootKey;
 import com.tacz.guns.client.input.ZoomKey;
 import com.tacz.guns.client.resource.pojo.display.gun.ControllableData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -29,10 +29,10 @@ import net.neoforged.neoforge.common.NeoForge;
 import java.util.EnumMap;
 import java.util.Optional;
 
-/** Controllable 0.25.4 bindings and rumble integration for Minecraft 1.21.10. */
+/** Controllable 0.25.7 bindings and rumble integration for Minecraft 1.21.11. */
 public final class ControllableInner {
     public static final BindingContext GUN_KEY_CONFLICT =
-            new GunKeyConflict(ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "gun_key"));
+            new GunKeyConflict(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "gun_key"));
     public static final ButtonBinding AIM = new ButtonBinding(
             Buttons.LEFT_TRIGGER, "key.tacz.aim.desc", "key.category.tacz", GUN_KEY_CONFLICT,
             OnPressAndReleaseHandler.create(
@@ -142,7 +142,7 @@ public final class ControllableInner {
     }
 
     public static final class GunKeyConflict extends InGameContext {
-        private GunKeyConflict(ResourceLocation id) {
+        private GunKeyConflict(Identifier id) {
             super(id);
         }
 

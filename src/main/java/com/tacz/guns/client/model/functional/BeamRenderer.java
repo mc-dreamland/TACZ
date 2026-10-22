@@ -18,9 +18,10 @@ import com.tacz.guns.client.resource.pojo.display.LaserConfig;
 import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.util.LaserColorUtil;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -29,19 +30,19 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 public class BeamRenderer {
-    public static final ResourceLocation LASER_BEAM_TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/entity/beam.png");
+    public static final Identifier LASER_BEAM_TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/entity/beam.png");
     private static final LaserConfig DEFAULT_LASER_CONFIG = new LaserConfig();
 
     /**
-     * 26.2 迁移: 使用 RenderType.entityTranslucentEmissive 替代自定义 RenderStateShard 组合。
+     * 26.2 迁移: 使用 RenderTypes.entityTranslucentEmissive 替代自定义 RenderStateShard 组合。
      * 旧的 additive blend 效果由 entityTranslucentEmissive 内置管线提供。
      */
     public static RenderType getLaserBeam() {
-        return RenderType.entityTranslucentEmissive(LASER_BEAM_TEXTURE);
+        return RenderTypes.entityTranslucentEmissive(LASER_BEAM_TEXTURE);
     }
 
     public static RenderType getLaserBeamEntity() {
-        return RenderType.entityTranslucentEmissive(LASER_BEAM_TEXTURE);
+        return RenderTypes.entityTranslucentEmissive(LASER_BEAM_TEXTURE);
     }
 
 

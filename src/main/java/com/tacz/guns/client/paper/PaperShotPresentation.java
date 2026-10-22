@@ -23,7 +23,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.neoforged.neoforge.common.NeoForge;
@@ -41,7 +41,7 @@ public final class PaperShotPresentation {
     private static final Map<Long, Context> CONTEXTS = new LinkedHashMap<>();
 
     private record Context(ClientLevel level, ClientPacketListener connection, LocalPlayer player, int slot,
-                           String instance, ResourceLocation id, FireMode mode, GunData data, boolean silenced, boolean consumesAmmo) {
+                           String instance, Identifier id, FireMode mode, GunData data, boolean silenced, boolean consumesAmmo) {
         boolean valid() {
             Minecraft mc = Minecraft.getInstance();
             if (!PaperClientBridge.active() || mc.level != level || mc.getConnection() != connection || mc.player != player
@@ -97,14 +97,14 @@ public final class PaperShotPresentation {
         LocalPlayer player = mc.player;
         if (player == null) return;
         int physical = mode == FireMode.BURST && data.getBurstData() != null ? Math.max(1, data.getBurstData().getCount()) : 1;
-        boolean doubleBarrel = mode == FireMode.BURST && ResourceLocation.parse("tacz:db_short_gun_logic").equals(data.getScript());
+        boolean doubleBarrel = mode == FireMode.BURST && Identifier.parse("tacz:db_short_gun_logic").equals(data.getScript());
         if (doubleBarrel) physical = 2;
         physical = Math.min(16, Math.min(physical, available(gun, data)));
         ItemStack authoritative = GunResolver.authoritativeStack(gun.realStack()).copy();
         IGun accessor = (IGun) authoritative.getItem();
         boolean predicted = !accessor.useInventoryAmmo(authoritative);
         boolean consumes = !player.getAbilities().instabuild;
-        boolean automaticManualFeed = mode == FireMode.BURST && ResourceLocation.parse("tacz:spas_12_gun_logic").equals(data.getScript());
+        boolean automaticManualFeed = mode == FireMode.BURST && Identifier.parse("tacz:spas_12_gun_logic").equals(data.getScript());
         if (consumes && data.getBolt() == Bolt.MANUAL_ACTION && !automaticManualFeed) physical = Math.min(physical, 1);
         if (data.hasHeatData() && data.getHeatData().getHeatPerShot() > 0) {
             ItemStack predictedView = GunResolver.renderStack(gun.realStack()).copy();
@@ -169,7 +169,7 @@ public final class PaperShotPresentation {
             Context context = CONTEXTS.get(shot.actionSeq());
             if (context == null) continue;
             GunData data = context.data();
-            boolean spas = context.mode() == FireMode.BURST && ResourceLocation.parse("tacz:spas_12_gun_logic").equals(data.getScript());
+            boolean spas = context.mode() == FireMode.BURST && Identifier.parse("tacz:spas_12_gun_logic").equals(data.getScript());
             if (context.consumesAmmo()) ammo = ammo.consume(data.getBolt().name().toLowerCase(Locale.ROOT), spas);
             if (data.hasHeatData()) {
                 heat = Math.min(data.getHeatData().getHeatMax(), heat + Math.max(0, data.getHeatData().getHeatPerShot()));

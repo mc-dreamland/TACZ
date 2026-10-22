@@ -8,7 +8,7 @@ import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
 import com.tacz.guns.client.sound.SoundPlayManager;
 import com.tacz.guns.network.message.ClientMessagePlayerDrawGun;
 import com.tacz.guns.resource.modifier.AttachmentPropertyManager;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -27,6 +27,9 @@ public class LocalPlayerDraw {
     }
 
     public void draw(ItemStack lastItem) {
+        if (!NetworkHandler.canSendToServer(ClientMessagePlayerDrawGun.TYPE)) {
+            return;
+        }
         // 重置各种参数
         this.resetData();
 
@@ -46,7 +49,7 @@ public class LocalPlayerDraw {
         if (Minecraft.getInstance().gameMode != null) {
             Minecraft.getInstance().gameMode.ensureHasSentCarriedItem();
         }
-        ClientPacketDistributor.sendToServer(ClientMessagePlayerDrawGun.INSTANCE);
+        NetworkHandler.sendToServer(ClientMessagePlayerDrawGun.INSTANCE);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new GunDrawEvent(player, lastItem, currentItem, LogicalSide.CLIENT));
 
         // 不处于收枪状态时才能收枪

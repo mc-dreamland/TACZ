@@ -25,7 +25,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
@@ -36,12 +36,12 @@ import java.text.DecimalFormat;
  * 26.2 HUD implementation using Fabric HudElementRegistry + GuiGraphics.
  */
 public class GunHudOverlay {
-    private static final ResourceLocation FIRE_MODE_SEMI =
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_semi.png");
-    private static final ResourceLocation FIRE_MODE_AUTO =
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_auto.png");
-    private static final ResourceLocation FIRE_MODE_BURST =
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_burst.png");
+    private static final Identifier FIRE_MODE_SEMI =
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_semi.png");
+    private static final Identifier FIRE_MODE_AUTO =
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_auto.png");
+    private static final Identifier FIRE_MODE_BURST =
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/fire_mode_burst.png");
 
     /** 版本串每次都拼是浪费，缓存一次即可。 */
     private static String cachedVersionText = null;
@@ -68,7 +68,7 @@ public class GunHudOverlay {
         if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
-        ResourceLocation gunId = iGun.getGunId(stack);
+        Identifier gunId = iGun.getGunId(stack);
 
         GunData gunData = TimelessAPI.getClientGunIndex(gunId).map(ClientGunIndex::getGunData).orElse(null);
         GunDisplayInstance display = TimelessAPI.getGunDisplay(stack).orElse(null);
@@ -176,8 +176,8 @@ public class GunHudOverlay {
 
         // 枪械图标。弹尽/过热时若有专用空仓图标就换图, 否则染红。
         if (display != null) {
-            ResourceLocation hudTexture = display.getHUDTexture();
-            ResourceLocation hudEmptyTexture = display.getHudEmptyTexture();
+            Identifier hudTexture = display.getHUDTexture();
+            Identifier hudEmptyTexture = display.getHudEmptyTexture();
             int hudTint = 0xFFFFFFFF;
             if (ammoCount <= 0 || overheatLocked) {
                 if (hudEmptyTexture == null) {
@@ -195,7 +195,7 @@ public class GunHudOverlay {
         }
 
         // 开火模式图标
-        ResourceLocation fireModeTexture = switch (iGun.getFireMode(stack)) {
+        Identifier fireModeTexture = switch (iGun.getFireMode(stack)) {
             case AUTO -> FIRE_MODE_AUTO;
             case BURST -> FIRE_MODE_BURST;
             default -> FIRE_MODE_SEMI;

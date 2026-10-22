@@ -25,7 +25,7 @@ import net.minecraft.client.resources.language.I18n;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.Nullable;
@@ -36,8 +36,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
-    private static final Cache<ResourceLocation, List<ItemStack>> CACHE = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.SECONDS).build();
-    private final ResourceLocation attachmentId;
+    private static final Cache<Identifier, List<ItemStack>> CACHE = CacheBuilder.newBuilder().expireAfterAccess(5, TimeUnit.SECONDS).build();
+    private final Identifier attachmentId;
     private final List<Component> components = Lists.newArrayList();
     private final MutableComponent tips = Component.translatable("tooltip.tacz.attachment.yaw.shift");
     private final MutableComponent support = Component.translatable("tooltip.tacz.attachment.yaw.support");
@@ -60,10 +60,10 @@ public class ClientAttachmentItemTooltip implements ClientTooltipComponent {
         }
     }
 
-    private static List<ItemStack> getAllAllowGuns(List<ItemStack> output, ResourceLocation attachmentId) {
+    private static List<ItemStack> getAllAllowGuns(List<ItemStack> output, Identifier attachmentId) {
         ItemStack attachment = AttachmentItemBuilder.create().setId(attachmentId).build();
         TimelessAPI.getAllCommonGunIndex().forEach(entry -> {
-            ResourceLocation gunId = entry.getKey();
+            Identifier gunId = entry.getKey();
             ItemStack gun = GunItemBuilder.create().setId(gunId).build();
             if (!(ItemBehavior.of(gun) instanceof IGun iGun)) {
                 return;

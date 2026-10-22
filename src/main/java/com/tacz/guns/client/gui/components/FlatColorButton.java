@@ -39,7 +39,7 @@ public class FlatColorButton extends Button {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics graphics, int mouseX, int mouseY, float pPartialTick) {
         Minecraft minecraft = Minecraft.getInstance();
         Font font = minecraft.font;
         if (isSelect) {

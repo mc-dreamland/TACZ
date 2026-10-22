@@ -14,7 +14,7 @@ import com.mojang.serialization.JsonOps;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -32,8 +32,8 @@ public final class RecipeCompat {
     }
 
     /** Bare group names get the tacz namespace, matching upstream GunSmithTableResult#decode. */
-    public static ResourceLocation parseGroup(String raw) {
-        return ResourceLocation.parse(raw.contains(":") ? raw : GunMod.MOD_ID + ":" + raw);
+    public static Identifier parseGroup(String raw) {
+        return Identifier.parse(raw.contains(":") ? raw : GunMod.MOD_ID + ":" + raw);
     }
 
     /**
@@ -163,12 +163,12 @@ public final class RecipeCompat {
      * Pack resource id {@code ns:recipes/oldworkbench.json} → {@code ns:recipe/oldworkbench.json}.
      */
     @Nullable
-    public static ResourceLocation remapRecipesToRecipe(ResourceLocation location) {
+    public static Identifier remapRecipesToRecipe(Identifier location) {
         String path = location.getPath();
         if (!path.equals(LEGACY_RECIPES_DIR) && !path.startsWith(LEGACY_RECIPES_DIR + "/")) {
             return null;
         }
-        return ResourceLocation.fromNamespaceAndPath(
+        return Identifier.fromNamespaceAndPath(
                 location.getNamespace(),
                 RECIPE_DIR + path.substring(LEGACY_RECIPES_DIR.length()));
     }
@@ -177,12 +177,12 @@ public final class RecipeCompat {
      * Inverse of {@link #remapRecipesToRecipe}: {@code ns:recipe/foo.json} → {@code ns:recipes/foo.json}.
      */
     @Nullable
-    public static ResourceLocation toLegacyRecipesLocation(ResourceLocation location) {
+    public static Identifier toLegacyRecipesLocation(Identifier location) {
         String path = location.getPath();
         if (!path.equals(RECIPE_DIR) && !path.startsWith(RECIPE_DIR + "/")) {
             return null;
         }
-        return ResourceLocation.fromNamespaceAndPath(
+        return Identifier.fromNamespaceAndPath(
                 location.getNamespace(),
                 LEGACY_RECIPES_DIR + path.substring(RECIPE_DIR.length()));
     }

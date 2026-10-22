@@ -5,19 +5,19 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 
 public class ServerMessageSound implements CustomPacketPayload {
     public static final CustomPacketPayload.Type<ServerMessageSound> TYPE = new CustomPacketPayload.Type<>(
-        ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "server_sound")
+        Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "server_sound")
     );
     public static final StreamCodec<RegistryFriendlyByteBuf, ServerMessageSound> STREAM_CODEC = StreamCodec.of(
         (buf, msg) -> {
             buf.writeInt(msg.getEntityId());
-            ResourceLocation.STREAM_CODEC.encode(buf, msg.getGunId());
-            ResourceLocation.STREAM_CODEC.encode(buf, msg.getGunDisplayId());
+            Identifier.STREAM_CODEC.encode(buf, msg.getGunId());
+            Identifier.STREAM_CODEC.encode(buf, msg.getGunDisplayId());
             buf.writeUtf(msg.getSoundName());
             buf.writeFloat(msg.getVolume());
             buf.writeFloat(msg.getPitch());
@@ -25,8 +25,8 @@ public class ServerMessageSound implements CustomPacketPayload {
         },
         buf -> new ServerMessageSound(
             buf.readInt(),
-            ResourceLocation.STREAM_CODEC.decode(buf),
-            ResourceLocation.STREAM_CODEC.decode(buf),
+            Identifier.STREAM_CODEC.decode(buf),
+            Identifier.STREAM_CODEC.decode(buf),
             buf.readUtf(),
             buf.readFloat(),
             buf.readFloat(),
@@ -40,14 +40,14 @@ public class ServerMessageSound implements CustomPacketPayload {
     }
 
     public final int entityId;
-    private final ResourceLocation gunId;
-    private final ResourceLocation gunDisplayId;
+    private final Identifier gunId;
+    private final Identifier gunDisplayId;
     private final String soundName;
     private final float volume;
     private final float pitch;
     public final int distance;
 
-    public ServerMessageSound(int entityId, ResourceLocation gunId, ResourceLocation gunDisplayId, String soundName, float volume, float pitch, int distance) {
+    public ServerMessageSound(int entityId, Identifier gunId, Identifier gunDisplayId, String soundName, float volume, float pitch, int distance) {
         this.entityId = entityId;
         this.gunId = gunId;
         this.gunDisplayId = gunDisplayId;
@@ -65,11 +65,11 @@ public class ServerMessageSound implements CustomPacketPayload {
         return entityId;
     }
 
-    public ResourceLocation getGunId() {
+    public Identifier getGunId() {
         return gunId;
     }
 
-    public ResourceLocation getGunDisplayId() {
+    public Identifier getGunDisplayId() {
         return gunDisplayId;
     }
 

@@ -5,7 +5,7 @@ import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.compat.playeranimator.pal.PalAnimationManager;
 import com.tacz.guns.compat.playeranimator.pal.PalAssetManager;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.world.entity.LivingEntity;
 import net.neoforged.fml.ModList;
@@ -14,12 +14,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
-/** Optional Player Animation Library 1.1.3 integration for Minecraft 1.21.10. */
+/** Optional Player Animation Library 1.1.11 integration for Minecraft 1.21.11. */
 public final class PlayerAnimatorCompat {
-    public static final ResourceLocation LOWER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "lower_animation");
-    public static final ResourceLocation LOOP_UPPER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "loop_upper_animation");
-    public static final ResourceLocation ONCE_UPPER_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "once_upper_animation");
-    public static final ResourceLocation ROTATION_ANIMATION = ResourceLocation.fromNamespaceAndPath("tacz", "rotation");
+    public static final Identifier LOWER_ANIMATION = Identifier.fromNamespaceAndPath("tacz", "lower_animation");
+    public static final Identifier LOOP_UPPER_ANIMATION = Identifier.fromNamespaceAndPath("tacz", "loop_upper_animation");
+    public static final Identifier ONCE_UPPER_ANIMATION = Identifier.fromNamespaceAndPath("tacz", "once_upper_animation");
+    public static final Identifier ROTATION_ANIMATION = Identifier.fromNamespaceAndPath("tacz", "rotation");
 
     private static final String PAL = "player_animation_library";
     private static boolean installed;
@@ -40,11 +40,11 @@ public final class PlayerAnimatorCompat {
     }
 
     /** 已报告过 miss 原因的 display id —— 每个只打一条，避免每帧刷屏。 */
-    private static final Set<ResourceLocation> REPORTED = ConcurrentHashMap.newKeySet();
+    private static final Set<Identifier> REPORTED = ConcurrentHashMap.newKeySet();
 
     public static boolean hasPlayerAnimator3rd(LivingEntity livingEntity, GunDisplayInstance display) {
         if (!installed) {
-            if (REPORTED.add(ResourceLocation.fromNamespaceAndPath("tacz", "not_installed"))) {
+            if (REPORTED.add(Identifier.fromNamespaceAndPath("tacz", "not_installed"))) {
                 GunMod.LOGGER.warn("[TACZ PAL] compat inactive: modid '{}' is not loaded", PAL);
             }
             return false;
@@ -88,9 +88,9 @@ public final class PlayerAnimatorCompat {
     /**
      * Registers the PAL asset reload listener onto the client reload event.
      * Pass {@code event::addListener} from
-     * {@code AddClientReloadListenersEvent#addListener(ResourceLocation, PreparableReloadListener)}.
+     * {@code AddClientReloadListenersEvent#addListener(Identifier, PreparableReloadListener)}.
      */
-    public static void registerReloadListener(BiConsumer<ResourceLocation, PreparableReloadListener> register) {
+    public static void registerReloadListener(BiConsumer<Identifier, PreparableReloadListener> register) {
         if (installed) {
             GunMod.LOGGER.info("[TACZ PAL] reload listener registered as {}", PalAssetManager.ID);
             register.accept(PalAssetManager.ID, PalAssetManager.INSTANCE);

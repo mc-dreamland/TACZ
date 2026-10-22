@@ -39,7 +39,7 @@ public class GunAttachmentSlot extends Button implements IStackTooltip {
     }
 
     @Override
-    protected void renderWidget(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
+    protected void renderContents(GuiGraphics graphics, int pMouseX, int pMouseY, float pPartialTick) {
         if (this.isHoveredOrFocused()) {
             Font font = Minecraft.getInstance().font;
             int yOffset = this.getY() + 20;

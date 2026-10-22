@@ -9,12 +9,10 @@ import com.tacz.guns.client.renderer.item.AttachmentItemRenderer;
 import com.tacz.guns.client.resource.index.ClientAttachmentIndex;
 import com.tacz.guns.inventory.tooltip.AttachmentItemTooltip;
 import com.tacz.guns.resource.index.CommonAttachmentIndex;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -37,7 +35,7 @@ public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
     // 双端公共方法，禁用 client 索引（26.1 不剥 @OnlyIn 成员，dedicated 必崩）。
     // 详见 AbstractGunItem#getName 注释与 records/SERVER_TEST_20260821_DEDICATED.md。
     public Component getName(@Nonnull ItemStack stack) {
-        ResourceLocation attachmentId = this.getAttachmentId(stack);
+        Identifier attachmentId = this.getAttachmentId(stack);
         var attachmentIndex = TimelessAPI.getCommonAttachmentIndex(attachmentId);
         if (attachmentIndex.isPresent() && attachmentIndex.get().getPojo().getName() != null) {
             return Component.translatable(attachmentIndex.get().getPojo().getName());
@@ -45,7 +43,7 @@ public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
         return super.getName(stack);
     }
 
-    private static Comparator<Map.Entry<ResourceLocation, CommonAttachmentIndex>> idNameSort() {
+    private static Comparator<Map.Entry<Identifier, CommonAttachmentIndex>> idNameSort() {
         return Comparator.comparingInt(m -> m.getValue().getSort());
     }
 
@@ -68,7 +66,7 @@ public class AttachmentItem extends Item implements AttachmentItemDataAccessor {
     public AttachmentType getType(ItemStack attachmentStack) {
         IAttachment iAttachment = IAttachment.getIAttachmentOrNull(attachmentStack);
         if (iAttachment != null) {
-            ResourceLocation id = iAttachment.getAttachmentId(attachmentStack);
+            Identifier id = iAttachment.getAttachmentId(attachmentStack);
             return TimelessAPI.getCommonAttachmentIndex(id).map(CommonAttachmentIndex::getType).orElse(AttachmentType.NONE);
         } else {
             return AttachmentType.NONE;

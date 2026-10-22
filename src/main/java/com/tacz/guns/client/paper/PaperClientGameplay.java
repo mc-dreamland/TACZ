@@ -32,7 +32,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
@@ -71,7 +71,7 @@ public final class PaperClientGameplay {
 
     private record ReceivedState(JsonObject value, long receivedAt) { }
     private record PendingShot(ClientLevel level, ClientPacketListener connection, LocalPlayer player, int slot, String instance,
-                               ResourceLocation gunId, FireMode fireMode, float charge) { }
+                               Identifier gunId, FireMode fireMode, float charge) { }
 
     private record PendingRefitOpen(String requestId, int slot, String instance, ClientLevel level,
                                     GunRefitScreen screen, long expiresAt) {

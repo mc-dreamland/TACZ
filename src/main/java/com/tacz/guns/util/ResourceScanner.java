@@ -9,7 +9,7 @@ import com.google.gson.Strictness;
 import com.google.gson.stream.JsonReader;
 import com.tacz.guns.GunMod;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 
@@ -29,15 +29,15 @@ public class ResourceScanner {
      * @param pGson            Gson实例
      * @return 扫描到的json文件
      */
-    public static Map<ResourceLocation, JsonElement> scanDirectory(ResourceManager pResourceManager, String pName, Gson pGson) {
+    public static Map<Identifier, JsonElement> scanDirectory(ResourceManager pResourceManager, String pName, Gson pGson) {
         return scanDirectory(pResourceManager, FileToIdConverter.json(pName), pGson);
     }
 
-    public static Map<ResourceLocation, JsonElement> scanDirectory(ResourceManager pResourceManager, FileToIdConverter filetoidconverter, Gson pGson) {
-        Map<ResourceLocation, JsonElement> output = Maps.newHashMap();
-        for (Map.Entry<ResourceLocation, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
-            ResourceLocation resourcelocation = entry.getKey();
-            ResourceLocation resourcelocation1 = filetoidconverter.fileToId(resourcelocation);
+    public static Map<Identifier, JsonElement> scanDirectory(ResourceManager pResourceManager, FileToIdConverter filetoidconverter, Gson pGson) {
+        Map<Identifier, JsonElement> output = Maps.newHashMap();
+        for (Map.Entry<Identifier, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
+            Identifier resourcelocation = entry.getKey();
+            Identifier resourcelocation1 = filetoidconverter.fileToId(resourcelocation);
 
             try (Reader reader = entry.getValue().openAsReader()) {
                 JsonElement jsonelement = parseLenient(pGson, reader);
@@ -52,12 +52,12 @@ public class ResourceScanner {
         return output;
     }
 
-    public static Map<ResourceLocation, ResourceLocation> scanDirectoryResources(ResourceManager pResourceManager, FileToIdConverter filetoidconverter) {
-        Map<ResourceLocation, ResourceLocation> output = Maps.newHashMap();
-        for (Map.Entry<ResourceLocation, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
-            ResourceLocation rawLocation = entry.getKey();
-            ResourceLocation id = filetoidconverter.fileToId(rawLocation);
-            ResourceLocation old = output.put(id, rawLocation);
+    public static Map<Identifier, Identifier> scanDirectoryResources(ResourceManager pResourceManager, FileToIdConverter filetoidconverter) {
+        Map<Identifier, Identifier> output = Maps.newHashMap();
+        for (Map.Entry<Identifier, Resource> entry : filetoidconverter.listMatchingResources(pResourceManager).entrySet()) {
+            Identifier rawLocation = entry.getKey();
+            Identifier id = filetoidconverter.fileToId(rawLocation);
+            Identifier old = output.put(id, rawLocation);
             if (old != null) {
                 throw new IllegalStateException("Duplicate data file ignored with ID " + id);
             }
@@ -74,11 +74,11 @@ public class ResourceScanner {
      * @param pGson             Gson实例
      * @return 扫描到的json文件
      */
-    public static Map<ResourceLocation, List<JsonElement>> scanDirectoryAll(ResourceManager pResourceManager, FileToIdConverter filetoidconverter, Gson pGson) {
-        Map<ResourceLocation, List<JsonElement>> output = Maps.newHashMap();
-        for (Map.Entry<ResourceLocation, List<Resource>> entry : filetoidconverter.listMatchingResourceStacks(pResourceManager).entrySet()) {
-            ResourceLocation resourcelocation = entry.getKey();
-            ResourceLocation resourcelocation1 = filetoidconverter.fileToId(resourcelocation);
+    public static Map<Identifier, List<JsonElement>> scanDirectoryAll(ResourceManager pResourceManager, FileToIdConverter filetoidconverter, Gson pGson) {
+        Map<Identifier, List<JsonElement>> output = Maps.newHashMap();
+        for (Map.Entry<Identifier, List<Resource>> entry : filetoidconverter.listMatchingResourceStacks(pResourceManager).entrySet()) {
+            Identifier resourcelocation = entry.getKey();
+            Identifier resourcelocation1 = filetoidconverter.fileToId(resourcelocation);
 
             for (Resource resource : entry.getValue()) {
                 try (Reader reader = resource.openAsReader()) {

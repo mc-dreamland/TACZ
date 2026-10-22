@@ -22,8 +22,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
@@ -523,7 +524,7 @@ public class BedrockAttachmentModel extends BedrockAnimatedModel {
                        int light,
                        int overlay) {
         submit(attachmentItem, currentGunItem, poseStack, transformType, collector,
-                renderType, (ResourceLocation) null, light, overlay);
+                renderType, (Identifier) null, light, overlay);
     }
 
     /**
@@ -538,7 +539,7 @@ public class BedrockAttachmentModel extends BedrockAnimatedModel {
                        ItemDisplayContext transformType,
                        SubmitNodeCollector collector,
                        RenderType renderType,
-                       @Nullable ResourceLocation texture,
+                       @Nullable Identifier texture,
                        int light,
                        int overlay) {
         this.currentGunItem = currentGunItem;

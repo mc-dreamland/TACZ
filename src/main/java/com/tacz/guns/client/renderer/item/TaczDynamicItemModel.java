@@ -18,7 +18,7 @@ import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.ResolvableModel;
 import net.minecraft.client.resources.model.ResolvedModel;
 import net.minecraft.client.renderer.block.model.TextureSlots;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ItemOwner;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -42,7 +42,7 @@ import java.util.function.Supplier;
  * captured as immutable snapshots before delayed drawing.</p>
  */
 public final class TaczDynamicItemModel implements ItemModel {
-    public static final ResourceLocation TYPE_ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "dynamic_item");
+    public static final Identifier TYPE_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "dynamic_item");
 
     private static final TaczSpecialRenderer SPECIAL_RENDERER = new TaczSpecialRenderer();
 
@@ -107,7 +107,7 @@ public final class TaczDynamicItemModel implements ItemModel {
      * XZ 保持 ±0.5 不动 —— 它们只参与约束一，且旋转时以模型原点为中心，
      * 对称范围才是对的。</p>
      */
-    private static final Supplier<Vector3f[]> EXTENTS = () -> new Vector3f[]{
+    private static final Supplier<Vector3fc[]> EXTENTS = () -> new Vector3fc[]{
             new Vector3f(-0.5F, 0.0F, -0.5F),
             new Vector3f(-0.5F, 0.0F, 0.5F),
             new Vector3f(-0.5F, 1.0F, -0.5F),
@@ -176,7 +176,7 @@ public final class TaczDynamicItemModel implements ItemModel {
      * 高频变化字段 —— 后者不影响 GUI 图标（GUI 走的是 slot 贴图），若纳入会再次导致每帧失效。</p>
      */
     private static Object identityKeyOf(ItemStack stack, ItemDisplayContext displayContext) {
-        ResourceLocation contentId = null;
+        Identifier contentId = null;
         var item = stack.getItem();
         if (item instanceof com.tacz.guns.api.item.IGun iGun) {
             contentId = iGun.getGunId(stack);
@@ -238,9 +238,9 @@ public final class TaczDynamicItemModel implements ItemModel {
         }
 
         @Override
-        public void getExtents(java.util.Set<Vector3f> output) {
-            for (Vector3f extent : EXTENTS.get()) {
-                output.add(extent);
+        public void getExtents(Consumer<Vector3fc> output) {
+            for (Vector3fc extent : EXTENTS.get()) {
+                output.accept(extent);
             }
         }
 
@@ -251,9 +251,9 @@ public final class TaczDynamicItemModel implements ItemModel {
         }
     }
 
-    public record Unbaked(ResourceLocation base, Optional<Transformation> transformation) implements ItemModel.Unbaked {
+    public record Unbaked(Identifier base, Optional<Transformation> transformation) implements ItemModel.Unbaked {
         public static final MapCodec<Unbaked> MAP_CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
-                ResourceLocation.CODEC.fieldOf("base").forGetter(Unbaked::base),
+                Identifier.CODEC.fieldOf("base").forGetter(Unbaked::base),
                 Transformation.EXTENDED_CODEC.optionalFieldOf("transformation").forGetter(Unbaked::transformation)
         ).apply(instance, Unbaked::new));
 

@@ -14,14 +14,15 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -67,17 +68,17 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
         if (bullet == null) return;
         float partialTicks = state.partialTicks;
 
-        ResourceLocation gunId = bullet.getGunId();
-        ResourceLocation gunDisplayId = bullet.getGunDisplayId();
+        Identifier gunId = bullet.getGunId();
+        Identifier gunDisplayId = bullet.getGunDisplayId();
         Optional<GunDisplayInstance> display = TimelessAPI.getGunDisplay(gunDisplayId, gunId);
         if (display.isEmpty()) {
             return;
         }
         float @Nullable [] tracerColor = bullet.getTracerColorOverride().orElse(display.get().getTracerColor());
-        ResourceLocation ammoId = bullet.getAmmoId();
+        Identifier ammoId = bullet.getAmmoId();
         TimelessAPI.getClientAmmoIndex(ammoId).ifPresent(ammoIndex -> {
             BedrockAmmoModel ammoEntityModel = ammoIndex.getAmmoEntityModel();
-            ResourceLocation textureLocation = ammoIndex.getAmmoEntityTextureLocation();
+            Identifier textureLocation = ammoIndex.getAmmoEntityTextureLocation();
             if (ammoEntityModel != null && textureLocation != null) {
                 poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTicks, bullet.yRotO, bullet.getYRot()) - 180.0F));
                 poseStack.mulPose(Axis.XP.rotationDegrees(Mth.lerp(partialTicks, bullet.xRotO, bullet.getXRot())));
@@ -96,9 +97,9 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
         });
     }
 
-    private RenderType getRenderType(ResourceLocation textureLocation) {
+    private RenderType getRenderType(Identifier textureLocation) {
         // 由于entityTranslucentCull不可用，使用entityTranslucent作为替代
-        return RenderType.entityTranslucent(textureLocation);
+        return RenderTypes.entityTranslucent(textureLocation);
     }
 
     public void renderTracerAmmo(EntityKineticBullet bullet, float[] tracerColor, float partialTicks, PoseStack poseStack, SubmitNodeCollector collector, int packedLight) {
@@ -117,7 +118,7 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
                 Vec3 bulletPosition = bullet.getPosition(partialTicks);
                 double trailLength = 0.85 * bullet.getDeltaMovement().length();
                 // A Paper observer can see a projectile before its distant owner is tracked.
-                Vec3 source = shooter == null ? this.entityRenderDispatcher.camera.getPosition() : shooter.getEyePosition(partialTicks);
+                Vec3 source = shooter == null ? this.entityRenderDispatcher.camera.position() : shooter.getEyePosition(partialTicks);
                 double disToEye = bulletPosition.distanceTo(source);
                 trailLength = Math.min(trailLength, disToEye * 0.8);
 
@@ -132,8 +133,8 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
                         // 保留精确出生帧的诊断快照；定位实际使用当帧枪口，避免转头后
                         // 长时间沿用旧相机朝向下的缓存。
                         bullet.setFirstPersonRenderOffset(new Vector3f(viewOffset));
-                        bullet.setCameraXRot(camera.getXRot());
-                        bullet.setCameraYRot(camera.getYRot());
+                        bullet.setCameraXRot(camera.xRot());
+                        bullet.setCameraYRot(camera.yRot());
                     }
                     Vector3f worldOffset = viewOffset.rotate(camera.rotation());
                     // 近端从枪口发出，随后平滑收敛到服务器的真实弹道。
@@ -156,7 +157,7 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
                     // 上游使用 energySwirl 渲染曳光弹；26.2 的 RenderTypes 仍提供该封装
                     // （同类调用已在 MuzzleFlashRender 中使用）。entityTranslucent 会把这条
                     // 拉伸后的方体当普通半透明实体画，视觉上更像“歪掉的实体块”而不是曳光。
-                    RenderType type = RenderType.energySwirl(InternalAssetLoader.DEFAULT_BULLET_TEXTURE, 15, 15);
+                    RenderType type = RenderTypes.energySwirl(InternalAssetLoader.DEFAULT_BULLET_TEXTURE, 15, 15);
                     model.submit(poseStack, ItemDisplayContext.NONE, collector, type, packedLight, OverlayTexture.NO_OVERLAY,
                             tracerColor[0], tracerColor[1], tracerColor[2], 1);
                 }

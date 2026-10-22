@@ -13,7 +13,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 
@@ -25,8 +25,8 @@ import static com.tacz.guns.client.paper.GunResolver.string;
 
 /** A view of a server-issued box session. Preview stacks never enter the player's inventory. */
 public final class PaperAmmoBoxScreen extends Screen {
-    private static final ResourceLocation TABLE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
-    private static final ResourceLocation SIDE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table_side.png");
+    private static final Identifier TABLE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
+    private static final Identifier SIDE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table_side.png");
     private static final int PANEL_WIDTH = 344;
     private static final int PANEL_HEIGHT = 230;
     private static final int ROWS = 4;
@@ -66,10 +66,10 @@ public final class PaperAmmoBoxScreen extends Screen {
                 if (!value.isJsonObject()) continue;
                 JsonObject entry = value.getAsJsonObject();
                 String id = string(entry, "id", "");
-                if (!"ammo".equals(string(entry, "kind", "")) || ResourceLocation.tryParse(id) == null) continue;
+                if (!"ammo".equals(string(entry, "kind", "")) || Identifier.tryParse(id) == null) continue;
                 ItemStack icon = new ItemStack(ModItems.AMMO.get());
                 ItemNbtUtils.updateTag(icon, tag -> tag.putString("AmmoId", id));
-                Component name = TimelessAPI.getClientAmmoIndex(ResourceLocation.tryParse(id)).isPresent()
+                Component name = TimelessAPI.getClientAmmoIndex(Identifier.tryParse(id)).isPresent()
                         ? icon.getHoverName() : Component.translatable(string(entry, "name", id));
                 entries.add(new AmmoEntry(id, icon, name, string(entry, "description", "")));
             }
@@ -85,7 +85,7 @@ public final class PaperAmmoBoxScreen extends Screen {
         boxPreview = new ItemStack(ModItems.AMMO_BOX.get());
         String storedId = string(state(), "boxAmmoId", "");
         ItemNbtUtils.updateTag(boxPreview, tag -> {
-            tag.putString("AmmoId", storedCount() > 0 && ResourceLocation.tryParse(storedId) != null
+            tag.putString("AmmoId", storedCount() > 0 && Identifier.tryParse(storedId) != null
                     ? storedId : DefaultAssets.EMPTY_AMMO_ID.toString());
             tag.putInt("AmmoCount", storedCount());
             tag.putInt("PaperBoxCapacity", capacity());
@@ -177,7 +177,7 @@ public final class PaperAmmoBoxScreen extends Screen {
     }
 
     private int stackSize() {
-        ResourceLocation id = ResourceLocation.tryParse(selectedId);
+        Identifier id = Identifier.tryParse(selectedId);
         // Paper loose-ammo carriers have Minecraft's vanilla 64-item stack ceiling.
         return id == null ? 64 : TimelessAPI.getCommonAmmoIndex(id)
                 .map(index -> Mth.clamp(index.getStackSize(), 1, 64)).orElse(64);
@@ -346,10 +346,10 @@ public final class PaperAmmoBoxScreen extends Screen {
         }
 
         @Override
-        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        public void renderContents(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
             Component message = getMessage();
             setMessage(Component.empty());
-            super.renderWidget(graphics, mouseX, mouseY, partialTick);
+            super.renderContents(graphics, mouseX, mouseY, partialTick);
             setMessage(message);
             graphics.renderItem(entry.icon(), getX() + 3, getY() + 2);
             graphics.drawString(font, font.plainSubstrByWidth(message.getString(), 75), getX() + 23, getY() + 7,

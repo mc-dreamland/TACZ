@@ -34,7 +34,7 @@ import com.tacz.guns.resource.pojo.data.block.TabConfig;
 import com.tacz.guns.util.RenderDistance;
 import it.unimi.dsi.fastutil.Pair;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -48,9 +48,9 @@ import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
@@ -67,27 +67,27 @@ import javax.annotation.Nullable;
 import java.util.*;
 
 public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMenu> {
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
-    private static final ResourceLocation SIDE = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table_side.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table.png");
+    private static final Identifier SIDE = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/gui/gun_smith_table_side.png");
 
-    private final LinkedHashMap<ResourceLocation, TabConfig> recipeKeys = Maps.newLinkedHashMap();
-    private final Map<ResourceLocation, List<ResourceLocation>> recipes = Maps.newLinkedHashMap();
+    private final LinkedHashMap<Identifier, TabConfig> recipeKeys = Maps.newLinkedHashMap();
+    private final Map<Identifier, List<Identifier>> recipes = Maps.newLinkedHashMap();
     private final @Nullable PaperActions paperActions;
-    private final Map<ResourceLocation, GunSmithTableRecipe> paperRecipes;
+    private final Map<Identifier, GunSmithTableRecipe> paperRecipes;
     private @Nullable TaczImageButton craftButton;
 
     /** Transport/lifecycle callbacks; this screen never mutates a Paper inventory or menu. */
     public interface PaperActions {
         boolean pending();
-        void craft(ResourceLocation recipeId);
+        void craft(Identifier recipeId);
         void close();
         void tick();
         void openLink(String url);
     }
 
     private int typePage;
-    private ResourceLocation selectedType = null;
-    private List<ResourceLocation> selectedRecipeList = new ArrayList<>();
+    private Identifier selectedType = null;
+    private List<Identifier> selectedRecipeList = new ArrayList<>();
 
     private int indexPage;
     private int ingredientPage;
@@ -130,12 +130,12 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     private void classifyRecipes() {
         this.recipes.clear();
         this.recipeKeys.clear();
-        ResourceLocation blockId = menu.getBlockId();
+        Identifier blockId = menu.getBlockId();
         if (blockId == null) {
             return;
         }
-        Map<ResourceLocation, List<ResourceLocation>> recipes = Maps.newLinkedHashMap();
-        Map<ResourceLocation, TabConfig> recipeKeys = Maps.newLinkedHashMap();
+        Map<Identifier, List<Identifier>> recipes = Maps.newLinkedHashMap();
+        Map<Identifier, TabConfig> recipeKeys = Maps.newLinkedHashMap();
 
         List<TabConfig> tabs = isPaperWorkbench() ? TabConfig.DEFAULT_TABS : TimelessAPI.getCommonBlockIndex(blockId)
                 .map(blockIndex -> DefaultAssets.DEFAULT_BLOCK_ID.equals(blockId) && !SyncConfig.ENABLE_TABLE_FILTER.get()
@@ -145,7 +145,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             recipeKeys.put(tab.id(), tab);
         }
 
-        List<Pair<ResourceLocation, ResourceLocation>> recipeIds = Lists.newArrayList();
+        List<Pair<Identifier, Identifier>> recipeIds = Lists.newArrayList();
 
         // Native recipes use the mod's synchronized catalog: the vanilla client recipe
         // access no longer exposes the full table. Paper views stay entirely independent.
@@ -154,28 +154,28 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             recipeList = paperRecipes.values();
         } else {
             recipeList = new ArrayList<>();
-            for (Map.Entry<ResourceLocation, TableRecipe> entry : CommonAssetsManager.get().getAllTableRecipes()) {
+            for (Map.Entry<Identifier, TableRecipe> entry : CommonAssetsManager.get().getAllTableRecipes()) {
                 GunSmithTableRecipe recipe = getSelectedRecipe(entry.getKey());
                 if (recipe != null) recipeList.add(recipe);
             }
         }
         Set<String> namespaces = filterList != null ? filterList.namespaceList() : null;
         for (GunSmithTableRecipe recipe : recipeList) {
-            ResourceLocation id = recipe.getId();
+            Identifier id = recipe.getId();
             if (namespaces != null && !namespaces.contains(id.getNamespace())) {
                 continue;
             }
             if (!isSuitableForMainHand(recipe) || !isNameMatch(recipe)) {
                 continue;
             }
-            ResourceLocation groupName = recipe.getResult().getGroup();
+            Identifier groupName = recipe.getResult().getGroup();
             if (isPaperWorkbench() && !recipeKeys.containsKey(groupName)) groupName = TabConfig.TAB_MISC;
             if (recipeKeys.containsKey(groupName)) {
                 recipeIds.add(Pair.of(groupName, id));
             }
         }
 
-        List<Pair<ResourceLocation, ResourceLocation>> filteredRecipes = isPaperWorkbench() ? recipeIds : TimelessAPI.getCommonBlockIndex(menu.getBlockId()).map(blockIndex -> {
+        List<Pair<Identifier, Identifier>> filteredRecipes = isPaperWorkbench() ? recipeIds : TimelessAPI.getCommonBlockIndex(menu.getBlockId()).map(blockIndex -> {
             if (menu.getBlockId().equals(DefaultAssets.DEFAULT_BLOCK_ID) && !SyncConfig.ENABLE_TABLE_FILTER.get()) {
                 return null;
             }
@@ -186,7 +186,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             return null;
         }).orElse(recipeIds);
         filteredRecipes.forEach(entry -> {
-            ResourceLocation groupName = entry.key();
+            Identifier groupName = entry.key();
             if (recipeKeys.containsKey(groupName)) {
                 recipes.computeIfAbsent(groupName, g -> Lists.newArrayList()).add(entry.value());
             }
@@ -285,7 +285,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     }
 
     @Nullable
-    private GunSmithTableRecipe getSelectedRecipe(ResourceLocation recipeId) {
+    private GunSmithTableRecipe getSelectedRecipe(Identifier recipeId) {
         if (recipeId == null) return null;
         if (isPaperWorkbench()) return paperRecipes.get(recipeId);
         TableRecipe pojo = CommonAssetsManager.get().getTableRecipe(recipeId);
@@ -417,7 +417,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                         return;
                     }
                 }
-                ClientPacketDistributor.sendToServer(new ClientMessageCraft(this.selectedRecipe.getId(), this.menu.containerId));
+                NetworkHandler.sendToServer(new ClientMessageCraft(this.selectedRecipe.getId(), this.menu.containerId));
             }
         }));
         updatePaperCraftButton();
@@ -448,7 +448,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
             if (this.selectedRecipe != null) {
                 ItemStack output = selectedRecipe.getOutput();
                 Item item = output.getItem();
-                ResourceLocation id;
+                Identifier id;
                 if (item instanceof IGun iGun) {
                     id = iGun.getGunId(output);
                 } else if (item instanceof IAttachment iAttachment) {
@@ -487,7 +487,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 break;
             }
             int yOffset = topPos + 66 + 17 * i;
-            ResourceLocation recipeId = selectedRecipeList.get(finalIndex);
+            Identifier recipeId = selectedRecipeList.get(finalIndex);
             GunSmithTableRecipe recipe = getSelectedRecipe(recipeId);
             if (recipe == null) {
                 continue;
@@ -512,7 +512,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
                 return;
             }
             TabConfig tabConfig = list.get(typeIndex);
-            ResourceLocation type = tabConfig.id();
+            Identifier type = tabConfig.id();
             int xOffset = leftPos + 157 + 24 * i;
 
             ItemStack icon = tabConfig.icon().get();
@@ -643,7 +643,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
     private void renderPackInfo(GuiGraphics gui, GunSmithTableRecipe recipe) {
         ItemStack output = recipe.getOutput();
         Item item = output.getItem();
-        ResourceLocation id;
+        Identifier id;
         if (item instanceof IGun iGun) {
             id = iGun.getGunId(output);
         } else if (item instanceof IAttachment iAttachment) {
@@ -703,7 +703,7 @@ public class GunSmithTableScreen extends AbstractContainerScreen<GunSmithTableMe
 
             poseStack.popMatrix();
         } else {
-            ResourceLocation recipeId = recipe.getId();
+            Identifier recipeId = recipe.getId();
             gui.drawString(font, Component.translatable("gui.tacz.gun_smith_table.error").withStyle(style -> style.withColor(0xFFAA0000)), leftPos + 6, topPos + 122, 0xFFAF0000, false);
             gui.drawString(font, Component.translatable("gui.tacz.gun_smith_table.error.id", recipeId.toString()).withStyle(style -> style.withColor(0xFFAA0000)), leftPos + 6, topPos + 134, 0xFFFFFFFF, false);
             PackInfo errorPackInfo = ClientAssetsManager.INSTANCE.getPackInfo(id);

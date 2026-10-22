@@ -9,7 +9,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -34,7 +34,7 @@ public class CraftingHelper {
     }
 
     public static Item getItem(String itemName, boolean disallowsAirInRecipe) {
-        ResourceLocation itemKey = ResourceLocation.parse(itemName);
+        Identifier itemKey = Identifier.parse(itemName);
         if (!BuiltInRegistries.ITEM.containsKey(itemKey))
             throw new JsonSyntaxException("Unknown item '" + itemName + "'");
 

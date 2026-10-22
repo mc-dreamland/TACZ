@@ -53,7 +53,7 @@ public class ItemInHandLayerMixin {
     }
 
     @Inject(method = "submitArmWithItem", at = @At(value = "HEAD"), cancellable = true)
-    private void submitArmWithItemHead(ArmedEntityRenderState state, ItemStackRenderState itemState, HumanoidArm arm, PoseStack poseStack, SubmitNodeCollector collector, int packedLight, CallbackInfo ci) {
+    private void submitArmWithItemHead(ArmedEntityRenderState state, ItemStackRenderState itemState, ItemStack sourceStack, HumanoidArm arm, PoseStack poseStack, SubmitNodeCollector collector, int packedLight, CallbackInfo ci) {
         // 上游语义：渲染本地玩家时，开启自机抛壳/枪口火焰判定。
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null && state instanceof AvatarRenderState avatarState && avatarState.id == minecraft.player.getId()) {
@@ -93,7 +93,7 @@ public class ItemInHandLayerMixin {
     }
 
     @Inject(method = "submitArmWithItem", at = @At(value = "TAIL"))
-    private void submitArmWithItemTail(ArmedEntityRenderState state, ItemStackRenderState itemState, HumanoidArm arm, PoseStack poseStack, SubmitNodeCollector collector, int packedLight, CallbackInfo ci) {
+    private void submitArmWithItemTail(ArmedEntityRenderState state, ItemStackRenderState itemState, ItemStack sourceStack, HumanoidArm arm, PoseStack poseStack, SubmitNodeCollector collector, int packedLight, CallbackInfo ci) {
         MuzzleFlashRender.isSelf = false;
         ShellRender.isSelf = false;
         GunItemRendererWrapper.IS_MAIN_HAND_SUBMIT = false;

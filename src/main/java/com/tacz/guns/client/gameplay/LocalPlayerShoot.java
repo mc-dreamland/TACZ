@@ -26,15 +26,15 @@ import com.tacz.guns.resource.pojo.data.gun.ChargeType;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.sound.SoundManager;
 import it.unimi.dsi.fastutil.Pair;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import com.tacz.guns.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
@@ -64,6 +64,11 @@ public class LocalPlayerShoot {
     }
 
     public boolean chargeShoot(boolean isCharging) {
+        if (!canSendNativeShoot()) {
+            data.isCharging = false;
+            data.chargeProgress = 0f;
+            return false;
+        }
         // 因为开火冷却检测用了特别定制的方法，所以不检查状态锁，而是手动检查是否换弹、切枪
         IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
         ItemStack mainHandItem = player.getMainHandItem();
@@ -72,7 +77,7 @@ public class LocalPlayerShoot {
             data.chargeProgress = 0f;
             return false;
         }
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         Optional<ClientGunIndex> gunIndexOptional = TimelessAPI.getClientGunIndex(gunId);
         GunDisplayInstance display = TimelessAPI.getGunDisplay(mainHandItem).orElse(null);
         if (gunIndexOptional.isEmpty() || display == null) {
@@ -126,6 +131,9 @@ public class LocalPlayerShoot {
     }
 
     public ShootResult shoot() {
+        if (!canSendNativeShoot()) {
+            return ShootResult.NETWORK_FAIL;
+        }
         // 因为开火冷却检测用了特别定制的方法，所以不检查状态锁，而是手动检查是否换弹、切枪
         IGunOperator gunOperator = IGunOperator.fromLivingEntity(player);
         ItemStack mainHandItem = player.getMainHandItem();
@@ -133,7 +141,7 @@ public class LocalPlayerShoot {
         if (!(ItemBehavior.of(mainHandItem) instanceof IGun iGun)) {
             return ShootResult.NOT_GUN;
         }
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         Optional<ClientGunIndex> gunIndexOptional = TimelessAPI.getClientGunIndex(gunId);
         GunDisplayInstance display = TimelessAPI.getGunDisplay(mainHandItem).orElse(null);
         if (gunIndexOptional.isEmpty() || display == null) {
@@ -288,19 +296,20 @@ public class LocalPlayerShoot {
             // 转换 isRecord 状态，允许下一个tick的开火检测。
             data.isShootRecorded = true;
         }
+        // A scheduled burst belongs to the player and connection that created it. Do not
+        // carry a native trigger or its presentation across disconnects or Paper activation.
+        if (!canSendNativeShoot()) {
+            throw new CancellationException("Native TACZ shooting is no longer available");
+        }
         //Handle Heat Data
         if (gunData.hasHeatData()) {
             if (iGun.isOverheatLocked(mainHandItem)) {
-                ScheduledFuture<?> future = (ScheduledFuture<?>) Thread.currentThread();
-                future.cancel(false); // 取消当前任务
-                return;
+                throw new CancellationException("Gun overheated");
             }
         }
         // 如果达到最大连发次数，或者玩家已经死亡，取消任务
         if (count.get() >= maxCount || player.isDeadOrDying()) {
-            ScheduledFuture<?> future = (ScheduledFuture<?>) Thread.currentThread();
-            future.cancel(false); // 取消当前任务
-            return;
+            throw new CancellationException("Client burst finished");
         }
 
         // 以下逻辑只需要执行一次
@@ -320,16 +329,26 @@ public class LocalPlayerShoot {
                 return;
             }
             // 发送开火的数据包，通知服务器
-            ClientPacketDistributor.sendToServer(new ClientMessagePlayerShoot(data.clientShootTimestamp - data.clientBaseTimestamp, chargeProgress));
+            if (!NetworkHandler.sendToServer(new ClientMessagePlayerShoot(data.clientShootTimestamp - data.clientBaseTimestamp, chargeProgress))) {
+                throw new CancellationException("Native TACZ shooting channel was removed");
+            }
         }
 
         // The burst scheduler runs off-thread. Sound managers, animation state and Fabric event
         // listeners are client-thread state, so hand them back to Minecraft's event loop to avoid CME.
         // 播放声音和状态机触发需要从异步线程上传到主线程执行，否则会引起cme
-        Minecraft.getInstance().submit(
-                () -> applyClientFireEffects(display, mainHandItem, gunData));
+        Minecraft.getInstance().submit(() -> {
+            if (canSendNativeShoot()) applyClientFireEffects(display, mainHandItem, gunData);
+        });
 
         count.getAndIncrement();
+    }
+
+    private boolean canSendNativeShoot() {
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.player == player && minecraft.getConnection() == player.connection
+                && !com.tacz.guns.client.paper.PaperClientBridge.active()
+                && NetworkHandler.canSendToServer(ClientMessagePlayerShoot.TYPE);
     }
 
     /**
@@ -390,7 +409,7 @@ public class LocalPlayerShoot {
         if (iGun == null) {
             return -1;
         }
-        ResourceLocation gunId = iGun.getGunId(mainHandItem);
+        Identifier gunId = iGun.getGunId(mainHandItem);
         Optional<CommonGunIndex> gunIndexOptional = TimelessAPI.getCommonGunIndex(gunId);
         return gunIndexOptional.map(commonGunIndex -> calculateClientShootCooldown(iGun, mainHandItem, commonGunIndex.getGunData())).orElse(-1L);
     }

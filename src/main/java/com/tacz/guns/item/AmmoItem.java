@@ -8,12 +8,10 @@ import com.tacz.guns.client.resource.ClientAssetsManager;
 import com.tacz.guns.client.resource.index.ClientAmmoIndex;
 import com.tacz.guns.client.resource.pojo.PackInfo;
 import com.tacz.guns.resource.index.CommonAmmoIndex;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -101,7 +99,7 @@ public class AmmoItem extends Item implements AmmoItemDataAccessor {
     // 双端公共方法，禁用 client 索引（26.1 不剥 @OnlyIn 成员，dedicated 必崩）。
     // 详见 AbstractGunItem#getName 注释与 records/SERVER_TEST_20260821_DEDICATED.md。
     public Component getName(@Nonnull ItemStack stack) {
-        ResourceLocation ammoId = this.getAmmoId(stack);
+        Identifier ammoId = this.getAmmoId(stack);
         var ammoIndex = TimelessAPI.getCommonAmmoIndex(ammoId);
         if (ammoIndex.isPresent() && ammoIndex.get().getPojo().getName() != null) {
             return Component.translatable(ammoIndex.get().getPojo().getName());
@@ -109,7 +107,7 @@ public class AmmoItem extends Item implements AmmoItemDataAccessor {
         return super.getName(stack);
     }
 
-    private static Comparator<Map.Entry<ResourceLocation, CommonAmmoIndex>> idNameSort() {
+    private static Comparator<Map.Entry<Identifier, CommonAmmoIndex>> idNameSort() {
         return Comparator.comparingInt(m -> m.getValue().getSort());
     }
 
@@ -123,9 +121,9 @@ public class AmmoItem extends Item implements AmmoItemDataAccessor {
     }
 
     @Override
-    @OnlyIn(Dist.CLIENT)
+
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> adder, TooltipFlag isAdvanced) {
-        ResourceLocation ammoId = this.getAmmoId(stack);
+        Identifier ammoId = this.getAmmoId(stack);
         TimelessAPI.getClientAmmoIndex(ammoId).ifPresent(index -> {
             String tooltipKey = index.getTooltipKey();
             if (tooltipKey != null) {

@@ -14,9 +14,10 @@ import com.tacz.guns.client.render.scope.ScopeRenderTypes;
 import com.tacz.guns.client.renderer.item.AttachmentItemRenderer;
 import com.tacz.guns.util.RenderDistance;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.apache.commons.lang3.tuple.Pair;
@@ -44,17 +45,17 @@ public class AttachmentRender implements IFunctionalSubmitter {
         if (!(ItemBehavior.of(attachmentItem) instanceof IAttachment iAttachment)) {
             return;
         }
-        ResourceLocation attachmentId = iAttachment.getAttachmentId(attachmentItem);
+        Identifier attachmentId = iAttachment.getAttachmentId(attachmentItem);
         TimelessAPI.getClientAttachmentIndex(attachmentId).ifPresentOrElse(attachmentIndex -> {
             BedrockAttachmentModel model = attachmentIndex.getAttachmentModel();
-            ResourceLocation texture = attachmentIndex.getModelTexture();
+            Identifier texture = attachmentIndex.getModelTexture();
             if (model != null && texture != null) {
-                Pair<BedrockAttachmentModel, ResourceLocation> lodModel = attachmentIndex.getLodModel();
+                Pair<BedrockAttachmentModel, Identifier> lodModel = attachmentIndex.getLodModel();
                 if (lodModel != null && !RenderDistance.inRenderHighPolyModelDistance(poseStack) && !transformType.firstPerson()) {
                     model = lodModel.getLeft();
                     texture = lodModel.getRight();
                 }
-                RenderType renderType = RenderType.entityCutout(texture);
+                RenderType renderType = RenderTypes.entityCutout(texture);
                 // The scope itself reaches this call before it marks the aperture, so it keeps its
                 // dedicated depth-body sequence. Non-scope attachments are traversed afterwards and
                 // use the same screen-space outside mask as the gun body when the aperture is active.
@@ -65,7 +66,7 @@ public class AttachmentRender implements IFunctionalSubmitter {
             }
         }, () -> collector.submitCustomGeometry(
                 poseStack,
-                RenderType.entityTranslucent(MissingTextureAtlasSprite.getLocation()),
+                RenderTypes.entityTranslucent(MissingTextureAtlasSprite.getLocation()),
                 (pose, buffer) -> {
                     PoseStack frozen = new PoseStack();
                     frozen.last().pose().set(pose.pose());

@@ -68,7 +68,7 @@ public class GunMod {
 
         registerDefaultExtraGunPack();
         AttachmentPropertyManager.registerModifier();
-        LOGGER.info("TaCZ NeoForge 1.21.10 loading. modId={}", MOD_ID);
+        LOGGER.info("TaCZ NeoForge 1.21.11 loading. modId={}", MOD_ID);
     }
 
     private static void registerDefaultExtraGunPack() {

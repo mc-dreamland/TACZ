@@ -11,7 +11,7 @@ import com.tacz.guns.resource.pojo.data.recipe.TableRecipe;
 import com.tacz.guns.util.ResourceScanner;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
 import org.jetbrains.annotations.NotNull;
@@ -30,14 +30,14 @@ public class TableRecipeManager extends CommonDataManager<TableRecipe> {
 
     @NotNull
     @Override
-    protected Map<ResourceLocation, JsonElement> prepare(ResourceManager pResourceManager, ProfilerFiller pProfiler) {
-        Map<ResourceLocation, JsonElement> legacy =
+    protected Map<Identifier, JsonElement> prepare(ResourceManager pResourceManager, ProfilerFiller pProfiler) {
+        Map<Identifier, JsonElement> legacy =
                 ResourceScanner.scanDirectory(pResourceManager, LEGACY_CONVERTER, CommonAssetsManager.GSON);
-        Map<ResourceLocation, JsonElement> current = super.prepare(pResourceManager, pProfiler);
+        Map<Identifier, JsonElement> current = super.prepare(pResourceManager, pProfiler);
         if (legacy.isEmpty()) {
             return current;
         }
-        Map<ResourceLocation, JsonElement> merged = new LinkedHashMap<>(legacy);
+        Map<Identifier, JsonElement> merged = new LinkedHashMap<>(legacy);
         merged.putAll(current);
         GunMod.LOGGER.info(getMarker(),
                 "Found {} recipe file(s) in legacy 'recipes/' directory (old gun pack layout), {} in 'recipe/'.",
@@ -46,15 +46,15 @@ public class TableRecipeManager extends CommonDataManager<TableRecipe> {
     }
 
     private static String resolveRecipeTypeId() {
-        ResourceLocation id = BuiltInRegistries.RECIPE_TYPE.getKey(ModRecipe.GUN_SMITH_TABLE_CRAFTING.get());
+        Identifier id = BuiltInRegistries.RECIPE_TYPE.getKey(ModRecipe.GUN_SMITH_TABLE_CRAFTING.get());
         return id != null ? id.toString() : GunMod.MOD_ID + ":gun_smith_table_crafting";
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> pObject, ResourceManager pResourceManager, ProfilerFiller pProfiler) {
-        Map<ResourceLocation, JsonElement> ours = new LinkedHashMap<>();
+    protected void apply(Map<Identifier, JsonElement> pObject, ResourceManager pResourceManager, ProfilerFiller pProfiler) {
+        Map<Identifier, JsonElement> ours = new LinkedHashMap<>();
         int vanillaLegacy = 0;
-        for (Map.Entry<ResourceLocation, JsonElement> entry : pObject.entrySet()) {
+        for (Map.Entry<Identifier, JsonElement> entry : pObject.entrySet()) {
             if (isGunSmithTableRecipe(entry.getValue())) {
                 ours.put(entry.getKey(), entry.getValue());
             } else if (RecipeCompat.isVanillaCraftingRecipe(entry.getValue())) {

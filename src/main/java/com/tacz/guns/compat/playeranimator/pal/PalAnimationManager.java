@@ -21,7 +21,7 @@ import com.zigythebird.playeranimcore.easing.EasingType;
 import com.zigythebird.playeranimcore.enums.PlayState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.item.ItemStack;
@@ -33,7 +33,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** PAL 1.1.3 implementation of TACZ's four legacy third-person animation layers. */
+/** PAL 1.1.11 implementation of TACZ's four legacy third-person animation layers. */
 public final class PalAnimationManager {
     private static final AtomicBoolean INITIALIZED = new AtomicBoolean();
 
@@ -58,7 +58,7 @@ public final class PalAnimationManager {
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(manager::onDraw);
     }
 
-    private static void registerController(ResourceLocation id, int priority) {
+    private static void registerController(Identifier id, int priority) {
         PlayerAnimationFactory.ANIMATION_DATA_FACTORY.registerFactory(id, priority, avatar -> {
             PlayerAnimationController controller = new PlayerAnimationController(
                     avatar, (animationController, data, setter) -> PlayState.STOP
@@ -73,7 +73,7 @@ public final class PalAnimationManager {
     }
 
     public static boolean hasAnimations(GunDisplayInstance display) {
-        ResourceLocation fileId = display.getPlayerAnimator3rd();
+        Identifier fileId = display.getPlayerAnimator3rd();
         return fileId != null && PalAssetManager.INSTANCE.contains(fileId);
     }
 
@@ -140,10 +140,10 @@ public final class PalAnimationManager {
 
     private static void playNamed(AbstractClientPlayer player,
                                   GunDisplayInstance display,
-                                  ResourceLocation controllerId,
+                                  Identifier controllerId,
                                   String animationName,
                                   boolean replaceWithFade) {
-        ResourceLocation fileId = display.getPlayerAnimator3rd();
+        Identifier fileId = display.getPlayerAnimator3rd();
         if (fileId == null) {
             return;
         }
@@ -174,7 +174,7 @@ public final class PalAnimationManager {
      * <p>用 {@link java.util.WeakHashMap} 以玩家为键：玩家实体一被 GC（切世界/退出），
      * 记录自动消失，不会泄漏。</p>
      */
-    private static final Map<AbstractClientPlayer, Set<ResourceLocation>> FADING_OUT =
+    private static final Map<AbstractClientPlayer, Set<Identifier>> FADING_OUT =
             Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Last TACZ prone state observed while driving or stopping PAL for each player. */
@@ -209,7 +209,7 @@ public final class PalAnimationManager {
         FADING_OUT.remove(player);
     }
 
-    private static void resetAtProneExit(AbstractClientPlayer player, ResourceLocation controllerId) {
+    private static void resetAtProneExit(AbstractClientPlayer player, Identifier controllerId) {
         PlayerAnimationController controller = controller(player, controllerId);
         if (controller == null) {
             return;
@@ -221,11 +221,11 @@ public final class PalAnimationManager {
         controller.forceAnimationReset();
     }
 
-    private static void stop(AbstractClientPlayer player, ResourceLocation controllerId, int fadeTicks) {
+    private static void stop(AbstractClientPlayer player, Identifier controllerId, int fadeTicks) {
         PlayerAnimationController controller = controller(player, controllerId);
         if (controller == null || !controller.isActive()) {
             // 已经停下来了：清掉标记，下次重新播放后才能再次触发淡出。
-            Set<ResourceLocation> marks = FADING_OUT.get(player);
+            Set<Identifier> marks = FADING_OUT.get(player);
             if (marks != null) {
                 marks.remove(controllerId);
             }
@@ -254,7 +254,7 @@ public final class PalAnimationManager {
         //
         // 注：then(null) 的路径经现网行为证实宽容（旧 fadeOut(null) 调用只哑不崩），
         // 本调用走同一 RawAnimation 路径，无新增风险。
-        Set<ResourceLocation> marks = FADING_OUT.computeIfAbsent(
+        Set<Identifier> marks = FADING_OUT.computeIfAbsent(
                 player, p -> Collections.synchronizedSet(new HashSet<>()));
         if (!marks.add(controllerId)) {
             return;
@@ -266,15 +266,15 @@ public final class PalAnimationManager {
     }
 
     /** 播放时清除淡出标记，使下一次收枪能重新触发淡出。 */
-    private static void clearFadeMark(AbstractClientPlayer player, ResourceLocation controllerId) {
-        Set<ResourceLocation> marks = FADING_OUT.get(player);
+    private static void clearFadeMark(AbstractClientPlayer player, Identifier controllerId) {
+        Set<Identifier> marks = FADING_OUT.get(player);
         if (marks != null) {
             marks.remove(controllerId);
         }
     }
 
 
-    private static PlayerAnimationController controller(AbstractClientPlayer player, ResourceLocation id) {
+    private static PlayerAnimationController controller(AbstractClientPlayer player, Identifier id) {
         var layer = PlayerAnimationAccess.getPlayerAnimationLayer(player, id);
         return layer instanceof PlayerAnimationController controller ? controller : null;
     }

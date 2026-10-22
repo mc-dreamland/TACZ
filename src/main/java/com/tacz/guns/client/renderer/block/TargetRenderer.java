@@ -12,13 +12,14 @@ import com.tacz.guns.client.renderer.snapshot.BedrockRenderSnapshot;
 import com.tacz.guns.client.resource.InternalAssetLoader;
 import com.tacz.guns.config.client.RenderConfig;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.block.state.BlockState;
@@ -37,7 +38,7 @@ public class TargetRenderer implements BlockEntityRenderer<TargetBlockEntity, Ta
     public static class TargetRenderState extends BlockEntityRenderState {
         public Direction facing = Direction.NORTH;
         public float rot;
-        public ResourceLocation skinTexture;
+        public Identifier skinTexture;
         public boolean hasOwner;
     }
 
@@ -84,14 +85,14 @@ public class TargetRenderer implements BlockEntityRenderer<TargetBlockEntity, Ta
             poseStack.mulPose(Axis.YN.rotationDegrees(state.facing.get2DDataValue() * 90));
             poseStack.mulPose(Axis.ZN.rotationDegrees(180));
             poseStack.translate(0, -1.275, 0.0125);
-            RenderType renderType = RenderType.entityTranslucent(InternalAssetLoader.TARGET_TEXTURE_LOCATION);
+            RenderType renderType = RenderTypes.entityTranslucent(InternalAssetLoader.TARGET_TEXTURE_LOCATION);
             model.submit(poseStack, ItemDisplayContext.NONE, collector, renderType, combinedLightIn, combinedOverlayIn);
 
             if (state.hasOwner && state.skinTexture != null) {
                 poseStack.translate(0, 1.25, 0);
                 poseStack.mulPose(Axis.XP.rotationDegrees(deg));
                 headModel.visible = true;
-                RenderType skullRenderType = RenderType.entityCutout(state.skinTexture);
+                RenderType skullRenderType = RenderTypes.entityCutout(state.skinTexture);
                 poseStack.pushPose();
                 headModel.translateAndRotateAndScale(poseStack);
                 BedrockRenderSnapshot head = BedrockRenderSnapshot.captureSubtree(headModel, poseStack,

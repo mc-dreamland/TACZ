@@ -9,7 +9,7 @@ import com.tacz.guns.crafting.result.RawGunTableResult;
 import com.tacz.guns.resource.CommonAssetsManager;
 import com.tacz.guns.resource.pojo.data.recipe.GunResult;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.GsonHelper;
 
 import java.lang.reflect.Type;
@@ -23,7 +23,7 @@ public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithT
             String typeName = GsonHelper.getAsString(jsonObject, "type");
             int count = 1;
             CompoundTag extraTag = null;
-            ResourceLocation tabOverride = null;
+            Identifier tabOverride = null;
             if (jsonObject.has("count")) {
                 count = Math.max(GsonHelper.getAsInt(jsonObject, "count"), 1);
             }
@@ -35,7 +35,7 @@ public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithT
                 if (!raw.contains(":")) {
                     raw = GunMod.MOD_ID + ":" + raw;
                 }
-                tabOverride = ResourceLocation.parse(raw);
+                tabOverride = Identifier.parse(raw);
             }
 
             GunSmithTableResult result;
@@ -66,8 +66,8 @@ public class GunSmithTableResultSerializer implements JsonDeserializer<GunSmithT
         throw new JsonSyntaxException("Unknown or invalid gun-smith result: " + json);
     }
 
-    private ResourceLocation getId(JsonObject jsonObject) {
-        return ResourceLocation.parse(GsonHelper.getAsString(jsonObject, "id"));
+    private Identifier getId(JsonObject jsonObject) {
+        return Identifier.parse(GsonHelper.getAsString(jsonObject, "id"));
     }
 
     /** Accepts legacy nested item objects, shorthand item ids and modern component results. */

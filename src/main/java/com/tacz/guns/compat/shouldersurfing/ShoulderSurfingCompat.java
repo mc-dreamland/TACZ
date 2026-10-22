@@ -15,11 +15,11 @@ public final class ShoulderSurfingCompat {
 
     private static boolean hasSupportedApi() {
         try {
-            Class.forName("com.github.exopandora.shouldersurfing.api.model.Perspective", false,
+            Class.forName("com.github.exopandora.shouldersurfing.api.client.Perspective", false,
                     ShoulderSurfingCompat.class.getClassLoader());
             return true;
         } catch (ClassNotFoundException ignored) {
-            // Shoulder Surfing 4.x is the API published for Minecraft 1.21.10.
+            // The 1.21.11 integration uses Shoulder Surfing's 5.x event API.
             return false;
         }
     }

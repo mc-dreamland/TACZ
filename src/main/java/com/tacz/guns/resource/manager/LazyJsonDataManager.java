@@ -7,7 +7,7 @@ import com.google.gson.JsonParseException;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.util.ResourceScanner;
 import net.minecraft.resources.FileToIdConverter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
@@ -35,30 +35,30 @@ import java.util.function.Supplier;
  */
 public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJsonDataManager.PreparedResult<T>>  {
 
-    protected final Map<ResourceLocation, T> dataMap = Maps.newHashMap();
-    protected final Map<ResourceLocation, Supplier<LoadResult<T>>> lazyLoaderMap = Maps.newHashMap();
-    protected final Set<ResourceLocation> failedData = new HashSet<>();
-    protected final Set<ResourceLocation> allResourceIds = new HashSet<>();
+    protected final Map<Identifier, T> dataMap = Maps.newHashMap();
+    protected final Map<Identifier, Supplier<LoadResult<T>>> lazyLoaderMap = Maps.newHashMap();
+    protected final Set<Identifier> failedData = new HashSet<>();
+    protected final Set<Identifier> allResourceIds = new HashSet<>();
 
     private final Gson gson;
     private final Class<T> dataClass;
     private final Marker marker;
     private final FileToIdConverter fileToIdConverter;
-    private final Predicate<ResourceLocation> eagerLoadPredicate;
+    private final Predicate<Identifier> eagerLoadPredicate;
 
     public LazyJsonDataManager(Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker) {
         this(dataClass, pGson, fileToIdConverter, marker, id -> true);
     }
 
-    public LazyJsonDataManager(Class<T> dataClass, Gson pGson, String directory, String marker, Predicate<ResourceLocation> eagerLoadPredicate) {
+    public LazyJsonDataManager(Class<T> dataClass, Gson pGson, String directory, String marker, Predicate<Identifier> eagerLoadPredicate) {
         this(dataClass, pGson, FileToIdConverter.json(directory), marker, eagerLoadPredicate);
     }
 
-    public LazyJsonDataManager(Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker, Predicate<ResourceLocation> eagerLoadPredicate) {
+    public LazyJsonDataManager(Class<T> dataClass, Gson pGson, FileToIdConverter fileToIdConverter, String marker, Predicate<Identifier> eagerLoadPredicate) {
         this.gson = pGson;
         this.dataClass = dataClass;
         this.marker = MarkerFactory.getMarker(marker);
-        this.ID = ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
+        this.ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, marker.toLowerCase(Locale.ROOT));
         this.fileToIdConverter = fileToIdConverter;
         this.eagerLoadPredicate = eagerLoadPredicate;
     }
@@ -66,11 +66,11 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     @NotNull
     @Override
     protected PreparedResult<T> prepare(ResourceManager pResourceManager, ProfilerFiller pProfiler) {
-        Map<ResourceLocation, ResourceLocation> scannedResources = ResourceScanner.scanDirectoryResources(pResourceManager, fileToIdConverter);
-        Map<ResourceLocation, PreparedEntry<T>> preparedEntries = Maps.newHashMapWithExpectedSize(scannedResources.size());
-        for (Map.Entry<ResourceLocation, ResourceLocation> entry : scannedResources.entrySet()) {
-            ResourceLocation id = entry.getKey();
-            ResourceLocation resourcePath = entry.getValue();
+        Map<Identifier, Identifier> scannedResources = ResourceScanner.scanDirectoryResources(pResourceManager, fileToIdConverter);
+        Map<Identifier, PreparedEntry<T>> preparedEntries = Maps.newHashMapWithExpectedSize(scannedResources.size());
+        for (Map.Entry<Identifier, Identifier> entry : scannedResources.entrySet()) {
+            Identifier id = entry.getKey();
+            Identifier resourcePath = entry.getValue();
             // 给默认包的东西直接加载好
             if (shouldEagerLoad(id)) {
                 JsonElement sourceElement = readResourceElement(pResourceManager, resourcePath);
@@ -93,8 +93,8 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         failedData.clear();
         allResourceIds.clear();
         allResourceIds.addAll(pObject.allResourceIds());
-        for (Map.Entry<ResourceLocation, PreparedEntry<T>> entry : pObject.entries().entrySet()) {
-            ResourceLocation id = entry.getKey();
+        for (Map.Entry<Identifier, PreparedEntry<T>> entry : pObject.entries().entrySet()) {
+            Identifier id = entry.getKey();
             PreparedEntry<T> preparedEntry = entry.getValue();
             if (preparedEntry.failed()) {
                 failedData.add(id);
@@ -118,7 +118,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     protected void postLoad(T data) {
     }
 
-    protected final LoadResult<T> loadResource(ResourceLocation id, ResourceLocation resourcePath, ResourceManager manager) {
+    protected final LoadResult<T> loadResource(Identifier id, Identifier resourcePath, ResourceManager manager) {
         JsonElement sourceElement = readResourceElement(manager, resourcePath);
         if (sourceElement == null) {
             return LoadResult.failure();
@@ -126,7 +126,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         return loadResourceFromElement(id, sourceElement);
     }
 
-    protected final LoadResult<T> loadResourceFromElement(ResourceLocation id, JsonElement sourceElement) {
+    protected final LoadResult<T> loadResourceFromElement(Identifier id, JsonElement sourceElement) {
         try {
             T data = parseJson(sourceElement);
             if (data != null) {
@@ -140,13 +140,13 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
     }
 
     @Nullable
-    protected final Reader openReader(ResourceManager manager, ResourceLocation resourcePath) throws IOException {
+    protected final Reader openReader(ResourceManager manager, Identifier resourcePath) throws IOException {
         Resource resource = manager.getResource(resourcePath).orElse(null);
         return resource == null ? null : resource.openAsReader();
     }
 
     @Nullable
-    protected final JsonElement readResourceElement(ResourceManager manager, ResourceLocation resourcePath) {
+    protected final JsonElement readResourceElement(ResourceManager manager, Identifier resourcePath) {
         try (Reader reader = openReader(manager, resourcePath)) {
             return reader == null ? null : GsonHelper.fromJson(gson, reader, JsonElement.class);
         } catch (IOException | JsonParseException | IllegalArgumentException exception) {
@@ -167,7 +167,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         return gson;
     }
 
-    public T getData(ResourceLocation id) {
+    public T getData(Identifier id) {
         T data = dataMap.get(id);
         if (data != null || failedData.contains(id)) {
             return data;
@@ -199,15 +199,15 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         }
     }
 
-    public Map<ResourceLocation, T> getAllData() {
+    public Map<Identifier, T> getAllData() {
         return dataMap;
     }
 
-    public Set<ResourceLocation> getAllIds() {
+    public Set<Identifier> getAllIds() {
         return allResourceIds;
     }
 
-    protected final boolean shouldEagerLoad(ResourceLocation id) {
+    protected final boolean shouldEagerLoad(Identifier id) {
         return eagerLoadPredicate.test(id);
     }
 
@@ -215,7 +215,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         return fileToIdConverter;
     }
 
-    public final ResourceLocation ID;
+    public final Identifier ID;
 
     protected record LoadResult<T>(@Nullable T data, boolean failed) {
         protected static <T> LoadResult<T> success(@Nullable T data) {
@@ -242,7 +242,7 @@ public class LazyJsonDataManager<T> extends SimplePreparableReloadListener<LazyJ
         }
     }
 
-    protected record PreparedResult<T>(Map<ResourceLocation, PreparedEntry<T>> entries,
-                                       Set<ResourceLocation> allResourceIds) {
+    protected record PreparedResult<T>(Map<Identifier, PreparedEntry<T>> entries,
+                                       Set<Identifier> allResourceIds) {
     }
 }

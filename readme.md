@@ -22,22 +22,24 @@
     <a href="https://tacwiki.mcma.club/zh/">Wiki</a>
 </p>
 
-This branch of Timeless and Classics Guns Zero targets **Minecraft 1.21.10, NeoForge 21.10.64+, and Java 21**. The supported Minecraft version is exactly 1.21.10.
+This branch of Timeless and Classics Guns Zero targets **Minecraft 1.21.11, NeoForge 21.11.45+, and Java 21**. The supported Minecraft version is exactly 1.21.11; NeoForge must remain on the 21.11 release line.
 
 Paper 1.21.11 server support is in the independent [paper module](paper/README.md).
-It uses this repository's NeoForge client bridge (protocol 4) and supports the bundled default gun pack. Connecting a 1.21.10 client to that 1.21.11 server also requires a compatible Minecraft protocol translator; the bridge itself does not translate the vanilla protocol.
+It uses this repository's NeoForge client bridge (protocol 4) and supports the bundled Bujidao gun pack. The client and Paper server both target Minecraft 1.21.11, so this pairing does not require a vanilla protocol translator.
 
 ## Build this branch
 
-Use Java 21 and run `./gradlew test build` (`.\gradlew.bat test build` on Windows). The installable mod is `build/libs/tacz-1.21.10-neoforge-1.1.8+neoforge.1.21.10.hotfix2.jar`; its Lua, BCEL, and math dependencies are included by Jar-in-Jar. Do not install the sources JAR or an older Forge artifact from the same output directory.
+Use Java 21 and run `./gradlew test build` (`.\gradlew.bat test build` on Windows). The installable mod is `build/libs/tacz-1.21.11-neoforge-1.1.8+neoforge.1.21.11.hotfix2.jar`; its Lua, BCEL, and math dependencies are included by Jar-in-Jar. Do not install the sources JAR or an older artifact from the same output directory.
 
-The port uses data components for item state, NeoForge payloads and attachments, and the 1.21.10 render-state/submit-collector APIs. Java addons that implement the old immediate-mode `IFunctionalRenderer` must migrate to `IFunctionalSubmitter`. Legacy gun-pack result NBT and attachment data are translated at their read boundaries. Back up worlds and external gun packs before a version migration; this does not promise automatic conversion of every Forge 1.20.1 world or third-party gun pack.
+The port uses data components for item state, NeoForge payloads and attachments, and the 1.21.11 render-state/submit-collector APIs. Resource identifiers use Minecraft's `Identifier` API; rendering uses `RenderSetup` and explicit GPU samplers. Java addons that implement the old immediate-mode `IFunctionalRenderer` must migrate to `IFunctionalSubmitter`. Legacy gun-pack result NBT and attachment data are translated at their read boundaries. Back up worlds and external gun packs before a version migration; this does not promise automatic conversion of every Forge 1.20.1 world or third-party gun pack.
 
 JEI, Cloth Config, Shoulder Surfing, Controllable, and Player Animation Library have updated integrations. Carry On and Iris hooks are included, but optional-mod combinations and shader packs require in-game verification. KubeJS sources are preserved outside the build in `optional-integrations/kubejs`; the old Oculus and Accelerated Rendering integrations are preserved in `src/legacy` and are not included in the NeoForge artifact.
 
-Validation for this migration: `test build` passes all 44 tests; an isolated NeoForge dedicated server starts and reloads the bundled pack with 54 guns, 24 ammo types, 99 attachments, and 173 table recipes. The installable JAR's metadata, mixins, and embedded dependencies were checked. Client startup is blocked in the execution environment by GLFW being unable to find a primary monitor, so gameplay rendering, shader compatibility, and cross-version Paper multiplayer have not been verified interactively.
+The built-in pack contains the ten Bujidao guns. See [the pack guide](docs/bjd-gunpack.md) for installation and configuration. Optional-mod combinations, shader packs, and Paper multiplayer should be verified in game when updating a deployment.
 
-The rendering and API port incorporates GPL code from [TaCZ_Renovated](https://github.com/q14433686-arch/TaCZ_Renovated/tree/62532f1998322978ff1c05823870ccb6e28d3569), adapted to 1.21.10 and this repository's Paper bridge. Original TACZ authorship and asset licensing remain as listed below.
+Validation on NeoForge 21.11.45: `test build` passes 67 tests, including optional-channel send guards. The client starts and loads all ten gun displays. Native gun actions require their negotiated channel; the Paper handshake retries until Bukkit advertises its bridge channel, so joining a plugin or vanilla server does not send unsupported native payloads.
+
+The rendering and API port incorporates GPL code from [TaCZ_Renovated](https://github.com/q14433686-arch/TaCZ_Renovated/tree/62532f1998322978ff1c05823870ccb6e28d3569), adapted to this repository's NeoForge version and Paper bridge. Original TACZ authorship and asset licensing remain as listed below.
 
 ## Notice
 

@@ -3,7 +3,7 @@ package com.tacz.guns.client.render.scope;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.client.model.bedrock.BedrockPart;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
 
 /**

@@ -17,7 +17,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.ARGB;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
@@ -64,8 +64,8 @@ import java.text.DecimalFormat;
  * 才能保证暂停时闪烁停下，与上游一致。</p>
  */
 public class HeatBarOverlay {
-    private static final ResourceLocation HEAT_BASE =
-            ResourceLocation.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/heat_base.png");
+    private static final Identifier HEAT_BASE =
+            Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "textures/hud/heat_base.png");
     private static final DecimalFormat HEAT_FORMAT_PERCENT = new DecimalFormat("0.0%");
 
     /** 随热度平滑伸缩的整体缩放，带迟滞。与上游同为 static，跨帧保留。 */
@@ -146,9 +146,9 @@ public class HeatBarOverlay {
         if (percent < 0.4) return 0x9FFFFFFF;
         int color;
         if (percent <= 0.65) {
-            color = ARGB.lerp(percent * 4 - 1.6f, 0x9FFFFFFF, 0x9FFFFF00);
+            color = ARGB.srgbLerp(percent * 4 - 1.6f, 0x9FFFFFFF, 0x9FFFFF00);
         } else {
-            color = ARGB.lerp((percent - 0.65f) / 0.35f, 0x9FFFFF00, 0x9FFF0000);
+            color = ARGB.srgbLerp((percent - 0.65f) / 0.35f, 0x9FFFFF00, 0x9FFF0000);
         }
         return color;
     }
