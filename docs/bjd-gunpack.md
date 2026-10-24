@@ -2,7 +2,7 @@
 
 素材来源为 `20251227十枪械射击换弹/TACZ枪包/BUJIDAO` 完整枪包。保留 `bujidao` 命名空间、模型、贴图、图标、瞄准定位和动画；普通枪械使用按类别设置的初始参数。素材目录中错误导出的 AR-02、HG-01 几何文件没有覆盖完整包内的正确模型。
 
-内置包位于 `src/main/resources/assets/tacz/custom/tacz_default_gun/`。其中 `assets/bujidao/` 是客户端表现，`data/bujidao/` 是枪械参数、索引、配方和兼容配件。`tacz` 命名空间仅保留弹药、通用配件、工作台、声音和共享脚本；原 54 把枪的索引、参数、配方、模型、贴图与动画已移除。创造栏、工作台分类及奖励箱均改为新枪。
+内置包位于 `src/main/resources/assets/tacz/custom/tacz_default_gun/`。其中 `assets/bujidao/` 是客户端表现，`data/bujidao/` 是枪械参数、索引、配方和兼容配件。`tacz` 命名空间仅保留现有枪械需要的弹药、通用配件、工作台、声音和共享脚本；原 54 把枪的索引、参数、配方、模型、贴图与动画已移除。创造栏、工作台分类及奖励箱均改为新枪。
 
 ## 初始参数
 
@@ -35,6 +35,10 @@ SG-01 保留逐发装填及射击内泵动；`script_param` 与客户端 `state_
 
 4 个专用瞄具为 `bujidao:ar_02jing`、`bujidao:sr02`、`bujidao:sr03`、`bujidao:sr04`，分别适配 AR-02、SR-02、SR-03、SR-04，并作为对应枪的默认外观。SR-03/04 原包误写为 laser 的配件槽已修正为 scope。它们均有工作台配方。
 
+内置包仅注册这 10 把枪实际使用的 6 种弹药和 10 个配件：上述 4 个专用瞄具、`tacz:extended_mag_1/2/3`，以及 `tacz:ammo_mod_fmj`、`tacz:ammo_mod_hp`、`tacz:ammo_mod_i`。其余原版弹药、配件及其配方、模型、贴图、标签和物品翻译已清理。
+
+声音保留 192 个实际引用的资源，覆盖枪声、换弹/检视动画、配件装卸与通用命中反馈。部分声音目录沿用原版枪械名称，因为布吉岛枪械仍在使用这些声音；这些目录不注册原版枪械。
+
 所有枪可使用配置允许的扩容/弹药改装。未具备可靠定位的枪托、握把、枪口和激光槽没有开放，避免安装后出现悬空模型。兼容表在 `data/bujidao/tacz_tags/attachments/allow_attachments/`，插件将每把枪的兼容表导出到 `guns/bujidao/<id>.json` 的 `allow_attachments` 字段，通用配件标签另存于 `attachment_tags/`。
 
 ## 构建与部署
@@ -65,4 +69,4 @@ cd paper
 
 新枪命令必须写完整 `bujidao:` 前缀。`/tacz supplies` 仍仅限 OP，可领取手持枪兼容的弹药与配件。未实现旧枪物品迁移。
 
-静态资源检查：`python tools/validate_bjd_pack.py`，检查 10 把枪/4 瞄具的资源引用、动画骨骼、装填时序、声音和配方。实际手部遮挡、开镜及画面效果还需要在游戏中逐枪验收。
+静态资源检查：`python tools/validate_bjd_pack.py`，检查 10 把枪、6 种弹药、10 个配件的资源引用、动画骨骼、装填时序、动画声音、配方和工作台图标，并阻止重新混入闲置弹药、配件和声音。实际手部遮挡、开镜及画面效果还需要在游戏中逐枪验收。

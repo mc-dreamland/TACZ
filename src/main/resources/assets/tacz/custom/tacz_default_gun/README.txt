@@ -1,6 +1,6 @@
 This bundled pack contains the ten BUJIDAO firearms and four dedicated scopes.
-TACZ ammunition, common attachments, sounds, scripts and workbench assets remain
-as shared dependencies. Original TACZ firearms are no longer registered.
+Only the six ammunition types, ten attachments and 192 sounds referenced by
+these guns remain, along with shared scripts and workbench assets. Original TACZ firearms are no longer registered.
 
 Gun IDs use bujidao: (for example bujidao:ar_01 and bujidao:hg_3).
 Client resources: assets/bujidao/. Gameplay configuration: data/bujidao/.

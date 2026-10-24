@@ -1,8 +1,5 @@
 {
-  // 配方过滤器，具体内容位于 data/<命名空间>/recipe_filters 下
-  // 如果没有指定，将使用默认过滤器 tacz:default
   "filter": "tacz:default",
-    // gui内包含的tab
   "tabs": [
     {
       "id": "tacz:ammo",
@@ -11,16 +8,6 @@
         "item": "tacz:ammo",
         "nbt": {
           "AmmoId": "tacz:762x39"
-        }
-      }
-    },
-    {
-      "id": "tacz:pd_cartridges",
-      "name": "tacz.type.pd_cartridges.name",
-      "icon": {
-        "item": "tacz:ammo",
-        "nbt": {
-          "AmmoId": "tacz:9mm"
         }
       }
     },
@@ -45,16 +32,6 @@
       }
     },
     {
-      "id": "tacz:explosives",
-      "name": "tacz.type.explosives.name",
-      "icon": {
-        "item": "tacz:ammo",
-        "nbt": {
-          "AmmoId": "tacz:rpg_rocket"
-        }
-      }
-    },
-    {
       "id": "tacz:shotgun_shells",
       "name": "tacz.type.shotgun_shells.name",
       "icon": {
@@ -62,13 +39,6 @@
         "nbt": {
           "AmmoId": "tacz:12g"
         }
-      }
-    },
-    {
-      "id": "tacz:alternative_proj",
-      "name": "tacz.type.alternative_proj.name",
-      "icon": {
-        "item": "minecraft:arrow"
       }
     }
   ]

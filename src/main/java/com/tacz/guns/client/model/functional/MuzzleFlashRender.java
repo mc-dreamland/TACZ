@@ -26,7 +26,7 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
     private static final long TIME_RANGE = 50;
     public static boolean isSelf = false;
     private static long shootTimeStamp = -1;
-    private static boolean muzzleFlashStartMark = false;
+    private static final ShotPose MUZZLE_FLASH_POSE = new ShotPose();
     private static float muzzleFlashRandomRotate = 0;
 
     private final BedrockGunModel bedrockGunModel;
@@ -38,8 +38,8 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
     public static void onShoot() {
         // 记录开火时间戳
         shootTimeStamp = System.currentTimeMillis();
-        // 记录枪口火焰启动标记
-        muzzleFlashStartMark = true;
+        // 每发火焰固定在首次渲染的枪口姿态，后续后坐力不能继续旋转这片火焰。
+        MUZZLE_FLASH_POSE.reset();
         // 随机给予枪口火焰的旋转
         muzzleFlashRandomRotate = (float) (Math.random() * 360);
     }
@@ -83,10 +83,9 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
         }
         float frozenScale = scale;
         float frozenRotation = muzzleFlashRandomRotate;
-        PoseStack frozenPose = context.poseStack();
+        PoseStack frozenPose = MUZZLE_FLASH_POSE.snapshot(context.poseStack());
         int light = context.light();
         int overlay = context.overlay();
-        muzzleFlashStartMark = false;
 
         // The depth aperture is restored before ordinary translucent FX, so both muzzle-flash
         // layers would otherwise reappear inside the scope. Select an aperture-aware type only
@@ -123,6 +122,25 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
                     (pose, buffer) -> MUZZLE_FLASH_MODEL.renderToBuffer(
                             glowPose, buffer, light, overlay, 1.0F, 1.0F, 1.0F, 1.0F));
         });
+    }
+
+    /** Preserves the shot's first muzzle transform without sharing mutable poses with queued draws. */
+    static final class ShotPose {
+        private PoseStack.Pose origin;
+
+        void reset() {
+            origin = null;
+        }
+
+        PoseStack snapshot(PoseStack current) {
+            if (origin == null) {
+                origin = current.last().copy();
+            }
+            PoseStack snapshot = new PoseStack();
+            snapshot.last().pose().set(origin.pose());
+            snapshot.last().normal().set(origin.normal());
+            return snapshot;
+        }
     }
 
 }

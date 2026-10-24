@@ -28,7 +28,10 @@ class DefaultGunPackTest {
         DefaultGunPack pack = new DefaultGunPack(null); pack.load(new ByteArrayInputStream(bundledData()));
         assertEquals(GUN_IDS, pack.gunIndexes().keySet(), "Only the ten replacement guns belong to the shipped catalog");
         assertEquals(GUN_IDS.stream().map(id -> id + "_data").collect(java.util.stream.Collectors.toSet()), pack.guns().keySet());
-        assertTrue(pack.attachmentIndexes().size() >= 90);
+        assertEquals(Set.of("tacz:12g", "tacz:338", "tacz:357mag", "tacz:50bmg", "tacz:556x45", "tacz:762x39"), pack.ammoIndexes().keySet());
+        assertEquals(Set.of("bujidao:ar_02jing", "bujidao:sr02", "bujidao:sr03", "bujidao:sr04",
+                "tacz:ammo_mod_fmj", "tacz:ammo_mod_hp", "tacz:ammo_mod_i",
+                "tacz:extended_mag_1", "tacz:extended_mag_2", "tacz:extended_mag_3"), pack.attachmentIndexes().keySet());
         for (String id : pack.gunIndexes().keySet()) { assertNotNull(pack.gun(id), id); assertTrue(pack.hasItem("gun", id)); }
         for (String id : pack.ammoIndexes().keySet()) assertTrue(pack.hasItem("ammo", id));
         for (String id : pack.attachmentIndexes().keySet()) { assertNotNull(pack.attachment(id), id); assertTrue(pack.hasItem("attachment", id)); }
@@ -37,7 +40,7 @@ class DefaultGunPackTest {
             JsonObject result = recipe.getAsJsonObject("result"); assertTrue(pack.hasItem(result.get("type").getAsString(), result.get("id").getAsString()), result.toString());
         }
         assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_fmj"));
-        assertTrue(pack.attachmentHasTag("tacz:ammo_mod_slug", "tacz:intrinsic/slug"));
+        assertTrue(pack.attachmentHasTag("tacz:ammo_mod_hp", "tacz:ammo_mod_no_he"));
         assertFalse(pack.allowedAttachment("bujidao:ar_01", "foreign:scope"));
         assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
         assertFalse(pack.hasItem("ammo", "bujidao:ar_01"));
@@ -49,11 +52,11 @@ class DefaultGunPackTest {
         assertFalse(pack.hasItem("gun", null));
         assertTrue(pack.networkData().getAsJsonObject("GUN_DATA").has("bujidao:ar_01_data"));
         assertFalse(pack.scripts().isEmpty());
-        assertEquals(2, pack.scopeZoomCount("tacz:scope_standard_8x"));
+        assertEquals(1, pack.scopeZoomCount("bujidao:sr03"));
         assertFalse(pack.laserEditable("gun", "tacz:minigun")); assertFalse(pack.laserEditable("gun", "bujidao:ar_01"));
-        assertTrue(pack.laserEditable("attachment", "tacz:laser_peq15")); assertTrue(pack.laserEditable("attachment", "tacz:laser_peq6"));
-        assertFalse(pack.laserEditable("attachment", "tacz:grip_vertical_ranger"), "A built-in laser may explicitly forbid recoloring");
-        assertFalse(pack.laserEditable("ammo", "tacz:9mm"));
+        assertFalse(pack.laserEditable("attachment", "bujidao:sr03"));
+        assertFalse(pack.hasItem("attachment", "tacz:laser_peq15"));
+        assertFalse(pack.laserEditable("ammo", "tacz:762x39"));
         JsonObject network = pack.networkData(); pack.load(new ByteArrayInputStream(bundledData()));
         assertEquals(network, pack.networkData(), "Reload must keep catalog identities and data stable");
     }
@@ -96,7 +99,7 @@ class DefaultGunPackTest {
             entries.put(root + "scripts/sample.lua", "return '" + namespace + "'");
             entries.put(root + "tacz_tags/attachments/allow_attachments/rifle.json", "['" + namespace + ":scope']");
             entries.put("assets/" + namespace + "/display/guns/nested/rifle.json", "{laser:{can_edit:" + namespace.equals("alpha") + "}}");
-            entries.put("nested-pack/assets/" + namespace + "/display/attachments/nested/scope.json", namespace.equals("alpha") ? "{zoom:[2,4]}" : "{zoom:[8]}");
+            entries.put("nested-pack/assets/" + namespace + "/display/attachments/nested/scope.json", namespace.equals("alpha") ? "{zoom:[2,4],laser:{can_edit:true}}" : "{zoom:[8],laser:{can_edit:false}}");
         }
         entries.put("data/alpha/index/ammo/round.json", "{name:'Round',display:'alpha:round',stack_size:64}");
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
@@ -110,6 +113,8 @@ class DefaultGunPackTest {
         DefaultGunPack pack = new DefaultGunPack(null); pack.load(new ByteArrayInputStream(bytes.toByteArray()));
         assertEquals(Set.of("alpha:rifle", "beta:rifle"), pack.gunIndexes().keySet());
         assertEquals(2, pack.scopeZoomCount("alpha:scope")); assertEquals(1, pack.scopeZoomCount("beta:scope"));
+        assertTrue(pack.laserEditable("attachment", "alpha:scope"));
+        assertFalse(pack.laserEditable("attachment", "beta:scope"), "Custom displays may forbid laser recoloring");
         assertTrue(pack.laserEditable("gun", "alpha:rifle")); assertFalse(pack.laserEditable("gun", "beta:rifle"));
         assertEquals("return 'alpha'", pack.scripts().get("alpha:sample"));
         assertEquals("return 'beta'", pack.scripts().get("beta:sample"));

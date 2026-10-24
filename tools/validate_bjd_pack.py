@@ -6,6 +6,10 @@ import re
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PACK = ROOT / "src/main/resources/assets/tacz/custom/tacz_default_gun"
 EXPECTED = {"ar_01", "ar_02", "hg_01", "hg_3", "sg_01", "sg_02", "sr_01", "sr_02", "sr_03", "sr_04"}
+# GunDisplayInstance.checkSounds adds these even when a display omits them.
+DEFAULT_SOUNDS = {"tacz:" + name for name in (
+    "dry_fire", "fire_select", "head_hit", "flesh_hit", "kill",
+    "melee_bayonet/melee_bayonet_01", "melee_stock/melee_stock_01", "melee_stock/melee_stock_02")}
 
 
 def read(path):
@@ -25,6 +29,94 @@ def resource(identifier, kind, directory, suffix=".json"):
         path = ROOT / "src/main/resources" / relative
     assert path.is_file(), f"Missing {identifier}: {relative}"
     return path
+
+
+def documents(directory):
+    result = {}
+    for path in (PACK / "data").glob("*/" + directory + "/**/*.json"):
+        namespace = path.relative_to(PACK / "data").parts[0]
+        name = path.relative_to(PACK / "data" / namespace / directory).with_suffix("").as_posix()
+        result[namespace + ":" + name] = read(path)
+    return result
+
+
+def sound_effects(value):
+    if isinstance(value, dict):
+        # Bare event names in the source animations are not custom sound resources.
+        effect = value.get("effect", "")
+        if isinstance(effect, str) and ":" in effect:
+            yield effect
+        for child in value.values():
+            yield from sound_effects(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from sound_effects(child)
+
+
+def validate_catalog():
+    guns, ammos, attachments = (documents("index/" + kind) for kind in ("guns", "ammo", "attachments"))
+    tags = documents("tacz_tags/attachments")
+    used_ammo, used_attachments, used_tags = set(), set(), set()
+    sounds = set(DEFAULT_SOUNDS)
+
+    def visit_tag(identifier):
+        if identifier in used_tags:
+            return
+        assert identifier in tags, f"Missing attachment tag: {identifier}"
+        used_tags.add(identifier)
+        for entry in tags[identifier]:
+            if entry.startswith("#"):
+                visit_tag(entry[1:])
+            else:
+                used_attachments.add(entry)
+
+    def check_display(value):
+        if isinstance(value, dict):
+            sounds.update(value.get("sounds", {}).values())
+            for key, child in value.items():
+                if key in ("model", "texture", "slot", "hud") and isinstance(child, str) and ":" in child:
+                    directory, suffix = ("geo_models", ".json") if key == "model" else ("textures", ".png")
+                    resource(child, "assets", directory, suffix)
+                check_display(child)
+        elif isinstance(value, list):
+            for child in value:
+                check_display(child)
+
+    for identifier, index in guns.items():
+        data = read(resource(index["data"], "data", "data/guns"))
+        used_ammo.add(data["ammo"])
+        used_attachments.update(data.get("builtin_attachments", {}).values())
+        visit_tag(identifier.replace(":", ":allow_attachments/", 1))
+        display = read(resource(index["display"], "assets", "display/guns"))
+        check_display(display)
+        animations = read(resource(display["animation"], "assets", "animations", ".animation.json"))
+        for animation in animations["animations"].values():
+            sounds.update(sound_effects(animation.get("sound_effects", {})))
+
+    assert ammos.keys() == used_ammo, f"Ammunition catalog differs from gun dependencies: {ammos.keys() ^ used_ammo}"
+    assert attachments.keys() == used_attachments, f"Attachment catalog differs from gun dependencies: {attachments.keys() ^ used_attachments}"
+    assert tags.keys() == used_tags, f"Unused attachment tags: {tags.keys() ^ used_tags}"
+    for kind, catalog in (("ammo", ammos), ("attachments", attachments)):
+        for index in catalog.values():
+            if "data" in index:
+                resource(index["data"], "data", "data/" + kind)
+            check_display(read(resource(index["display"], "assets", "display/" + kind)))
+
+    required_sounds = {resource(sound, "assets", "tacz_sounds", ".ogg") for sound in sounds}
+    shipped_sounds = set((PACK / "assets").glob("*/tacz_sounds/**/*.ogg"))
+    assert shipped_sounds == required_sounds, f"Unused sound resources: {shipped_sounds - required_sounds}"
+    catalogs = {"gun": guns, "ammo": ammos, "attachment": attachments}
+    for recipe in documents("recipes").values():
+        result = recipe["result"]
+        if result["type"] in catalogs:
+            assert result["id"] in catalogs[result["type"]], f"Recipe for a removed item: {result}"
+    for block in documents("data/blocks").values():
+        for tab in block.get("tabs", []):
+            for key, identifier in tab.get("icon", {}).get("nbt", {}).items():
+                kind = {"GunId": "gun", "AmmoId": "ammo", "AttachmentId": "attachment"}.get(key)
+                if kind:
+                    assert identifier in catalogs[kind], f"Removed workbench icon: {identifier}"
+    return len(ammos), len(attachments), len(sounds)
 
 
 def validate():
@@ -94,7 +186,9 @@ def validate():
     flame = read(PACK / "assets/bujidao/display/guns/sr_02_display.json")["ammo"]["particle"]
     assert flame["name"] == "minecraft:flame" and flame["count"] > 0
     assert not list((PACK / "data/tacz/index/guns").glob("*.json"))
-    print("BJD pack valid: 10 guns, 4 scopes, resources, animations, timings and special-effect configurations.")
+    ammos, attachments, sounds = validate_catalog()
+    print(f"BJD pack valid: 10 guns, {ammos} ammunition types, {attachments} attachments, {sounds} sounds; "
+          "resource references, recipes, animations, timings and special effects verified.")
 
 
 if __name__ == "__main__":

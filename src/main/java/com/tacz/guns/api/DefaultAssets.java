@@ -13,10 +13,10 @@ public final class DefaultAssets {
     public static Identifier DEFAULT_BLOCK_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "gun_smith_table");
     public static Identifier EMPTY_BLOCK_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
 
-    public static Identifier DEFAULT_ATTACHMENT_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "sight_sro_dot");
+    public static Identifier DEFAULT_ATTACHMENT_ID = Identifier.parse("bujidao:ar_02jing");
     public static Identifier EMPTY_ATTACHMENT_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
 
-    public static Identifier DEFAULT_ATTACHMENT_SKIN_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "sight_sro_dot_blue");
+    public static Identifier DEFAULT_ATTACHMENT_SKIN_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
     public static Identifier EMPTY_ATTACHMENT_SKIN_ID = Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "empty");
 
     public static boolean isEmptyAttachmentId(Identifier attachmentId) {

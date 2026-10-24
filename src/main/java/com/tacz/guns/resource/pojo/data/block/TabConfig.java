@@ -5,7 +5,8 @@ import com.google.gson.*;
 import com.tacz.guns.GunMod;
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.builder.AmmoItemBuilder;
-import com.tacz.guns.api.item.builder.AttachmentItemBuilder;
+import com.tacz.guns.api.item.attachment.AttachmentType;
+import com.tacz.guns.item.AttachmentItem;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
 import com.tacz.guns.init.ModItems;
 import net.minecraft.network.chat.Component;
@@ -55,12 +56,18 @@ public record TabConfig(Identifier id, String name, Supplier<ItemStack> icon) {
             new TabConfig(TabConfig.TAB_SMG, "tacz.type.smg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
             new TabConfig(TabConfig.TAB_RPG, "tacz.type.rpg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
             new TabConfig(TabConfig.TAB_MG, "tacz.type.mg.name", () -> GunItemBuilder.create().setId(Identifier.fromNamespaceAndPath("bujidao", "ar_01")).forceBuild()),
-            new TabConfig(TabConfig.TAB_SCOPE, "tacz.type.scope.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "scope_acog_ta31")).build()),
-            new TabConfig(TabConfig.TAB_MUZZLE, "tacz.type.muzzle.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "muzzle_compensator_trident")).build()),
-            new TabConfig(TabConfig.TAB_STOCK, "tacz.type.stock.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "stock_militech_b5")).build()),
-            new TabConfig(TabConfig.TAB_GRIP, "tacz.type.grip.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "grip_magpul_afg_2")).build()),
-            new TabConfig(TabConfig.TAB_EXTENDED_MAG, "tacz.type.extended_mag.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "extended_mag_3")).build()),
-            new TabConfig(TabConfig.TAB_LASER, "tacz.type.laser.name", () -> AttachmentItemBuilder.create().setId(Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "laser_compact")).build()),
+            new TabConfig(TabConfig.TAB_SCOPE, "tacz.type.scope.name", () -> AttachmentItem.fillItemCategory(AttachmentType.SCOPE).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
+            new TabConfig(TabConfig.TAB_MUZZLE, "tacz.type.muzzle.name", () -> AttachmentItem.fillItemCategory(AttachmentType.MUZZLE).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
+            new TabConfig(TabConfig.TAB_STOCK, "tacz.type.stock.name", () -> AttachmentItem.fillItemCategory(AttachmentType.STOCK).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
+            new TabConfig(TabConfig.TAB_GRIP, "tacz.type.grip.name", () -> AttachmentItem.fillItemCategory(AttachmentType.GRIP).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
+            new TabConfig(TabConfig.TAB_EXTENDED_MAG, "tacz.type.extended_mag.name", () -> AttachmentItem.fillItemCategory(AttachmentType.EXTENDED_MAG).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
+            new TabConfig(TabConfig.TAB_LASER, "tacz.type.laser.name", () -> AttachmentItem.fillItemCategory(AttachmentType.LASER).stream().findFirst()
+                    .orElseGet(() -> ModItems.ATTACHMENT.get().getDefaultInstance())),
             new TabConfig(TabConfig.TAB_MISC, "tacz.type.misc.name", () -> new net.minecraft.world.item.ItemStack(ModItems.GUN_SMITH_TABLE.get()))
     );
 

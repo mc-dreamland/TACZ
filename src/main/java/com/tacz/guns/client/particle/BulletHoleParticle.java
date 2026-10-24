@@ -25,18 +25,23 @@ import org.joml.Quaternionf;
 
 /**
  * Author: Forked from MrCrayfish, continued by Timeless devs
- * 26.2: TextureSheetParticle → SingleQuadParticle, render → extract
  */
 public class BulletHoleParticle extends SingleQuadParticle {
-    private final Direction direction;
+    private static final double SURFACE_OFFSET = 0.0005;
+    private final Quaternionf rotation;
     private final BlockPos pos;
     private int uOffset;
     private int vOffset;
     private float textureDensity;
 
     public BulletHoleParticle(ClientLevel world, double x, double y, double z, Direction direction, BlockPos pos, String ammoId, String gunId, String gunDisplayId) {
-        super(world, x, y, z, getSpriteForPos(pos));
-        this.direction = direction;
+        // Offset both current and previous positions so interpolation stays outside the surface.
+        super(world, x + direction.getStepX() * SURFACE_OFFSET,
+                y + direction.getStepY() * SURFACE_OFFSET,
+                z + direction.getStepZ() * SURFACE_OFFSET, getSpriteForPos(pos));
+        this.rotation = surfaceRotation(direction);
+        // SingleQuadParticle assigns its sprite directly, bypassing our UV initialization.
+        this.setSprite(this.sprite);
         this.pos = pos;
         this.lifetime = this.getLifetimeFromConfig(world);
         this.hasPhysics = false;
@@ -121,34 +126,11 @@ public class BulletHoleParticle extends SingleQuadParticle {
         }
     }
 
-    /**
-     * <b>第 8 轮修复：击碎方块时天上出现会变大的怪异方片。</b>
-     *
-     * <p>原代码写的是：</p>
-     * <pre>
-     * this.extractRotatedQuad(state, quaternion, red, green, blue, alphaFade);
-     * </pre>
-     *
-     * <p>看起来像是"传旋转 + 颜色"，但 26.2 的 {@code SingleQuadParticle} 里<b>没有</b>
-     * 接收颜色的重载（反编译确认，只有三个）：</p>
-     * <pre>
-     * extractRotatedQuad(QuadParticleRenderState, Camera, Quaternionf, float partialTick)
-     * extractRotatedQuad(QuadParticleRenderState, Quaternionf, float x, float y, float z, float partialTick)
-     * </pre>
-     *
-     * <p>于是这次调用被静默绑定到了第二个重载 —— <b>把 r/g/b 当成了 x/y/z 坐标</b>，
-     * 把 alpha 当成了 partialTick。颜色是 0~1 的浮点，所以四边形被画在
-     * "相对摄像机 (r, g, b)"这个<b>固定偏移</b>处（+x 偏东、+z 偏南、+y 在上方），
-     * 与实际弹孔位置完全无关 —— 这就是你看到的"固定出现在西-西南方向屏幕上方"。</p>
-     *
-     * <p>而颜色取自枪械/弹药的 <b>tracerColor</b>，所以<b>不同枪械出现在不同位置</b>；
-     * 随着 {@code colorPercent} 衰减到 0，坐标也趋近摄像机原点，
-     * 视觉上就是"逐渐变大后消失"，生命周期约 60 tick ≈ 3 秒 —— 与反馈逐条吻合。</p>
-     *
-     * <p>正确做法：用带 Camera 的重载，让父类自己算出相机相对坐标；
-     * 颜色则通过 {@code rCol/gCol/bCol/alpha} 字段传递（父类 {@code extractRotatedQuad}
-     * 内部用 {@code ARGB.colorFromFloat(this.alpha, this.rCol, this.gCol, this.bCol)} 取值）。</p>
-     */
+    static Quaternionf surfaceRotation(Direction direction) {
+        // SingleQuadParticle starts in XY (+Z normal); Direction.getRotation maps +Y to the face.
+        return direction.getRotation().rotateX(-(float) Math.PI / 2);
+    }
+
     @Override
     public void extract(QuadParticleRenderState state, Camera camera, float partialTicks) {
         // 0 - 30 tick 内，从 15 亮度到 0 亮度
@@ -172,9 +154,8 @@ public class BulletHoleParticle extends SingleQuadParticle {
         this.bCol = baseB * colorPercent;
         this.alpha = baseA * fade;
         try {
-            // 使用方向四元数旋转四边形；位置交给带 Camera 的重载计算。
-            Quaternionf quaternion = this.direction.getRotation();
-            this.extractRotatedQuad(state, camera, quaternion, partialTicks);
+            // Keep the decal aligned to the hit face, independent of camera rotation.
+            this.extractRotatedQuad(state, camera, this.rotation, partialTicks);
         } finally {
             this.rCol = baseR;
             this.gCol = baseG;
@@ -214,7 +195,7 @@ public class BulletHoleParticle extends SingleQuadParticle {
         }
     }
 
-        public static class Provider implements ParticleProvider<BulletHoleOption> {
+    public static class Provider implements ParticleProvider<BulletHoleOption> {
         public Provider() {
         }
 

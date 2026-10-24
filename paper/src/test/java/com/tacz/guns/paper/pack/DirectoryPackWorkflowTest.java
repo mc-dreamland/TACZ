@@ -100,7 +100,7 @@ class DirectoryPackWorkflowTest {
         assertEquals(defaults.scripts(), pack.scripts(), "Directory numeric configuration must retain the supported bundled scripts");
         assertTrue(pack.hasItem("gun", "bujidao:ar_01"));
         assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_fmj"));
-        assertTrue(pack.attachmentHasTag("tacz:ammo_mod_slug", "tacz:intrinsic/slug"));
+        assertTrue(pack.attachmentHasTag("tacz:ammo_mod_hp", "tacz:ammo_mod_no_he"));
     }
 
     @Test void editingAndMovingArIntoArbitraryNestedFoldersChangesServerAndNetworkDataWithoutChangingIdentity() throws Exception {
@@ -149,10 +149,10 @@ class DirectoryPackWorkflowTest {
     }
 
     @Test void twoDefaultItemsSharingBundledDataBecomeIndependentlyEditableFiles() throws Exception {
-        String first = "tacz:stock_m4ss", second = "tacz:stock_tactical_ar";
+        String first = "tacz:extended_mag_1", second = "tacz:extended_mag_2";
         JsonObject secondIndex = defaults.attachmentIndexes().get(second).deepCopy();
         secondIndex.addProperty("data", defaults.attachmentIndexes().get(first).get("data").getAsString());
-        byte[] shared = zip(Map.of("data/tacz/index/attachments/stock_tactical_ar.json", secondIndex));
+        byte[] shared = zip(Map.of("data/tacz/index/attachments/extended_mag_2.json", secondIndex));
         DefaultGunPack pack = new DefaultGunPack(null);
         pack.load(new ByteArrayInputStream(shared), directory);
         assertEquals(pack.attachment(first), pack.attachment(second));
@@ -181,7 +181,7 @@ class DirectoryPackWorkflowTest {
         write(directory.resolve("attachments/custom/fmj.json"), attachment);
         JsonObject tag = new JsonObject();
         tag.addProperty("id", "example:my_family");
-        tag.add("values", JsonParser.parseString("[\"example:ammo_mod_fmj\",\"#tacz:intrinsic/slug\"]"));
+        tag.add("values", JsonParser.parseString("[\"example:ammo_mod_fmj\",\"#tacz:ammo_mod_no_he\"]"));
         write(directory.resolve("attachment_tags/custom/family.json"), tag);
         JsonObject gun = read(fileFor("guns", "bujidao:ar_01"));
         gun.addProperty("id", "example:ar_01");
@@ -196,7 +196,7 @@ class DirectoryPackWorkflowTest {
         assertEquals("example:762x39", pack.gun("example:ar_01").get("ammo").getAsString());
         assertNotNull(pack.gun("bujidao:ar_01"));
         assertTrue(pack.allowedAttachment("example:ar_01", "example:ammo_mod_fmj"));
-        assertTrue(pack.allowedAttachment("example:ar_01", "tacz:ammo_mod_slug"));
+        assertTrue(pack.allowedAttachment("example:ar_01", "tacz:ammo_mod_hp"));
         assertFalse(pack.allowedAttachment("bujidao:ar_01", "example:ammo_mod_fmj"));
         assertTrue(pack.attachmentHasTag("example:ammo_mod_fmj", "example:my_family"));
         assertEquals("example:ar_01", pack.recipes().get("example:gun/ar_01").getAsJsonObject("result").get("id").getAsString());
@@ -253,7 +253,7 @@ class DirectoryPackWorkflowTest {
         write(directory.resolve("attachment_tags/cycles/a.json"), first);
         JsonObject second = new JsonObject();
         second.addProperty("id", "example:cycle_b");
-        second.add("values", JsonParser.parseString("[\"#example:cycle_a\",\"tacz:ammo_mod_slug\"]"));
+        second.add("values", JsonParser.parseString("[\"#example:cycle_a\",\"tacz:ammo_mod_hp\"]"));
         write(directory.resolve("attachment_tags/cycles/deep/b.json"), second);
         Path gunFile = fileFor("guns", "bujidao:ar_01");
         JsonObject gun = read(gunFile);
@@ -261,7 +261,7 @@ class DirectoryPackWorkflowTest {
         write(gunFile, gun);
         reload(pack);
         assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_fmj"));
-        assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_slug"));
+        assertTrue(pack.allowedAttachment("bujidao:ar_01", "tacz:ammo_mod_hp"));
         JsonObject network = pack.networkData();
         for (String id : new String[]{"example:cycle_a", "example:cycle_b", "bujidao:allow_attachments/ar_01"}) {
             JsonArray leaves = JsonParser.parseString(network.getAsJsonObject("ATTACHMENT_TAGS").get(id).getAsString()).getAsJsonArray();
@@ -270,7 +270,7 @@ class DirectoryPackWorkflowTest {
                 assertFalse(value.getAsString().startsWith("#"), "The original client's recursive matcher has no cycle guard");
                 assertTrue(values.add(value.getAsString()), "Flattening must deduplicate repeated leaves");
             }
-            assertEquals(Set.of("tacz:ammo_mod_fmj", "tacz:ammo_mod_slug"), values);
+            assertEquals(Set.of("tacz:ammo_mod_fmj", "tacz:ammo_mod_hp"), values);
         }
         JsonArray allowed = JsonParser.parseString(network.getAsJsonObject("ALLOW_ATTACHMENT_TAGS").get("bujidao:ar_01").getAsString()).getAsJsonArray();
         assertEquals(2, allowed.size());

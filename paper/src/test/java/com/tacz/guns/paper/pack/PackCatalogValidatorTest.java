@@ -38,7 +38,8 @@ class PackCatalogValidatorTest {
     @Test void completeBundledCatalogPassesWithoutDroppingAnyCategory() {
         Catalog catalog = catalog();
         assertEquals(DefaultGunPackTest.GUN_IDS, catalog.objects.get("GUN_INDEX").keySet());
-        assertTrue(catalog.objects.get("ATTACHMENT_INDEX").size() >= 90);
+        assertEquals(10, catalog.objects.get("ATTACHMENT_INDEX").size());
+        assertEquals(6, catalog.objects.get("AMMO_INDEX").size());
         assertFalse(catalog.objects.get("RECIPES").isEmpty());
         assertDoesNotThrow(() -> PackCatalogValidator.validate(catalog.objects, catalog.tags));
     }
@@ -122,7 +123,7 @@ class PackCatalogValidatorTest {
     @Test void cyclicTagsAreLegalButDanglingTagsAndAttachmentLeavesAreNot() {
         Catalog catalog = catalog();
         catalog.tags.put("example:a", json("[\"#example:b\",\"tacz:ammo_mod_fmj\"]").getAsJsonArray());
-        catalog.tags.put("example:b", json("[\"#example:a\",\"tacz:ammo_mod_slug\"]").getAsJsonArray());
+        catalog.tags.put("example:b", json("[\"#example:a\",\"tacz:ammo_mod_hp\"]").getAsJsonArray());
         assertDoesNotThrow(() -> PackCatalogValidator.validate(catalog.objects, catalog.tags));
         catalog.tags.put("example:a", json("[\"#example:missing\"]").getAsJsonArray());
         rejected(catalog, "ATTACHMENT_TAGS", "example:a");
