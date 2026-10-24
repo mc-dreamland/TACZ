@@ -32,7 +32,7 @@ import java.util.List;
  *
  * <p>上游能直接整根画是因为 stencil 会把一切裁在目镜圆内。当前实现已具备真正的 ocular
  * 屏幕空间 mask（reticle 片段逐像素比较 aperture 深度与世界深度，只有
- * {@code ocularDepth < worldDepth - epsilon} 存活），但 CPU 尺寸过滤仍然保留：遮光板
+ * {@code ocularDepth < worldDepth - epsilon} 存活），但 CPU 几何与贴图过滤仍然保留：遮光板
  * 反正会被 mask 整块 discard，提前在提交时剔除可以省掉顶点写入与光栅化，并且在 mask
  * 链路降级的极端情况下依旧不会出现大块黑面。调用方用 {@code maskActive} 表示该安全过滤
  * 路径已启用；否则仍然不画。

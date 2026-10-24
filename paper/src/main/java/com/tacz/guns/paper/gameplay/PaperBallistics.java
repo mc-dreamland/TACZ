@@ -295,11 +295,25 @@ final class PaperBallistics implements Listener {
             if (!context.accepted) target.setNoDamageTicks(invulnerability);
         }
         if (context.accepted && target.isValid()) {
-            // Gun knockback replaces the vanilla hurt impulse, as in the mod.
-            Vector velocity = oldVelocity.clone().add(direction.clone().normalize().multiply(Math.max(0, knockback)));
-            target.setVelocity(velocity);
+            if (type == DamageType.ARROW) {
+                applyProjectileKnockback(target, oldVelocity, knockback, direction);
+            } else {
+                Vector velocity = oldVelocity.clone().add(direction.clone().normalize().multiply(Math.max(0, knockback)));
+                target.setVelocity(velocity);
+            }
         }
         return context.accepted;
+    }
+
+    static void applyProjectileKnockback(LivingEntity target, Vector previousVelocity, double strength, Vector flightDirection) {
+        // Replace damage()'s generic hurt impulse with the configured TACZ strength.
+        // The native routine halves horizontal momentum, caps grounded lift and applies
+        // knockback resistance. Adding flight velocity directly made pellets stack without limit.
+        target.setVelocity(previousVelocity);
+        if (strength > 0) {
+            // Paper expects the direction TO the source; bullets push along their flight direction.
+            target.knockback(strength, -flightDirection.getX(), -flightDirection.getZ());
+        }
     }
 
     private boolean canHurt(Player shooter, LivingEntity target) {

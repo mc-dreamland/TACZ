@@ -2,6 +2,8 @@ package com.tacz.guns.client.render.scope;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.client.model.bedrock.BedrockPart;
+import com.tacz.guns.client.model.bedrock.BedrockCube;
+import java.util.function.Predicate;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -71,6 +73,7 @@ public interface IReticleRenderer {
      *                       <p>{@link EtchedReticleRenderer} 必须看这个标志：
      *                       {@code division} 里混着大块遮光板，只有在掩码把它们裁掉时
      *                       才能安全绘制，否则会糊住屏幕（第 9 轮的教训）。</p>
+     * @param cubeFilter     该模型/贴图允许的准星几何，普通与 Iris 延后绘制共用。
      * @param deferToIrisTranslucent true 时只冻结快照，交由
      *                                {@link ScopeLateReticleState} 在 Iris 的较晚
      *                                {@code HAND_TRANSLUCENT} pass 提交。
@@ -87,6 +90,7 @@ public interface IReticleRenderer {
                    int overlay,
                    float aimingProgress,
                    boolean maskActive,
+                   Predicate<BedrockCube> cubeFilter,
                    boolean deferToIrisTranslucent,
                    boolean deferToIrisFinalOverlay) {
     }

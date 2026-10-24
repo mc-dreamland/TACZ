@@ -3,10 +3,12 @@ package com.tacz.guns.client.model;
 import com.mojang.blaze3d.vertex.*;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.client.model.bedrock.BedrockPart;
+import com.tacz.guns.client.model.bedrock.BedrockCube;
 import com.tacz.guns.client.model.bedrock.ModelRendererWrapper;
 import com.tacz.guns.client.model.functional.BeamRenderer;
 import com.tacz.guns.client.render.scope.IReticleRenderer;
 import com.tacz.guns.client.render.scope.ReticleRendererRegistry;
+import com.tacz.guns.client.render.scope.ReticleMarkFilter;
 import com.tacz.guns.client.render.scope.ScopeFinalOverlayState;
 import com.tacz.guns.client.render.scope.ScopeLateReticleState;
 import com.tacz.guns.client.render.scope.ScopeNodeSet;
@@ -32,6 +34,8 @@ import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 public class BedrockAttachmentModel extends BedrockAnimatedModel {
@@ -104,6 +108,8 @@ public class BedrockAttachmentModel extends BedrockAnimatedModel {
     protected List<List<BedrockPart>> scopeViewPaths;
     /** 第 22 轮：准星（分划）节点集合，构造时解析一次，供 IReticleRenderer 使用。 */
     protected ScopeNodeSet reticleNodes = ScopeNodeSet.empty();
+    // Models are recreated on resource reload, invalidating both texture and geometry decisions.
+    private final Map<Identifier, Predicate<BedrockCube>> reticleFilters = new HashMap<>();
 
     /**
      * 目镜编号 → 该目镜是否属于<b>筒镜</b>分系统（{@code ocular_scope*}）。
@@ -705,12 +711,13 @@ public class BedrockAttachmentModel extends BedrockAnimatedModel {
                     baseIlluminatedType = ScopeRenderTypes.visibleReticle(texture);
                 }
 
-                // Pure etched trees are CPU-filtered to retain thin marks and discard large blackout panels.
+                // Retain thin geometry and transparent textured reticles; discard solid blackout panels.
                 // Both renderers sample world/aperture depth per pixel and only retain the ocular interior.
                 reticle.submitReticle(new IReticleRenderer.Context(
                         poseStack, collector.order(SCOPE_RETICLE_ORDER),
                         transformType, baseReticleType, baseIlluminatedType,
                         light, overlay, currentAimingProgress(), etchedOnly,
+                        reticleFilters.computeIfAbsent(texture, key -> ReticleMarkFilter.forTexture(key, reticleNodes)),
                         deferReticleToIrisTranslucent, deferReticleToIrisFinalOverlay), active);
             }
         }

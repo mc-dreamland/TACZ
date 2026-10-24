@@ -27,7 +27,7 @@ import java.util.List;
  * 被 {@code scope_vudu} 实测推翻：它的 {@code division_illuminated} 共 6 个 cube，
  * 其中 5 块是 {@code [50,50,0] / [50,100,0]×2 / [100,250,0]×2} 的整版遮光面，只有
  * 第 6 块 {@code [0.25,0.25,0]} 才是真正的准星点。因此这里与蚀刻路径共用
- * {@link ReticleMarkFilter} 的同一把尺寸尺，逐 cube 过滤后再提交。</p>
+ * {@link ReticleMarkFilter} 的几何与贴图过滤，逐 cube 过滤后再提交。</p>
  *
  * <h2>关于「视差」：r44 已移除自造的近似</h2>
  * 早前这里有一个 {@code applyParallax()}，按开镜进度把准星沿镜轴前推 0.75 单位，
