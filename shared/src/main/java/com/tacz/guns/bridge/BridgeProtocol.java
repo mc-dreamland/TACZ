@@ -18,7 +18,8 @@ public final class BridgeProtocol {
     public static final int MAX_PACKET_BYTES = 30_000;
     public static final Gson GSON = new Gson();
     private static final Set<String> TYPES = Set.of("hello", "welcome", "pack", "ready", "action",
-            "state", "event", "ballistics", "menu", "menu_action", "error", "inventory_changed", "goodbye");
+            "state", "event", "ballistics", "menu", "menu_action", "error", "inventory_changed", "goodbye",
+            "probe", "ping", "pong");
 
     private BridgeProtocol() {}
 

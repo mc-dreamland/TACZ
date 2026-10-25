@@ -18,6 +18,8 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -27,6 +29,8 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
     private final JavaPlugin plugin;
     private final DefaultGunPack pack;
     private final Map<UUID, Session> sessions = new HashMap<>();
+    private final Map<UUID, NeteaseConnection> neteaseConnections = new HashMap<>();
+    private long ticks;
     private List<JsonObject> packChunks = List.of();
     private String packHash = "";
     private BiConsumer<Player, JsonObject> actions = (player, data) -> {};
@@ -39,6 +43,21 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
 
     public void neteaseSender(BiConsumer<Player, byte[]> sender) {
         this.neteaseSender = sender;
+    }
+
+    /** 同一 Geyser 切入子服也会重新加入 Bukkit；连接标记独立于玩家 UUID 和目录哈希。 */
+    public void neteaseJoined(Player player) {
+        sessions.remove(player.getUniqueId());
+        neteaseConnections.put(player.getUniqueId(), new NeteaseConnection());
+    }
+
+    private void probe(Player player) {
+        NeteaseConnection connection = neteaseConnections.computeIfAbsent(player.getUniqueId(), id -> new NeteaseConnection());
+        if (neteaseSender == null || ticks - connection.lastProbe < 20) return;
+        connection.lastProbe = ticks;
+        JsonObject data = new JsonObject();
+        data.addProperty("connection", connection.id);
+        neteaseSender.accept(player, BridgeProtocol.encode("probe", data));
     }
 
     public void neteaseMenus(BiConsumer<Player, JsonObject> opener) { neteaseMenus = opener; }
@@ -87,6 +106,7 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
                 Session next = new Session();
                 next.netease = previous.netease;
                 next.clientToken = previous.clientToken;
+                next.helloId = previous.helloId;
                 begin(player, next);
             }
         }
@@ -122,11 +142,26 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         try {
             BridgeProtocol.Message message = BridgeProtocol.decode(bytes);
             JsonObject data = message.data();
+            // 只有 hello 能建立会话；旧子服的动作、ready 和心跳不能作用于新连接。
+            if (netease && !message.type().equals("hello")
+                    && (session.started == 0 || !session.connection.equals(string(data, "connection"))
+                    || !session.nonce.equals(string(data, "nonce")))) {
+                if (java.util.Set.of("ping", "ready", "action", "menu_action").contains(message.type())) probe(player);
+                traceDiagnostic(player, session, "stale", "[旧会话拒绝] type=" + message.type());
+                return;
+            }
             if (netease && (message.type().equals("hello") || message.type().equals("ready")))
                 plugin.getLogger().info("[TACZ NetEase] [收包] 玩家=" + player.getName() + "，UUID=" + player.getUniqueId()
                         + "，C2S=" + message.type() + "，当前就绪=" + session.ready
                         + "，目录已提交=" + session.nextChunk + "/" + packChunks.size());
             switch (message.type()) {
+                case "ping" -> {
+                    if (netease && session.ready) {
+                        JsonObject pong = new JsonObject();
+                        pong.add("probe", data.get("probe"));
+                        send(player, "pong", pong);
+                    }
+                }
                 case "hello" -> {
                     session.netease = netease;
                     String clientToken = netease ? data.get("clientToken").getAsString() : "";
@@ -134,8 +169,20 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
                         if (netease) traceDiagnostic(player, session, "token", "[握手拒绝] clientToken 长度必须为 1..80，实际=" + clientToken.length());
                         return;
                     }
+                    long helloId = netease ? data.get("helloId").getAsLong() : 0;
+                    if (netease && (helloId < 1 || clientToken.equals(session.clientToken) && helloId < session.helloId)) return;
                     boolean newClient = netease && !clientToken.equals(session.clientToken);
+                    if (netease) {
+                        NeteaseConnection connection = neteaseConnections.computeIfAbsent(player.getUniqueId(), id -> new NeteaseConnection());
+                        if (connection.retiredTokens.contains(clientToken)) return;
+                        if (newClient && !session.clientToken.isEmpty()) {
+                            connection.retiredTokens.add(session.clientToken);
+                            if (connection.retiredTokens.size() > 64)
+                                connection.retiredTokens.remove(connection.retiredTokens.iterator().next());
+                        }
+                    }
                     session.clientToken = clientToken;
+                    session.helloId = helloId;
                     if (newClient || session.started == 0 || now - session.started > 10_000_000_000L && !session.ready) begin(player, session);
                     else if (netease) traceDiagnostic(player, session, "hello", "[握手等待] hello 沿用当前会话，已就绪="
                             + session.ready + "，目录已提交=" + session.nextChunk + "/" + packChunks.size());
@@ -220,6 +267,11 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         onBegin.accept(player);
         session.started = System.nanoTime();
         session.nonce = UUID.randomUUID().toString();
+        if (session.netease) {
+            NeteaseConnection connection = neteaseConnections.computeIfAbsent(player.getUniqueId(), id -> new NeteaseConnection());
+            session.connection = connection.id;
+            session.generation = ++connection.generation;
+        }
         session.nextChunk = 0;
         session.lastSequence = -1;
         session.invalid = 0;
@@ -231,13 +283,30 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         welcome.addProperty("nonce", session.nonce);
         welcome.addProperty("hash", packHash);
         welcome.addProperty("server", "Paper 1.21.11");
-        if (session.netease) welcome.addProperty("playerUuid", player.getUniqueId().toString());
+        if (session.netease) {
+            welcome.addProperty("playerUuid", player.getUniqueId().toString());
+            welcome.addProperty("clientToken", session.clientToken);
+            welcome.addProperty("generation", session.generation);
+            welcome.addProperty("helloId", session.helloId);
+        }
         send(player, "welcome", welcome);
         if (session.netease) plugin.getLogger().info("[TACZ NetEase] [握手] welcome 发包调用已返回，玩家=" + player.getName()
                 + "，UUID=" + player.getUniqueId() + "，目录分片=" + packChunks.size() + "，SHA-256=" + packHash);
     }
 
     public void tick() {
+        ticks++;
+        for (Map.Entry<UUID, NeteaseConnection> entry : neteaseConnections.entrySet()) {
+            NeteaseConnection connection = entry.getValue();
+            Session session = sessions.get(entry.getKey());
+            // 加入后的有限探测负责唤醒客户端；丢包后的恢复由客户端心跳/hello 兜底。
+            if (connection.attempts >= 5 || session != null && session.ready || ticks - connection.lastProbe < 40) continue;
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player != null && player.isOnline()) {
+                connection.attempts++;
+                probe(player);
+            }
+        }
         for (Map.Entry<UUID, Session> entry : sessions.entrySet()) {
             Session session = entry.getValue();
             if (session.ready || session.started == 0) continue;
@@ -268,7 +337,20 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
             neteaseMenus.accept(player, data);
             return;
         }
-        sendPacket(player, BridgeProtocol.encode(type, data));
+        sendPacket(player, BridgeProtocol.encode(type, scoped(player, data)));
+    }
+
+    private static String string(JsonObject data, String key) {
+        return data.has(key) && data.get(key).isJsonPrimitive() ? data.get(key).getAsString() : "";
+    }
+
+    private JsonObject scoped(Player player, JsonObject data) {
+        Session session = sessions.get(player.getUniqueId());
+        if (session == null || !session.netease) return data;
+        JsonObject result = data.deepCopy();
+        result.addProperty("connection", session.connection);
+        result.addProperty("nonce", session.nonce);
+        return result;
     }
 
     private void sendPacket(Player player, byte[] bytes) {
@@ -292,7 +374,7 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         if (session.ballistics == null || !world.equals(session.ballisticWorld)) {
             session.ballisticWorld = world;
             String dimension = ((CraftWorld) observer.getWorld()).getHandle().dimension().identifier().toString();
-            session.ballistics = new BallisticsBatch(dimension);
+            session.ballistics = new BallisticsBatch(dimension, scoped(observer, new JsonObject()));
         }
         if (!session.ballistics.offer(record)) {
             flushBallistics(observer, session);
@@ -320,18 +402,25 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         if (packet != null) sendPacket(observer, packet);
     }
 
-    @EventHandler public void onQuit(PlayerQuitEvent event) { sessions.remove(event.getPlayer().getUniqueId()); }
+    @EventHandler public void onQuit(PlayerQuitEvent event) {
+        sessions.remove(event.getPlayer().getUniqueId());
+        neteaseConnections.remove(event.getPlayer().getUniqueId());
+    }
 
     public void close() {
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (ready(player)) send(player, "goodbye", new JsonObject());
         }
         sessions.clear();
+        neteaseConnections.clear();
         Bukkit.getMessenger().unregisterIncomingPluginChannel(plugin, BridgeProtocol.CHANNEL, this);
         Bukkit.getMessenger().unregisterOutgoingPluginChannel(plugin, BridgeProtocol.CHANNEL);
     }
 
     private static final class Session {
+        private String connection = "";
+        private int generation;
+        private long helloId;
         private long windowStart = System.nanoTime();
         private int received;
         private int invalid;
@@ -346,5 +435,13 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         private final Map<String, Long> diagnosticLogs = new HashMap<>();
         private BallisticsBatch ballistics;
         private UUID ballisticWorld;
+    }
+
+    private static final class NeteaseConnection {
+        private final Set<String> retiredTokens = new LinkedHashSet<>();
+        private final String id = UUID.randomUUID().toString();
+        private int generation;
+        private int attempts;
+        private long lastProbe = -40;
     }
 }

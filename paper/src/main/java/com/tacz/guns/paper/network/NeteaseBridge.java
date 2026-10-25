@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Base64;
@@ -34,7 +35,16 @@ public final class NeteaseBridge implements Listener {
         this.network = network;
         network.neteaseSender(this::send);
         Bukkit.getPluginManager().registerEvents(this, plugin);
+        for (Player player : Bukkit.getOnlinePlayers()) startProbe(player);
     }
+
+    private void startProbe(Player player) {
+        // 当前部署沿用 MoreGui 的网易 UUID 前缀约定；只用于探测分流，绝不据此放行 ready。
+        // 非此格式的玩家仍可通过客户端 hello / 心跳触发探测，不依赖这个提示建立会话。
+        if (player.getUniqueId().toString().startsWith("00000000")) network.neteaseJoined(player);
+    }
+
+    @EventHandler public void onJoin(PlayerJoinEvent event) { startProbe(event.getPlayer()); }
 
     @EventHandler
     public void onMessage(NeteaseReceiveCustomPacketEvent event) {

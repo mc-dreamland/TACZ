@@ -9,13 +9,20 @@ import java.nio.charset.StandardCharsets;
 public final class BallisticsBatch {
     public static final int MAX_RECORDS = 128;
     private final String dimension;
+    private final JsonObject metadata;
     private final int emptyBytes;
     private JsonArray records = new JsonArray();
     private int bytes;
 
     public BallisticsBatch(String dimension) {
+        this(dimension, new JsonObject());
+    }
+
+    /** 网易会话字段在组包前加入，参与精确字节预算；默认 Java 批次不携带这些字段。 */
+    public BallisticsBatch(String dimension, JsonObject metadata) {
         if (dimension == null || dimension.length() > 256) throw new IllegalArgumentException("Invalid dimension");
         this.dimension = dimension;
+        this.metadata = metadata.deepCopy();
         emptyBytes = BridgeProtocol.encode("ballistics", payload()).length;
         bytes = emptyBytes;
     }
@@ -42,7 +49,7 @@ public final class BallisticsBatch {
     }
 
     private JsonObject payload() {
-        JsonObject data = new JsonObject();
+        JsonObject data = metadata.deepCopy();
         data.addProperty("dimension", dimension);
         data.add("records", records);
         return data;
