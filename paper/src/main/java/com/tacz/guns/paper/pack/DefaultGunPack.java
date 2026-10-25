@@ -22,6 +22,7 @@ public final class DefaultGunPack {
     private final Map<String, String> scripts = new TreeMap<>();
     private final Map<String, JsonObject> attachmentDisplays = new TreeMap<>();
     private final Map<String, JsonObject> gunDisplays = new TreeMap<>();
+    private final Map<String, Integer> itemModelData = new TreeMap<>();
     private JsonObject network = new JsonObject();
 
     public DefaultGunPack(JavaPlugin plugin) { this.plugin = plugin; }
@@ -40,7 +41,7 @@ public final class DefaultGunPack {
     public void load(InputStream input, Path directory) throws IOException {
         DefaultGunPack candidate = new DefaultGunPack(plugin);
         candidate.readBundled(input);
-        if (directory != null) DirectoryPackFiles.apply(directory, candidate.objects, candidate.tags);
+        if (directory != null) candidate.itemModelData.putAll(DirectoryPackFiles.apply(directory, candidate.objects, candidate.tags));
         PackCatalogValidator.validate(candidate.objects, candidate.tags);
         candidate.buildNetwork();
         // A valid server configuration must also fit the client's bounded pack transfer.
@@ -52,6 +53,7 @@ public final class DefaultGunPack {
         scripts.clear(); scripts.putAll(candidate.scripts);
         attachmentDisplays.clear(); attachmentDisplays.putAll(candidate.attachmentDisplays);
         gunDisplays.clear(); gunDisplays.putAll(candidate.gunDisplays);
+        itemModelData.clear(); itemModelData.putAll(candidate.itemModelData);
         network = candidate.network;
     }
 
@@ -179,6 +181,9 @@ public final class DefaultGunPack {
         return !laser.has("can_edit") || laser.get("can_edit").getAsBoolean();
     }
     public JsonObject gun(String id) { JsonObject index = gunIndexes().get(id); return index == null ? null : guns().get(index.get("data").getAsString()); }
+    /** Optional cosmetic ID for vanilla/Bedrock item mappings; never used as TACZ identity. */
+    public Integer gunModelData(String id) { return itemModelData("gun", id); }
+    public Integer itemModelData(String kind, String id) { return itemModelData.get(ItemModelData.key(kind, id)); }
     public JsonObject attachment(String id) { JsonObject index = attachmentIndexes().get(id); return index == null ? null : attachments().get(index.get("data").getAsString()); }
     public boolean hasItem(String kind, String id) {
         if (kind == null || id == null) return false;

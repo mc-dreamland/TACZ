@@ -19,7 +19,8 @@ public final class DirectoryPackFiles {
 
     private DirectoryPackFiles() {}
 
-    public static void apply(Path pluginDir, Map<String, Map<String, JsonObject>> objects, Map<String, JsonArray> tags) throws IOException {
+    /** Returns optional server-only item model IDs, separate from the synchronized catalog. */
+    public static Map<String, Integer> apply(Path pluginDir, Map<String, Map<String, JsonObject>> objects, Map<String, JsonArray> tags) throws IOException {
         Path base = pluginDir.toAbsolutePath().normalize();
         PackFileIO.directories(base);
         Path marker = base.resolve(MARKER_FILE);
@@ -57,6 +58,7 @@ public final class DirectoryPackFiles {
         }
         loaded.objects.forEach(objects::put);
         tags.clear(); tags.putAll(loaded.tags);
+        return Map.copyOf(loaded.itemModelData);
     }
 
     private static List<Document> scan(Path base) throws IOException {
@@ -115,15 +117,20 @@ public final class DirectoryPackFiles {
         List<Document> result = new ArrayList<>();
         for (var row : new TreeMap<>(objects.getOrDefault("GUN_INDEX", Map.of())).entrySet()) {
             JsonObject wrapper = item(row.getKey(), row.getValue());
+            wrapper.addProperty("modeldata", ItemModelData.defaultValue("gun", row.getKey()));
             wrapper.add("data", data(objects, "GUN_DATA", row.getKey(), row.getValue()));
             wrapper.getAsJsonObject("index").addProperty("data", row.getKey());
             wrapper.add("allow_attachments", tags.getOrDefault(allowTag(row.getKey()), new JsonArray()).deepCopy());
             result.add(new Document("guns", row.getKey(), null, wrapper));
         }
-        for (var row : new TreeMap<>(objects.getOrDefault("AMMO_INDEX", Map.of())).entrySet())
-            result.add(new Document("ammos", row.getKey(), null, item(row.getKey(), row.getValue())));
+        for (var row : new TreeMap<>(objects.getOrDefault("AMMO_INDEX", Map.of())).entrySet()) {
+            JsonObject wrapper = item(row.getKey(), row.getValue());
+            wrapper.addProperty("modeldata", ItemModelData.defaultValue("ammo", row.getKey()));
+            result.add(new Document("ammos", row.getKey(), null, wrapper));
+        }
         for (var row : new TreeMap<>(objects.getOrDefault("ATTACHMENT_INDEX", Map.of())).entrySet()) {
             JsonObject wrapper = item(row.getKey(), row.getValue());
+            wrapper.addProperty("modeldata", ItemModelData.defaultValue("attachment", row.getKey()));
             wrapper.add("data", data(objects, "ATTACHMENT_DATA", row.getKey(), row.getValue()));
             wrapper.getAsJsonObject("index").addProperty("data", row.getKey());
             result.add(new Document("attachments", row.getKey(), null, wrapper));
@@ -157,6 +164,7 @@ public final class DirectoryPackFiles {
         Map<String, Map<String, JsonObject>> objects = new LinkedHashMap<>();
         for (String type : List.of("GUN_INDEX", "GUN_DATA", "AMMO_INDEX", "ATTACHMENT_INDEX", "ATTACHMENT_DATA", "RECIPES")) objects.put(type, new TreeMap<>());
         Map<String, JsonArray> tags = new TreeMap<>(); Map<String, Path> tagSources = new HashMap<>();
+        Map<String, Integer> itemModelData = new TreeMap<>();
         for (Document document : documents) {
             JsonObject json = document.json; Path path = document.path;
             switch (document.category) {
@@ -170,14 +178,27 @@ public final class DirectoryPackFiles {
                         objects.get(type + "_DATA").put(document.id, data);
                     }
                     objects.get(type + "_INDEX").put(document.id, index);
-                    if (type.equals("GUN")) addTag(base, path, allowTag(document.id), array(json, "allow_attachments", base, path), tags, tagSources);
+                    String kind = switch (type) { case "GUN" -> "gun"; case "AMMO" -> "ammo"; default -> "attachment"; };
+                    Integer modelData = modelData(json, base, path);
+                    if (modelData != null) itemModelData.put(ItemModelData.key(kind, document.id), modelData);
+                    if (type.equals("GUN")) {
+                        addTag(base, path, allowTag(document.id), array(json, "allow_attachments", base, path), tags, tagSources);
+                    }
                 }
                 case "recipes" -> objects.get("RECIPES").put(document.id, object(json, "recipe", base, path).deepCopy());
                 case "attachment_tags" -> addTag(base, path, document.id, array(json, "values", base, path), tags, tagSources);
                 default -> throw error(base, path, "unknown category " + document.category);
             }
         }
-        return new Loaded(objects, tags);
+        return new Loaded(objects, tags, itemModelData);
+    }
+
+    private static Integer modelData(JsonObject json, Path base, Path path) throws IOException {
+        try {
+            return ItemModelData.parse(json.get("modeldata"));
+        } catch (RuntimeException invalid) {
+            throw error(base, path, invalid.getMessage(), invalid);
+        }
     }
 
     private static void addTag(Path base, Path source, String id, JsonArray values, Map<String, JsonArray> tags, Map<String, Path> sources) throws IOException {
@@ -224,5 +245,5 @@ public final class DirectoryPackFiles {
     private static IOException error(Path base, Path path, String message) { return new IOException(relative(base, path) + ": " + message); }
     private static IOException error(Path base, Path path, String message, Exception cause) { return new IOException(relative(base, path) + ": " + message, cause); }
     private record Document(String category, String id, Path path, JsonObject json) {}
-    private record Loaded(Map<String, Map<String, JsonObject>> objects, Map<String, JsonArray> tags) {}
+    private record Loaded(Map<String, Map<String, JsonObject>> objects, Map<String, JsonArray> tags, Map<String, Integer> itemModelData) {}
 }

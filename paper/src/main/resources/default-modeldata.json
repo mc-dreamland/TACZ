@@ -1,0 +1,39 @@
+{
+  "gun": {
+    "bujidao:ar_01": 3000000,
+    "bujidao:ar_02": 3000001,
+    "bujidao:hg_01": 3000002,
+    "bujidao:hg_3": 3000003,
+    "bujidao:sg_01": 3000004,
+    "bujidao:sg_02": 3000005,
+    "bujidao:sr_01": 3000006,
+    "bujidao:sr_02": 3000007,
+    "bujidao:sr_03": 3000008,
+    "bujidao:sr_04": 3000009
+  },
+  "ammo": {
+    "tacz:12g": 3001000,
+    "tacz:338": 3001001,
+    "tacz:357mag": 3001002,
+    "tacz:50bmg": 3001003,
+    "tacz:556x45": 3001004,
+    "tacz:762x39": 3001005
+  },
+  "attachment": {
+    "bujidao:ar_02jing": 3002000,
+    "bujidao:sr02": 3002001,
+    "bujidao:sr03": 3002002,
+    "bujidao:sr04": 3002003,
+    "tacz:ammo_mod_fmj": 3002004,
+    "tacz:ammo_mod_hp": 3002005,
+    "tacz:ammo_mod_i": 3002006,
+    "tacz:extended_mag_1": 3002007,
+    "tacz:extended_mag_2": 3002008,
+    "tacz:extended_mag_3": 3002009
+  },
+  "box": {
+    "tacz:ammo_box": 3003000,
+    "tacz:gold_ammo_box": 3003001,
+    "tacz:diamond_ammo_box": 3003002
+  }
+}

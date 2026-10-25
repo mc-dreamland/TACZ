@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -244,7 +246,81 @@ class PaperItemStoreTest {
                 assertFalse(carrier.persisted().has("cmd"));
                 assertFalse(carrier.meta.hasCustomModelData());
                 verify(carrier.meta, never()).setCustomModelData(nullable(Integer.class));
+                verify(carrier.meta, never()).setCustomModelDataComponent(any());
             }
+        }
+    }
+
+    @Test
+    void configuredModelDataIsWrittenOnGunCreationWithoutChangingPdcIdentity() {
+        Fixture f = new Fixture();
+        when(f.pack.itemModelData("gun", GUN)).thenReturn(10001);
+        List<Carrier> carriers = new ArrayList<>();
+        try (MockedConstruction<ItemStack> construction = mockConstruction(ItemStack.class, (stack, context) ->
+                carriers.add(new Carrier(stack, (Material) context.arguments().getFirst(), 1, null)))) {
+            ItemStack gun = f.store.create("gun", GUN, 1);
+            f.store.create("ammo", AMMO, 16);
+            f.store.create("attachment", SCOPE, 1);
+            Carrier carrier = carriers.getFirst();
+            assertEquals(10001, carrier.meta.getCustomModelData());
+            assertEquals(List.of(10001f), carrier.modelData.getFloats());
+            verify(carrier.meta).setCustomModelDataComponent(carrier.modelData);
+            JsonObject state = f.store.read(gun);
+            assertNotNull(state);
+            assertEquals(GUN, state.get("id").getAsString());
+            assertFalse(state.has("modeldata"));
+            assertFalse(state.has("cmd"));
+            for (Carrier other : carriers.subList(1, carriers.size())) {
+                assertFalse(other.meta.hasCustomModelData());
+                verify(other.meta, never()).setCustomModelDataComponent(any());
+            }
+        }
+    }
+
+    @Test
+    void stateUpdatesRetainConfiguredModelDataAndOtherComponentFields() {
+        Fixture f = new Fixture();
+        when(f.pack.itemModelData("gun", GUN)).thenReturn(10001);
+        Carrier carrier = new Carrier(Material.STICK, 1, 4567).state(gun());
+        when(carrier.modelData.getStrings()).thenReturn(List.of("external-skin"));
+        JsonObject state = carrier.persisted();
+        state.addProperty("ammo", 16);
+        f.store.write(carrier.stack, state);
+        assertEquals(10001, carrier.meta.getCustomModelData());
+        assertEquals(List.of("external-skin"), carrier.modelData.getStrings());
+        verify(carrier.modelData, never()).setStrings(anyList());
+        verify(carrier.modelData, never()).setFlags(anyList());
+        verify(carrier.modelData, never()).setColors(anyList());
+        assertEquals(state, f.store.read(carrier.stack));
+        when(f.pack.itemModelData("gun", GUN)).thenReturn(10002);
+        f.store.write(carrier.stack, state);
+        assertEquals(10002, carrier.meta.getCustomModelData());
+    }
+
+    @Test
+    void ammoAttachmentsAndBoxesReceiveVanillaModelDataWithoutAddingIdentityFields() {
+        Fixture f = new Fixture();
+        when(f.pack.itemModelData("ammo", AMMO)).thenReturn(3001005);
+        when(f.pack.itemModelData("attachment", SCOPE)).thenReturn(3002000);
+        List<Carrier> carriers = new ArrayList<>();
+        try (MockedConstruction<ItemStack> construction = mockConstruction(ItemStack.class, (stack, context) ->
+                carriers.add(new Carrier(stack, (Material) context.arguments().getFirst(), 1, null)))) {
+            f.store.create("ammo", AMMO, 48);
+            f.store.create("attachment", SCOPE, 1);
+            for (String id : DefaultGunPack.BOX_IDS) {
+                // Capacity is independent of the model ID and uses the existing config defaults.
+                var config = new org.bukkit.configuration.file.YamlConfiguration();
+                when(f.plugin.getConfig()).thenReturn(config);
+                f.store.create("box", id, 1);
+            }
+            int[] expected = {3001005, 3002000, 3003000, 3003001, 3003002};
+            for (int i = 0; i < expected.length; i++) {
+                Carrier carrier = carriers.get(i);
+                assertEquals(expected[i], carrier.meta.getCustomModelData());
+                assertNotNull(f.store.read(carrier.stack));
+                assertFalse(carrier.persisted().has("modeldata"));
+            }
+            assertEquals(48, carriers.getFirst().stack.getAmount());
         }
     }
 
@@ -288,7 +364,8 @@ class PaperItemStoreTest {
 
     private static final class Fixture {
         final DefaultGunPack pack = mock(DefaultGunPack.class);
-        final PaperItemStore store = new PaperItemStore(mock(JavaPlugin.class), pack);
+        final JavaPlugin plugin = mock(JavaPlugin.class);
+        final PaperItemStore store = new PaperItemStore(plugin, pack);
         final JsonObject gunData = JsonParser.parseString("""
                 {"ammo":"test:round","ammo_amount":30,"extended_mag_ammo_amount":[40,50,60],
                  "fire_mode":["auto","semi"],"allow_attachment_types":["scope","extended_mag"]}
@@ -322,6 +399,7 @@ class PaperItemStoreTest {
     private static final class Carrier {
         final ItemStack stack;
         final ItemMeta meta = mock(ItemMeta.class);
+        final CustomModelDataComponent modelData = mock(CustomModelDataComponent.class);
         final PersistentDataContainer pdc = mock(PersistentDataContainer.class);
         final Map<NamespacedKey, String> data = new HashMap<>();
 
@@ -340,8 +418,12 @@ class PaperItemStoreTest {
             when(stack.getMaxStackSize()).thenAnswer(call -> maximum.get());
             doAnswer(call -> { amount.set(call.getArgument(0)); return null; }).when(stack).setAmount(anyInt());
             when(meta.getPersistentDataContainer()).thenReturn(pdc);
-            when(meta.hasCustomModelData()).thenReturn(customModelData != null);
-            if (customModelData != null) when(meta.getCustomModelData()).thenReturn(customModelData);
+            AtomicReference<List<Float>> floats = new AtomicReference<>(customModelData == null ? List.of() : List.of(customModelData.floatValue()));
+            when(meta.getCustomModelDataComponent()).thenReturn(modelData);
+            when(modelData.getFloats()).thenAnswer(call -> floats.get());
+            doAnswer(call -> { floats.set(List.copyOf(call.getArgument(0))); return null; }).when(modelData).setFloats(anyList());
+            when(meta.hasCustomModelData()).thenAnswer(call -> !floats.get().isEmpty());
+            when(meta.getCustomModelData()).thenAnswer(call -> floats.get().getFirst().intValue());
             doAnswer(call -> { maximum.set(call.getArgument(0)); return null; }).when(meta).setMaxStackSize(anyInt());
             when(pdc.get(PaperItemStore.BRIDGE_KEY, PersistentDataType.STRING)).thenAnswer(call -> raw());
             doAnswer(call -> { data.put(call.getArgument(0), call.getArgument(2)); return null; })

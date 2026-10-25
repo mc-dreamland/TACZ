@@ -1,0 +1,274 @@
+{
+  "format_version": 1,
+  "items": {
+    "minecraft:stick": [
+      {
+        "name": "bujidao_ar_01",
+        "custom_model_data": 3000000,
+        "display_name": "AR-01",
+        "icon": "bujidao_ar_01",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_ar_02",
+        "custom_model_data": 3000001,
+        "display_name": "AR-02",
+        "icon": "bujidao_ar_02",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_hg_01",
+        "custom_model_data": 3000002,
+        "display_name": "HG-01",
+        "icon": "bujidao_hg_01",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_hg_3",
+        "custom_model_data": 3000003,
+        "display_name": "HG-3",
+        "icon": "bujidao_hg_3",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sg_01",
+        "custom_model_data": 3000004,
+        "display_name": "SG-01",
+        "icon": "bujidao_sg_01",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sg_02",
+        "custom_model_data": 3000005,
+        "display_name": "SG-02",
+        "icon": "bujidao_sg_02",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr_01",
+        "custom_model_data": 3000006,
+        "display_name": "SR-01",
+        "icon": "bujidao_sr_01",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr_02",
+        "custom_model_data": 3000007,
+        "display_name": "SR-02",
+        "icon": "bujidao_sr_02",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr_03",
+        "custom_model_data": 3000008,
+        "display_name": "SR-03",
+        "icon": "bujidao_sr_03",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr_04",
+        "custom_model_data": 3000009,
+        "display_name": "SR-04",
+        "icon": "bujidao_sr_04",
+        "texture_size": 2048,
+        "display_handheld": true,
+        "allow_offhand": true
+      }
+    ],
+    "minecraft:paper": [
+      {
+        "name": "tacz_12g",
+        "custom_model_data": 3001000,
+        "display_name": "§912 号口径霰弹",
+        "icon": "tacz_ammo_tacz_12g",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_338",
+        "custom_model_data": 3001001,
+        "display_name": "§c.338 拉普马格南 狙击弹",
+        "icon": "tacz_ammo_tacz_338",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_357mag",
+        "custom_model_data": 3001002,
+        "display_name": "§c.357 马格南 手枪弹",
+        "icon": "tacz_ammo_tacz_357mag",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_50bmg",
+        "custom_model_data": 3001003,
+        "display_name": "§c.50 BMG 狙击弹",
+        "icon": "tacz_ammo_tacz_50bmg",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_556x45",
+        "custom_model_data": 3001004,
+        "display_name": "§e5.56x45mm 步枪弹",
+        "icon": "tacz_ammo_tacz_556x45",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_762x39",
+        "custom_model_data": 3001005,
+        "display_name": "§e7.62x39mm 步枪弹",
+        "icon": "tacz_ammo_tacz_762x39",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      }
+    ],
+    "minecraft:flint": [
+      {
+        "name": "bujidao_ar_02jing",
+        "custom_model_data": 3002000,
+        "display_name": "ar02镜头",
+        "icon": "tacz_attachment_bujidao_ar_02jing",
+        "texture_size": 256,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr02",
+        "custom_model_data": 3002001,
+        "display_name": "sr02镜头",
+        "icon": "tacz_attachment_bujidao_sr02",
+        "texture_size": 128,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr03",
+        "custom_model_data": 3002002,
+        "display_name": "sr03镜头",
+        "icon": "tacz_attachment_bujidao_sr03",
+        "texture_size": 128,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "bujidao_sr04",
+        "custom_model_data": 3002003,
+        "display_name": "sr04镜头",
+        "icon": "tacz_attachment_bujidao_sr04",
+        "texture_size": 128,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_ammo_mod_fmj",
+        "custom_model_data": 3002004,
+        "display_name": "§e全金属被甲弹",
+        "icon": "tacz_attachment_tacz_ammo_mod_fmj",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_ammo_mod_hp",
+        "custom_model_data": 3002005,
+        "display_name": "§e空尖弹",
+        "icon": "tacz_attachment_tacz_ammo_mod_hp",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_ammo_mod_i",
+        "custom_model_data": 3002006,
+        "display_name": "§e燃烧弹",
+        "icon": "tacz_attachment_tacz_ammo_mod_i",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_extended_mag_1",
+        "custom_model_data": 3002007,
+        "display_name": "重型弹药扩容弹匣",
+        "icon": "tacz_attachment_tacz_extended_mag_1",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_extended_mag_2",
+        "custom_model_data": 3002008,
+        "display_name": "§9重型弹药扩容弹匣",
+        "icon": "tacz_attachment_tacz_extended_mag_2",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_extended_mag_3",
+        "custom_model_data": 3002009,
+        "display_name": "§d重型弹药扩容弹匣",
+        "icon": "tacz_attachment_tacz_extended_mag_3",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      }
+    ],
+    "minecraft:chest": [
+      {
+        "name": "tacz_ammo_box",
+        "custom_model_data": 3003000,
+        "display_name": "铁弹药箱",
+        "icon": "tacz_box_tacz_ammo_box",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_gold_ammo_box",
+        "custom_model_data": 3003001,
+        "display_name": "金弹药箱",
+        "icon": "tacz_box_tacz_gold_ammo_box",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      },
+      {
+        "name": "tacz_diamond_ammo_box",
+        "custom_model_data": 3003002,
+        "display_name": "钻石弹药箱",
+        "icon": "tacz_box_tacz_diamond_ammo_box",
+        "texture_size": 32,
+        "display_handheld": false,
+        "allow_offhand": true
+      }
+    ]
+  }
+}

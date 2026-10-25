@@ -151,15 +151,21 @@ plugins/TACZ/
 
 | 目录 | 每份 JSON 的字段 | 用途 |
 | --- | --- | --- |
-| `guns` | `id`、`index`、`data`、`allow_attachments` | `index` 定义名称、显示资源、分类；`data` 定义伤害、射速、弹容、装填等；`allow_attachments` 定义兼容配件 ID 或 `#标签` |
-| `ammos` | `id`、`index` | 弹药名称、显示资源、堆叠数等 |
-| `attachments` | `id`、`index`、`data` | 配件类型、显示资源、属性加成 |
+| `guns` | `id`、`modeldata`（可选）、`index`、`data`、`allow_attachments` | `modeldata` 设置原版 CustomModelData；`index` 定义名称、显示资源、分类；`data` 定义伤害、射速、弹容、装填等；`allow_attachments` 定义兼容配件 ID 或 `#标签` |
+| `ammos` | `id`、`modeldata`（可选）、`index` | 弹药名称、显示资源、堆叠数等 |
+| `attachments` | `id`、`modeldata`（可选）、`index`、`data` | 配件类型、显示资源、属性加成 |
 | `attachment_tags` | `id`、`values` | 可复用的配件分组，`values` 包含配件 ID 或其他 `#标签` |
 | `recipes` | `id`、`recipe` | 工作台合成配方，`recipe` 保留原 `materials`、`result`、`type` 结构 |
 
 例如修改 AK-47 时，直接编辑导出文件中的 `data.rpm`、`data.bullet.damage`、`data.ammo_amount` 等字段；存在 `data.bullet.extra_damage.damage_adjust` 时，应同时调整距离伤害各档。原枪包字段完整保留在 `index`/`data` 内。加载器会为每个物品生成独立的数据索引，`index.data` 无需手动维护。当前支持 `reload.type` 为 `magazine` 或 `inventory`，逐发换弹沿用默认枪包的受支持脚本机制。
 
 新增型号可复制同机制的现有文件，更换 `id`、名称和参数，并引用客户端已有的 `index.display` 资源；新增弹药时同步修改枪械的 `data.ammo`。物品直接以 `kind` 与 `id` 识别，不需要配置 CMD 或分配模型编号。插件不再生成、读取或修改 `model-mappings.json`；旧文件即使存在也会被忽略。
+
+需要为基岩版提供原版 CustomModelData 时，在 `guns/bujidao/ar_01.json` 等物品文件的最外层配置 `modeldata`，与 `id`、`index`、`data` 同级；弹药和配件也使用相同字段。布吉岛默认枪械为 `3000000–3000009`，6 种弹药为 `3001000–3001005`，10 个配件为 `3002000–3002009`。固定对应关系保存在插件的 `default-modeldata.json`，不会因新增物品或文件排序改变已有编号；其他新型号默认 `0`。省略、`null` 或 `0` 表示不设置，也不覆盖物品已有的外部 CMD。正整数会写入标准 `minecraft:custom_model_data` 组件的第一个 float 槽，保留该组件已有的 strings、flags、colors。编号必须是非负 32 位整数，且能被 float 精确表示，避免基岩版映射编号被舍入；常用的 `1–16777216` 均可使用。非法配置会拒绝本次重载。
+
+三个弹药箱使用 `config.yml` 的 `ammo-box.modeldata.0/1/2`，默认分别为 `3003000/3003001/3003002`；`0` 禁用，缺省沿用对应默认编号。`/tacz reload` 会先校验这三项再切换枪包，非法值不会部分应用。已经初始化的物品目录不会自动覆盖原有 `modeldata: 0`，升级时可按新配置 ZIP 逐项补入对应编号。
+
+修改后执行 `/tacz reload`，再领取枪械即可携带配置的 CMD。后续换弹、改装等状态写入同样应用当前编号，重载不会主动遍历所有背包和容器。该字段只在插件端保存，不加入 TACZ 客户端同步目录或 `tacz:bridge` JSON，客户端 MOD 继续按原有 NBT/PDC 识别，无需更新 MOD。基岩版的模型资源与物品映射需与这里的编号对应。
 
 修改完成后使用 `/tacz reload`。插件先校验所有文件、引用与同步包大小，全部通过后才替换运行中的枪包并向在线客户端重新同步；失败时命令/日志给出错误，保留原枪包。删除型号时需一并处理引用它的枪械、配方或标签。启动时没有可用旧配置，错误会阻止插件启用。
 
@@ -218,7 +224,7 @@ hitboxes:
 
 载体分别为木棍、纸、燧石和箱子，身份和状态保存在 `tacz:bridge` PDC 的 JSON 中。`kind` 区分枪械/弹药/配件/弹药箱，`id` 对应服务器目录中的型号；枪械和弹药箱以 `instance` UUID 区分实例，弹药和配件无需每件独立 UUID，因此可以正常堆叠。弹药、膛室、配件、射击模式、热量和颜色仍保存在物品上。
 
-客户端读取标签后校验型号是否在当前同步目录中，并创建临时 MOD 物品视图，通过枪械 ID 和显示资源加载模型。枪械发放和渲染均不要求 `CustomModelData`；即使物品有其他插件设置的 CMD，也不会影响 TACZ 身份识别，TACZ 写入状态时不改动这个可选外观字段。仅有 CMD 而无有效 PDC 标签的普通物品不会成为枪械。两端共用类型、型号、载体和实例校验；服务端继续验证堆叠数量、弹量、配件兼容性等权威状态。真实网络与背包中的 ItemStack 仍是原版载体。
+客户端读取标签后校验型号是否在当前同步目录中，并创建临时 MOD 物品视图，通过枪械 ID 和显示资源加载模型。物品发放和渲染均不要求 `CustomModelData`；枪械、弹药、配件或弹药箱配置中设置了正数 `modeldata` 时，插件会把它写入原版 CMD，供基岩版映射使用；未配置时保留外部 CMD。CMD 不影响 TACZ 身份识别，仅有 CMD 而无有效 PDC 标签的普通物品不会成为枪械。两端共用类型、型号、载体和实例校验；服务端继续验证堆叠数量、弹量、配件兼容性等权威状态。真实网络与背包中的 ItemStack 仍是原版载体。对应 Geyser mapping 和网易资源打包说明见 [Geyser 对接](../integrations/geyser/README.md)。
 
 动作通过消息同步。换枪、死亡、离线、跨世界和重新握手清理临时动作状态；弹药、配件、枪内热量及箱内弹药保存在物品上。原版合成、烧炼、铁砧等变换路径会保护插件物品，普通容器储存和移动仍可使用。
 

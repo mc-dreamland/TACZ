@@ -3,6 +3,7 @@ package com.tacz.guns.paper.item;
 import com.google.gson.*;
 import com.tacz.guns.bridge.BridgeItemIdentity;
 import com.tacz.guns.paper.pack.DefaultGunPack;
+import com.tacz.guns.paper.pack.ItemModelData;
 import net.kyori.adventure.text.Component;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
@@ -87,6 +88,14 @@ public final class PaperItemStore {
         if (!pack.hasItem(kind, id) || stack.getType() != material(kind)) throw new IllegalArgumentException("Invalid TACZ item identity");
         state.remove("cmd");
         ItemMeta meta = stack.getItemMeta();
+        Integer modelData = kind.equals("box")
+                ? ItemModelData.ammoBox(plugin == null ? null : plugin.getConfig(), DefaultGunPack.BOX_IDS.indexOf(id))
+                : pack.itemModelData(kind, id);
+        if (modelData != null && modelData > 0) {
+            var component = meta.getCustomModelDataComponent();
+            component.setFloats(List.of(modelData.floatValue()));
+            meta.setCustomModelDataComponent(component);
+        }
         meta.setMaxStackSize(kind.equals("gun") || kind.equals("box") ? 1 : kind.equals("ammo") ? Math.min(64, Math.max(1, integer(pack.ammoIndexes().get(id), "stack_size", 64))) : 64);
         meta.getPersistentDataContainer().set(BRIDGE_KEY, PersistentDataType.STRING, state.toString());
         JsonObject index = switch (kind) { case "gun" -> pack.gunIndexes().get(id); case "ammo" -> pack.ammoIndexes().get(id); case "attachment" -> pack.attachmentIndexes().get(id); default -> null; };

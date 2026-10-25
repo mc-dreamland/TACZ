@@ -81,16 +81,20 @@ class DirectoryPackWorkflowTest {
         assertEquals(defaults.recipes().keySet(), recipes.keySet());
         for (String id : defaults.gunIndexes().keySet()) {
             JsonObject file = guns.get(id);
+            assertEquals(ItemModelData.defaultValue("gun", id), file.get("modeldata").getAsInt(), id);
+            assertEquals(file.get("modeldata").getAsInt(), pack.itemModelData("gun", id), id);
             assertEquals(defaults.gun(id), file.getAsJsonObject("data"), id);
             assertTrue(file.get("allow_attachments").isJsonArray(), id);
             assertEquals(defaults.gun(id), pack.gun(id), id);
             assertTrue(pack.hasItem("gun", id), id);
         }
         for (String id : defaults.ammoIndexes().keySet()) {
+            assertEquals(ItemModelData.defaultValue("ammo", id), pack.itemModelData("ammo", id), id);
             assertEquals(defaults.ammoIndexes().get(id), ammos.get(id).getAsJsonObject("index"), id);
             assertTrue(pack.hasItem("ammo", id), id);
         }
         for (String id : defaults.attachmentIndexes().keySet()) {
+            assertEquals(ItemModelData.defaultValue("attachment", id), pack.itemModelData("attachment", id), id);
             assertEquals(defaults.attachment(id), attachments.get(id).getAsJsonObject("data"), id);
             assertEquals(defaults.attachment(id), pack.attachment(id), id);
             assertTrue(pack.hasItem("attachment", id), id);
@@ -120,6 +124,53 @@ class DirectoryPackWorkflowTest {
         assertArChanges(pack);
         assertFalse(Files.exists(file), "Reload must not restore the default location of a moved item");
         assertEquals(moved, fileFor("guns", "bujidao:ar_01"));
+    }
+
+    @Test void modelDataRemainsServerOnlyAcrossReloadAndNestedFileMoves() throws Exception {
+        DefaultGunPack pack = loadDirectory();
+        String id = "bujidao:ar_01";
+        assertEquals(3000000, pack.gunModelData(id));
+        JsonObject network = pack.networkData();
+        Path file = fileFor("guns", id);
+        JsonObject gun = read(file);
+        gun.addProperty("modeldata", 10001);
+        write(file, gun);
+        reload(pack);
+        assertEquals(10001, pack.gunModelData(id));
+        assertEquals(network, pack.networkData(), "Vanilla model IDs must not change the TACZ client catalog");
+        Path moved = directory.resolve("guns/custom/nested/rifle.json");
+        Files.createDirectories(moved.getParent());
+        Files.move(file, moved);
+        reload(pack);
+        assertEquals(10001, pack.gunModelData(id));
+        assertEquals(network, pack.networkData());
+        for (JsonElement disabled : new JsonElement[]{JsonParser.parseString("0"), JsonParser.parseString("null"), null}) {
+            if (disabled == null) gun.remove("modeldata");
+            else gun.add("modeldata", disabled);
+            write(moved, gun);
+            reload(pack);
+            assertNull(pack.gunModelData(id));
+            assertEquals(network, pack.networkData());
+        }
+    }
+
+    @Test void invalidModelDataRejectsReloadWithoutReplacingActiveModelsOrCatalog() throws Exception {
+        DefaultGunPack pack = loadDirectory();
+        Path file = fileFor("guns", "bujidao:ar_01");
+        JsonObject gun = read(file);
+        gun.addProperty("modeldata", 10001);
+        write(file, gun);
+        reload(pack);
+        for (String invalid : new String[]{"-1", "1.5", "\"10001\"", "true", "[]", "{}", "2147483648", "16777217"}) {
+            gun.add("modeldata", JsonParser.parseString(invalid));
+            write(file, gun);
+            JsonObject network = pack.networkData();
+            IOException error = assertThrows(IOException.class, () -> reload(pack), invalid);
+            assertTrue(error.getMessage().contains("guns/bujidao/ar_01.json"), error.getMessage());
+            assertTrue(error.getMessage().contains("modeldata"), error.getMessage());
+            assertEquals(10001, pack.gunModelData("bujidao:ar_01"));
+            assertEquals(network, pack.networkData());
+        }
     }
 
     @Test void ammoAttachmentAndCraftingEditsReachTheSameSynchronizedCatalog() throws Exception {

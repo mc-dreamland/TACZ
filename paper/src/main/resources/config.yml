@@ -2,6 +2,10 @@
 # JSON files are scanned recursively; /tacz reload validates and synchronizes them.
 # The tacz:bridge PDC kind/id identifies items. Gameplay states use tacz:paper.
 ammo-box:
+  modeldata:
+    0: 3003000
+    1: 3003001
+    2: 3003002
   capacity:
     0: 192
     1: 384

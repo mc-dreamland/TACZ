@@ -11,6 +11,7 @@ import com.tacz.guns.paper.item.PaperItemStore;
 import com.tacz.guns.paper.network.PaperNetwork;
 import com.tacz.guns.paper.network.NeteaseBridge;
 import com.tacz.guns.paper.pack.DefaultGunPack;
+import com.tacz.guns.paper.pack.ItemModelData;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -40,6 +41,7 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
         }
         saveDefaultConfig();
         try {
+            ItemModelData.validateAmmoBoxes(getConfig());
             pack = new DefaultGunPack(this);
             pack.load();
             PaperItemStore items = new PaperItemStore(this, pack);
@@ -83,6 +85,7 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
             YamlConfiguration configuration = new YamlConfiguration();
             configuration.load(new File(getDataFolder(), "config.yml"));
             profiles = HitboxProfiles.load(configuration);
+            ItemModelData.validateAmmoBoxes(configuration);
             // Loading is staged, including transfer-size validation. A bad file must not
             // clear menus, interrupt shots or replace any currently active catalog data.
             pack.load();

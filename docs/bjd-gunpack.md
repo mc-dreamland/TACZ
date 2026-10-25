@@ -8,6 +8,8 @@
 
 伤害沿用对应类别的 TACZ 基础参数，可继续在 `data/bujidao/data/guns/` 或插件导出的 `guns/bujidao/` 调整。插件参数会同步给客户端；模型、纹理、声音和表现配置需要两端使用对应的新版本。
 
+插件物品配置另支持最外层的 `modeldata`（与 `id`、`index`、`data` 同级）。布吉岛 10 把枪默认 `3000000–3000009`，6 种弹药 `3001000–3001005`，10 个配件 `3002000–3002009`；三个弹药箱通过 `config.yml` 的 `ammo-box.modeldata.0/1/2` 配置为 `3003000–3003002`。它写入原版 `minecraft:custom_model_data`，供基岩版物品映射使用；`0` 不设置，已有配置可手动补入编号后 `/tacz reload`。该字段不加入 TACZ 同步目录，客户端 MOD 仍只按 NBT/PDC 信息识别枪械，无需修改客户端枪包。完整说明见 [Paper 配置](../paper/README.md#配置) 与 [Geyser 对接](../integrations/geyser/README.md)。
+
 | ID | 类型 | 弹药 | 基础弹容 | RPM |
 | --- | --- | --- | ---: | ---: |
 | `bujidao:ar_01` | 步枪 | `tacz:762x39` | 30 | 600 |
