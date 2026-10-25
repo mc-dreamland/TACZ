@@ -1,5 +1,30 @@
 # TACZ Paper
 
+## 网易客户端桥接
+
+网易玩家使用 `D:\Project_GitLab\TACZ` 对应的行为包和资源包。服务端通过 MoreGui 同款
+`ProtocolSupportCustomPacket 1.4.0-SNAPSHOT` API 收发 `TaczBridgeC2S` / `TaczBridgeS2C` 事件，
+命名空间为 `TACZ`。该插件及其支持网易自定义包的 Floodgate/Geyser 环境须已正常运行。
+Java 玩家继续使用原来的 `tacz:paper` 通道。
+
+构建时 `com.ayou:ProtocolSupportCustomPacket:1.4.0-SNAPSHOT` 从 Maven 本地仓库读取；
+这是 `compileOnly` 依赖，不会被打进 TACZ 插件。不要使用仓库中基于旧 `Connection` API 的源码版本替代它。
+
+同时更新 Paper 插件和网易行为包后重新进服。客户端会自动发起握手，接收并校验服务端枪械目录，
+服务端日志出现 `TACZ bridge ready: 玩家名 (NetEase)` 且 `/tacz status` 显示已就绪后，
+再执行 `/tacz give 玩家名 gun bujidao:ar_01`。无需删除发枪命令的就绪检查。
+
+网易端复用已有枪械模型、HUD、声音及动作资源，枪械身份、弹药、射速、换弹和伤害由 Paper 决定。
+服务端新增型号仍须在网易资源包中有对应资源。网易改装键 Z 和 `/tacz refit`、工作台及弹药箱
+使用可由 Geyser 显示的原版容器菜单，所有交易仍经过原有权限、会话令牌及物品校验。
+弹药箱菜单左键取出、右键存入，普通点击操作 64 发，Shift 点击最多操作 4096 发。
+
+桥接验证：在 `paper/` 运行 `test build`；在网易项目运行
+`python -B tests/test_paper_protocol.py`。将 `TACZ_PAPER_GUNPACK` 指向
+`paper/build/generated/pack/default-pack.zip`，将 `TACZ_PAPER_WIRE_FIXTURE` 指向
+`paper/build/netease-wire-fixture.json`，可额外验证真实枪包和 Java 生成的握手消息。
+这些自动检查不能替代实际客户端的渲染、输入和混合战斗联调。
+
 本模块为 **Paper 1.21.11 / Java 21** 提供 TACZ 服务端逻辑。客户端使用本仓库构建的 **NeoForge 1.21.10 MOD / Java 21**。1.21.10 客户端连接 1.21.11 服务端仍需额外配置兼容的原版协议转换方案；TACZ 桥接不负责原版版本转换。TACZ 动作和菜单通过 `tacz:paper` Plugin Message 通道传输，桥接协议为 5。
 
 ## 支持范围

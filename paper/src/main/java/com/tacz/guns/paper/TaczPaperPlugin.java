@@ -6,8 +6,10 @@ import com.tacz.guns.paper.gameplay.HitboxProfiles;
 import com.tacz.guns.paper.inventory.PaperInventoryService;
 import com.tacz.guns.paper.inventory.PaperItemGuard;
 import com.tacz.guns.paper.inventory.PaperSupplyMenu;
+import com.tacz.guns.paper.inventory.NeteaseInventoryMenus;
 import com.tacz.guns.paper.item.PaperItemStore;
 import com.tacz.guns.paper.network.PaperNetwork;
+import com.tacz.guns.paper.network.NeteaseBridge;
 import com.tacz.guns.paper.pack.DefaultGunPack;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
@@ -27,6 +29,7 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
     private PaperGunService guns;
     private PaperInventoryService inventory;
     private PaperSupplyMenu supplies;
+    private NeteaseInventoryMenus neteaseMenus;
 
     @Override
     public void onEnable() {
@@ -54,6 +57,14 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
                 guns.resetConnection(player);
                 inventory.close(player);
             });
+            if (Bukkit.getPluginManager().isPluginEnabled("ProtocolSupportCustomPacket")) {
+                // 依赖存在时注册网易事件和标准容器菜单；监听启用不代表任一玩家已完成 TACZ 握手。
+                new NeteaseBridge(this, network);
+                neteaseMenus = new NeteaseInventoryMenus(this, network);
+                getLogger().info("[TACZ NetEase] [启动完毕] 网易自定义事件桥接及容器菜单已注册，等待客户端 hello；玩家就绪以握手确认为准");
+            } else {
+                getLogger().warning("[TACZ NetEase] [未启用] ProtocolSupportCustomPacket 未启用，无法注册网易桥接");
+            }
             TaczCommand commands = new TaczCommand(this, pack, items, inventory, supplies, network, this::reloadTacz);
             Objects.requireNonNull(getCommand("tacz")).setExecutor(commands);
             Objects.requireNonNull(getCommand("tacz")).setTabCompleter(commands);
@@ -82,6 +93,7 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
         try {
             reloadConfig();
             guns.hitboxProfiles(profiles);
+            if (neteaseMenus != null) neteaseMenus.closeAll();
             inventory.clear();
             supplies.clear();
             for (var player : Bukkit.getOnlinePlayers()) guns.reset(player);
@@ -94,6 +106,7 @@ public final class TaczPaperPlugin extends JavaPlugin implements Listener {
 
     @Override public void onDisable() {
         Bukkit.getScheduler().cancelTasks(this);
+        if (neteaseMenus != null) neteaseMenus.closeAll();
         if (inventory != null) inventory.clear();
         if (supplies != null) supplies.clear();
         if (guns != null) guns.shutdown();

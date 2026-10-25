@@ -527,6 +527,16 @@ public final class PaperGunService implements Listener {
         JsonObject state = items.read(player.getInventory().getItemInMainHand());
         JsonObject packet = state != null && text(state, "kind", "").equals("gun") ? state.deepCopy() : new JsonObject();
         packet.addProperty("entity", player.getEntityId());
+        packet.addProperty("playerUuid", player.getUniqueId().toString());
+        packet.addProperty("playerName", player.getName());
+        packet.addProperty("slot", player.getInventory().getHeldItemSlot());
+        JsonObject bridgeGun = state == null || !text(state, "kind", "").equals("gun") ? null : items.effectiveGun(state);
+        packet.addProperty("capacity", bridgeGun == null ? 0 : items.capacity(state));
+        packet.addProperty("reserve", bridgeGun == null ? 0 : items.countAmmo(player, text(bridgeGun, "ammo", "")));
+        packet.addProperty("rpm", bridgeGun == null ? 300 : number(bridgeGun, "rpm", 300));
+        packet.addProperty("creative", player.getGameMode() == GameMode.CREATIVE
+                || bridgeGun != null && flag(object(bridgeGun, "reload"), "infinite", false));
+        packet.addProperty("bolt", bridgeGun == null ? "" : text(bridgeGun, "bolt", ""));
         packet.addProperty("instance", text(packet, "instance", "")); packet.addProperty("id", text(packet, "id", ""));
         packet.addProperty("ammo", integer(packet, "ammo", 0)); packet.addProperty("chamber", flag(packet, "chamber", false));
         packet.addProperty("fireMode", text(packet, "fireMode", "semi")); packet.addProperty("heat", number(packet, "heat", 0));
@@ -613,7 +623,7 @@ public final class PaperGunService implements Listener {
     private static boolean interruptible(Session s) { return feeding(s) && s.reload != null && s.reload.progressive(); }
     private long now() { return clock.getAsLong(); }
     private static JsonObject event(Player player, JsonObject state, String op) {
-        JsonObject event = new JsonObject(); event.addProperty("entity", player.getEntityId()); event.addProperty("instance", text(state, "instance", "")); event.addProperty("id", text(state, "id", "")); event.addProperty("op", op); event.addProperty("seq", nextEventSequence()); event.addProperty("fireMode", text(state, "fireMode", "semi")); return event;
+        JsonObject event = new JsonObject(); event.addProperty("entity", player.getEntityId()); event.addProperty("playerUuid", player.getUniqueId().toString()); event.addProperty("instance", text(state, "instance", "")); event.addProperty("id", text(state, "id", "")); event.addProperty("op", op); event.addProperty("seq", nextEventSequence()); event.addProperty("fireMode", text(state, "fireMode", "semi")); return event;
     }
     private void broadcastValue(Player player, JsonObject state, String op, boolean value) { JsonObject event = event(player, state, op); event.addProperty("value", value); peer.broadcast(player, "event", event); }
 

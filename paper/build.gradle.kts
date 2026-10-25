@@ -10,10 +10,13 @@ version = "1.1.8-hotfix2-paper-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    mavenLocal { content { includeModule("com.ayou", "ProtocolSupportCustomPacket") } }
 }
 
 dependencies {
     paperweight.paperDevBundle("1.21.11-R0.1-SNAPSHOT")
+    compileOnly("com.ayou:ProtocolSupportCustomPacket:1.4.0-SNAPSHOT") { isTransitive = false }
+    testImplementation("com.ayou:ProtocolSupportCustomPacket:1.4.0-SNAPSHOT") { isTransitive = false }
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("com.google.code.gson:gson:2.10.1")

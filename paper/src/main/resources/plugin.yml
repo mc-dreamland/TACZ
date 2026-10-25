@@ -1,6 +1,7 @@
 name: TACZ
 version: '${version}'
 main: com.tacz.guns.paper.TaczPaperPlugin
+softdepend: [ProtocolSupportCustomPacket]
 api-version: '1.21.11'
 description: TACZ default gun pack server with a Forge client bridge
 authors: [TACZ]
