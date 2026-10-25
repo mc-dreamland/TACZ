@@ -85,6 +85,19 @@ public final class BedrockRenderSnapshot {
         return this.drawCommands.isEmpty();
     }
 
+    /** Freeze the accepted cubes before any vanilla or deferred Iris submission. */
+    public BedrockRenderSnapshot filtered(Predicate<BedrockCube> cubeFilter) {
+        List<DrawCommand> filtered = new ArrayList<>();
+        for (DrawCommand command : this.drawCommands) {
+            List<BedrockCube> cubes = command.cubes().stream().filter(cubeFilter).toList();
+            if (!cubes.isEmpty()) {
+                filtered.add(new DrawCommand(command.pose(), command.normal(), cubes,
+                        command.light(), command.overlay(), command.red(), command.green(), command.blue(), command.alpha()));
+            }
+        }
+        return new BedrockRenderSnapshot(filtered, this.functionalTasks, this.skippedFunctionalNodeCount);
+    }
+
     /** Number of old functional nodes intentionally deferred to the A3 collector migration. */
     public int skippedFunctionalNodeCount() {
         return this.skippedFunctionalNodeCount;
