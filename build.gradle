@@ -185,3 +185,5 @@ tasks.named('test', Test).configure {
 }
 
 idea.module.downloadSources = true
+
+apply from: 'gradle/paper-build.gradle'

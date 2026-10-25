@@ -1,0 +1,32 @@
+// Paper uses Gradle 9.2 while the NeoForge build uses 8.14. Keep each wrapper in
+// charge of its own plugins, and make the root lifecycle build both artifacts.
+def paperJava = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+}
+def paperArguments = ['build', '--no-daemon', '--console=plain']
+if (gradle.startParameter.offline) {
+    paperArguments.add('--offline')
+}
+if (gradle.startParameter.rerunTasks) {
+    paperArguments.add('--rerun-tasks')
+}
+if (gradle.startParameter.excludedTaskNames.any { it == 'test' || it == ':test' }) {
+    paperArguments.addAll(['--exclude-task', 'test'])
+}
+def paperWrapper = System.getProperty('os.name').toLowerCase(Locale.ROOT).contains('windows')
+        ? ['cmd.exe', '/d', '/c', 'gradlew.bat']
+        : ['sh', './gradlew']
+
+def buildPaper = tasks.register('buildPaper', Exec) {
+    group = 'build'
+    description = 'Builds the Paper plugin, runs its tests and exports its default configuration using the Paper wrapper.'
+    workingDir layout.projectDirectory.dir('paper')
+    commandLine paperWrapper + paperArguments
+    doFirst {
+        environment 'JAVA_HOME', paperJava.get().metadata.installationPath.asFile.absolutePath
+    }
+}
+
+tasks.named('build').configure {
+    dependsOn buildPaper
+}

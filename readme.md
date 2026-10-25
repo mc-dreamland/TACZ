@@ -24,12 +24,14 @@
 
 This branch of Timeless and Classics Guns Zero targets **Minecraft 1.21.11, NeoForge 21.11.45+, and Java 21**. The supported Minecraft version is exactly 1.21.11; NeoForge must remain on the 21.11 release line.
 
-Paper 1.21.11 server support is in the independent [paper module](paper/README.md).
+Paper 1.21.11 server support is in the separately configured [paper module](paper/README.md). The root `build` task builds both the client MOD and the Paper plugin.
 It uses this repository's NeoForge client bridge (protocol 4) and supports the bundled Bujidao gun pack. The client and Paper server both target Minecraft 1.21.11, so this pairing does not require a vanilla protocol translator.
 
 ## Build this branch
 
 Use Java 21 and run `./gradlew test build` (`.\gradlew.bat test build` on Windows). The installable mod is `build/libs/tacz-1.21.11-neoforge-1.1.8+neoforge.1.21.11.hotfix2.jar`; its Lua, BCEL, and math dependencies are included by Jar-in-Jar. Do not install the sources JAR or an older artifact from the same output directory.
+
+The same command also builds and tests the Paper plugin with its own Gradle 9.2 wrapper. Its JAR is in `paper/build/libs/`, and its default configuration ZIP is in `paper/build/distributions/`. In IntelliJ IDEA, reload the root Gradle project and run its `build` task to produce both artifacts. `buildPaper` builds only the plugin; `build -x buildPaper` builds only the MOD. Root `--offline` and `-x test` options are passed through to the plugin build.
 
 The port uses data components for item state, NeoForge payloads and attachments, and the 1.21.11 render-state/submit-collector APIs. Resource identifiers use Minecraft's `Identifier` API; rendering uses `RenderSetup` and explicit GPU samplers. Java addons that implement the old immediate-mode `IFunctionalRenderer` must migrate to `IFunctionalSubmitter`. Legacy gun-pack result NBT and attachment data are translated at their read boundaries. Back up worlds and external gun packs before a version migration; this does not promise automatic conversion of every Forge 1.20.1 world or third-party gun pack.
 

@@ -44,15 +44,17 @@ Java 玩家继续使用原来的 `tacz:paper` 通道。
 
 ## 构建
 
-两个模块各自使用自己的 Gradle Wrapper，分别管理 ModDevGradle 和 paperweight 的构建环境。IDE 可以单独导入 `paper/settings.gradle.kts`。
+两个模块各自使用自己的 Gradle Wrapper（根目录 8.14.3，Paper 9.2.0），分别管理 ModDevGradle 和 paperweight 的构建环境。根目录的 `build` 已通过 `buildPaper` 任务调用插件 Wrapper，一次构建会生成 MOD、插件和插件默认配置 ZIP。IDEA 重新加载根 Gradle 项目后，运行右侧面板根项目的 `build` 即可一起构建；插件代码需要独立导入时，仍可链接 `paper/settings.gradle.kts`。
 
-客户端：在仓库根目录使用 Java 21：
+MOD 与插件：在仓库根目录使用 Java 21：
 
 ```powershell
 .\gradlew.bat test build
 ```
 
-插件：在 `paper/` 目录使用 Java 21：
+只构建 MOD 时运行 `./gradlew build -x buildPaper`；只构建插件可在根目录运行 `./gradlew buildPaper`。根目录的 `--offline`、`--rerun-tasks` 和 `-x test` 会透传到插件构建，插件失败也会使根构建失败。IDEA 的“构建项目 / Ctrl+F9”主要编译代码，打包 JAR 请运行 Gradle 的 `build`。
+
+插件也可以在 `paper/` 目录独立构建，使用 Java 21：
 
 ```powershell
 .\gradlew.bat test build

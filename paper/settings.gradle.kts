@@ -5,6 +5,6 @@ pluginManagement {
     }
 }
 
-// This standalone build deliberately keeps the Forge build's Gradle version unchanged.
+// Keep Paper's Gradle version independent; the root build invokes this project's wrapper.
 rootProject.name = "tacz-paper"
 

@@ -49,13 +49,13 @@ SG-01 保留逐发装填及射击内泵动；`script_param` 与客户端 `state_
 
 ## 构建与部署
 
-在相应分支使用该分支所需的 Java 版本构建客户端；Paper 模块始终使用 Java 21。
+在相应分支使用该分支所需的 Java 版本；当前分支使用 Java 21。根目录 `build` 会同时构建 MOD、Paper 插件和默认配置 ZIP，Paper 使用自己的 Wrapper。
 
 ```powershell
 .\gradlew.bat build
-cd paper
-.\gradlew.bat test build
 ```
+
+IDEA 重新加载 Gradle 项目后，在右侧面板运行根项目的 `build`。只构建插件可运行 `buildPaper`；只构建 MOD 可运行 `build -x buildPaper`。
 
 - 客户端完整枪包：`build/distributions/tacz-bjd-gunpack.zip`。
 - 插件目录配置：`paper/build/distributions/tacz-paper-bjd-config.zip`。
