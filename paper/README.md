@@ -52,6 +52,8 @@ MOD 与插件：在仓库根目录使用 Java 21：
 .\gradlew.bat test build
 ```
 
+客户端的 Controllable 与 Framework 兼容 API 通过 `gradle.properties` 中固定的文件 ID 从 Curse Maven 解析，均为 `compileOnly`；无需向 `libs/` 添加旧的 1.21.10 副本。
+
 只构建 MOD 时运行 `./gradlew build -x buildPaper`；只构建插件可在根目录运行 `./gradlew buildPaper`。根目录的 `--offline`、`--rerun-tasks` 和 `-x test` 会透传到插件构建，插件失败也会使根构建失败。IDEA 的“构建项目 / Ctrl+F9”主要编译代码，打包 JAR 请运行 Gradle 的 `build`。
 
 插件也可以在 `paper/` 目录独立构建，使用 Java 21：
