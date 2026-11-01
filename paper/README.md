@@ -2,12 +2,12 @@
 
 ## 网易客户端桥接
 
-网易玩家使用 `D:\Project_GitLab\TACZ` 对应的行为包和资源包。服务端通过 MoreGui 同款
-`ProtocolSupportCustomPacket 1.4.0-SNAPSHOT` API 收发 `TaczBridgeC2S` / `TaczBridgeS2C` 事件，
+网易玩家使用本项目对应的行为包和资源包。服务端通过兼容的
+`ProtocolSupportCustomPacket` API 收发 `TaczBridgeC2S` / `TaczBridgeS2C` 事件，
 命名空间为 `TACZ`。该插件及其支持网易自定义包的 Floodgate/Geyser 环境须已正常运行。
 Java 玩家继续使用原来的 `tacz:paper` 通道。
 
-构建时 `com.ayou:ProtocolSupportCustomPacket:1.4.0-SNAPSHOT` 从 Maven 本地仓库读取；
+手动构建可从 Maven 本地仓库读取兼容版本的 `ProtocolSupportCustomPacket`；
 这是 `compileOnly` 依赖，不会被打进 TACZ 插件。不要使用仓库中基于旧 `Connection` API 的源码版本替代它。
 
 同时更新 Paper 插件和网易行为包后重新进服。客户端会自动发起握手，接收并校验服务端枪械目录，

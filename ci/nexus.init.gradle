@@ -1,0 +1,185 @@
+import org.gradle.api.publish.maven.MavenPublication
+allprojects { p ->
+    apply plugin: 'maven-publish'
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'nexusPrivate'
+                    url = uri(System.getenv('TACZ_NEXUS_READ_URL'))
+                    credentials {
+                        username = System.getenv('NEXUS_USERNAME')
+                        password = System.getenv('NEXUS_PASSWORD')
+                    }
+                }
+            }
+            filter { includeModule('com.ayou', 'ProtocolSupportCustomPacket') }
+        }
+    }
+    configurations.configureEach { resolutionStrategy.cacheChangingModulesFor 0, 'seconds' }
+    afterEvaluate {
+        repositories.removeAll { it instanceof MavenArtifactRepository && it.url.scheme == 'file' && it.url.path.contains('.m2') }
+        def paper = p.name == 'tacz-paper'
+        publishing {
+            publications {
+                ci(MavenPublication) {
+                    groupId = p.group.toString()
+                    artifactId = paper ? p.name : (p.findProperty('archivesBaseName') ?: p.extensions.getByName('base').archivesName.get())
+                    version = p.version.toString().replaceFirst(/-SNAPSHOT$/, '') + '-' + System.getenv('TACZ_BRANCH').replaceAll('[^A-Za-z0-9.-]', '-') + '-SNAPSHOT'
+                    if (!paper && p.plugins.hasPlugin('net.minecraftforge.gradle')) {
+                        artifact(p.tasks.named('jarJar')) { classifier = null; builtBy(p.tasks.named('reobfJarJar')) }
+                    } else {
+                        artifact(p.tasks.named('jar'))
+                    }
+                    if (!paper) { artifact(p.tasks.named('sourcesJar')) }
+                    if (paper) {
+                        artifact(p.tasks.named('defaultServerConfig')) { classifier = 'server-config' }
+                    } else {
+                        artifact(p.tasks.named('gunPackZip')) { classifier = 'gunpack' }
+                    }
+                    pom {
+                        name = paper ? 'TACZ Paper server plugin' : 'TACZ client mod'
+                        description = 'Runnable distribution for ' + System.getenv('TACZ_BRANCH') + '; server/client runtime supplies platform dependencies.'
+                        url = 'https://github.com/mc-dreamland/TACZ'
+                        scm { url = 'https://github.com/mc-dreamland/TACZ'; tag = System.getenv('GIT_COMMIT') }
+                        licenses { license { name = 'GNU General Public License v3.0'; url = 'https://www.gnu.org/licenses/gpl-3.0.html' } }
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    name = 'Nexus'
+                    url = uri(System.getenv('TACZ_NEXUS_PUBLISH_URL'))
+                    credentials {
+                        username = System.getenv('NEXUS_USERNAME')
+                        password = System.getenv('NEXUS_PASSWORD')
+                    }
+                }
+            }
+        }
+        tasks.register('ciArtifactManifest') {
+            dependsOn tasks.named('generatePomFileForCiPublication')
+            doLast {
+                def publication = publishing.publications.ci
+                def target = layout.buildDirectory.file('ci-artifacts.json').get().asFile
+                target.text = groovy.json.JsonOutput.toJson([group: publication.groupId, artifact: publication.artifactId, version: publication.version, pom: layout.buildDirectory.file('publications/ci/pom-default.xml').get().asFile.absolutePath, artifacts: publication.artifacts.collect { [file: it.file.absolutePath, classifier: it.classifier ?: '', extension: it.extension] }])
+                def workspace = new File(System.getenv('WORKSPACE')).toPath()
+                layout.buildDirectory.file('ci-archive.txt').get().asFile.text = publication.artifacts.findAll { it.classifier != 'sources' }.collect { workspace.relativize(it.file.toPath()).toString() }.join('\n') + '\n'
+                println 'NEXUS_COORDINATES=' + publication.groupId + ':' + publication.artifactId + ':' + publication.version
+                publication.artifacts.each { println 'DISTRIBUTION=' + it.file }
+            }
+        }
+        if (!paper) {
+            tasks.register('ciVerifyMappedClient') {
+                dependsOn tasks.named(p.plugins.hasPlugin('net.minecraftforge.gradle') ? 'createMcpToSrg' : 'createMinecraftArtifacts')
+                doLast {
+                    def mapped = sourceSets.main.compileClasspath.files.find { file ->
+                        file.isFile() && file.name.endsWith('.jar') && new java.util.jar.JarFile(file).withCloseable { jar ->
+                            jar.getEntry('net/minecraft/world/entity/LivingEntity.class') != null
+                        }
+                    }
+                    if (mapped == null) { throw new GradleException('Mapped Minecraft LivingEntity class missing from client compile classpath') }
+                    println 'MAPPED_MINECRAFT=' + mapped
+                }
+            }
+        }
+        tasks.register('verifyCiPublicationOnNexus') {
+            doLast {
+                def publication = publishing.publications.ci
+                def coordinate = publication.groupId + ':' + publication.artifactId + ':' + publication.version
+                def prefix = publication.groupId.replace('.', '/') + '/' + publication.artifactId + '/' + publication.version + '/'
+                def authorization = 'Basic ' + java.util.Base64.encoder.encodeToString((System.getenv('NEXUS_USERNAME') + ':' + System.getenv('NEXUS_PASSWORD')).getBytes('UTF-8'))
+                def fetch = { String path ->
+                    def connection = new URL(System.getenv('TACZ_NEXUS_READ_URL') + path).openConnection()
+                    connection.setRequestProperty('Authorization', authorization)
+                    connection.connectTimeout = 120000
+                    connection.readTimeout = 120000
+                    if (connection.responseCode != 200) { throw new GradleException('Unexpected Nexus HTTP status ' + connection.responseCode + ' for ' + path) }
+                    connection.inputStream.withCloseable { it.bytes }
+                }
+                def xml = { byte[] bytes ->
+                    def factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                    factory.namespaceAware = false
+                    factory.newDocumentBuilder().parse(new ByteArrayInputStream(bytes))
+                }
+                def metadata = xml(fetch(prefix + 'maven-metadata.xml'))
+                def snapshots = []
+                metadata.getElementsByTagName('snapshotVersion').each { node ->
+                    def values = [:]
+                    node.childNodes.each { child -> if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE) { values[child.nodeName] = child.textContent } }
+                    snapshots << values
+                }
+                def pomFile = layout.buildDirectory.file('publications/ci/pom-default.xml').get().asFile
+                def files = publication.artifacts.collect { [file: it.file, classifier: it.classifier ?: '', extension: it.extension] }
+                files << [file: pomFile, classifier: '', extension: 'pom']
+                files.each { item ->
+                    def matches = snapshots.findAll { it.extension == item.extension && (it.classifier ?: '') == item.classifier }
+                    if (matches.size() != 1) { throw new GradleException('Missing or ambiguous SNAPSHOT entry: ' + item) }
+                    def timestamp = matches[0].value
+                    def remote = publication.artifactId + '-' + timestamp + (item.classifier ? '-' + item.classifier : '') + '.' + item.extension
+                    byte[] payload = fetch(prefix + remote)
+                    def digest = java.security.MessageDigest.getInstance('SHA-256').digest(payload).encodeHex().toString()
+                    def localDigest = java.security.MessageDigest.getInstance('SHA-256').digest(item.file.bytes).encodeHex().toString()
+                    if (digest != localDigest) { throw new GradleException('Remote bytes differ from built artifact: ' + remote) }
+                    if (item.extension in ['jar', 'zip']) {
+                        def names = [] as Set
+                        def selected = [:]
+                        new java.util.zip.ZipInputStream(new ByteArrayInputStream(payload)).withCloseable { archive ->
+                            for (def entry = archive.nextEntry; entry != null; entry = archive.nextEntry) {
+                                names << entry.name
+                                if (entry.name in ['plugin.yml', 'META-INF/MANIFEST.MF', 'META-INF/jarjar/metadata.json'] || (entry.name.startsWith('META-INF/jarjar/') && entry.name.endsWith('.jar'))) { selected[entry.name] = archive.readAllBytes() }
+                            }
+                        }
+                        if (names.empty) { throw new GradleException('Empty ZIP: ' + remote) }
+                        if (item.extension == 'jar' && !item.classifier) {
+                            def descriptor = publication.artifactId == 'tacz-paper' ? 'plugin.yml' : (publication.artifactId.contains('1.20.1') ? 'META-INF/mods.toml' : 'META-INF/neoforge.mods.toml')
+                            if (!names.contains(descriptor)) { throw new GradleException('Missing distribution descriptor: ' + descriptor) }
+                            if (publication.artifactId == 'tacz-paper') {
+                                def plugin = new String(selected['plugin.yml'], 'UTF-8')
+                                def main = (plugin =~ /(?m)^main:\s*['"]?([^'"\s]+)/)
+                                if (!main.find() || !names.contains(main.group(1).replace('.', '/') + '.class')) { throw new GradleException('Paper main class absent') }
+                                def manifest = new String(selected['META-INF/MANIFEST.MF'], 'UTF-8')
+                                if (!(manifest =~ /(?im)^paperweight-mappings-namespace:\s*mojang\s*$/).find()) { throw new GradleException('Paper JAR is not marked MOJANG_PRODUCTION') }
+                                println 'PAPER_MANIFEST=paperweight-mappings-namespace: mojang'
+                            } else {
+                                if (!names.contains('META-INF/jarjar/metadata.json')) { throw new GradleException('Jar-in-Jar metadata absent') }
+                                def jarjar = new groovy.json.JsonSlurper().parse(selected['META-INF/jarjar/metadata.json'])
+                                def embedded = jarjar.jars.collectEntries { entry -> [((entry.identifier.group + ':' + entry.identifier.artifact)): entry.path] }
+                                def expected = ['org.apache.commons:commons-math3', 'com.github.FiguraMC.luaj:luaj-core', 'com.github.FiguraMC.luaj:luaj-jse', 'org.apache.bcel:bcel']
+                                if (publication.artifactId.contains('1.20.1')) { expected.addAll(['com.github.mcmodderanchor:simplebedrockmodel', 'io.github.llamalad7:mixinextras-forge']) }
+                                def missing = expected.findAll { !embedded.containsKey(it) }
+                                if (missing) { throw new GradleException('Missing Jar-in-Jar dependencies: ' + missing) }
+                                expected.each { dependency ->
+                                    def nestedPath = embedded[dependency]
+                                    if (!names.contains(nestedPath) || selected[nestedPath] == null) { throw new GradleException('Embedded dependency payload absent: ' + dependency) }
+                                    def nestedEntries = 0
+                                    new java.util.zip.ZipInputStream(new ByteArrayInputStream(selected[nestedPath])).withCloseable { nested ->
+                                        for (def nestedEntry = nested.nextEntry; nestedEntry != null; nestedEntry = nested.nextEntry) {
+                                            nested.closeEntry()
+                                            nestedEntries++
+                                        }
+                                    }
+                                    if (!nestedEntries) { throw new GradleException('Empty embedded dependency JAR: ' + dependency) }
+                                    println 'EMBEDDED ' + dependency + ' ' + nestedPath + ' bytes=' + selected[nestedPath].length
+                                }
+                                println 'JARJAR=' + expected.collect { it + '=' + embedded[it] }.join(',')
+                            }
+                        }
+                    } else if (item.extension == 'pom') {
+                        def pom = xml(payload)
+                        def direct = { String key ->
+                            def children = pom.documentElement.childNodes
+                            for (int i = 0; i < children.length; i++) {
+                                def child = children.item(i)
+                                if (child.nodeType == org.w3c.dom.Node.ELEMENT_NODE && (child.localName ?: child.nodeName) == key) { return child.textContent }
+                            }
+                            null
+                        }
+                        if (direct('groupId') != publication.groupId || direct('artifactId') != publication.artifactId || direct('version') != publication.version) { throw new GradleException('Unexpected remote POM coordinates') }
+                    }
+                    println 'VERIFIED ' + coordinate + ' ' + remote + ' bytes=' + payload.length + ' sha256=' + digest
+                }
+            }
+        }
+    }
+}

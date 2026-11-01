@@ -18,7 +18,7 @@
 物品由 Geyser 根据 mapping 注册并下发名称、图标等组件，输出资源包不包含 `netease_items_res/`，输出行为包不包含 `netease_items_beh/`。资源包保留 `textures/item_texture.json`、PNG、attachable、模型、动画等显示资源。行为包仅保留原包的 Python 表现脚本、弹体实体等内容；当前枪械 attachable 使用隐藏几何，手持显示仍依赖这些脚本，因此此处只清理重复物品定义，没有移除整个行为包或改写手持渲染方案。
 
 ```powershell
-python tools/build_geyser_tacz_pack.py --source E:/0-Self/Download/TACZ.zip --geyser D:/WorkSpace/IDEA/Java/Geyser_netease_1.21
+python tools/build_geyser_tacz_pack.py --source path/to/TACZ.zip --geyser path/to/Geyser
 ```
 
 输出对应安装位置：
