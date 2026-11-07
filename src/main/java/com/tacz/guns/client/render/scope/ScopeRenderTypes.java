@@ -495,6 +495,7 @@ public final class ScopeRenderTypes {
         RenderPipeline source = RenderPipelines.ENTITY_CUTOUT;
         RenderPipeline.Builder builder = clonePipeline(source,
                 Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_etched_reticle"));
+        builder.withShaderDefine("EMISSIVE");
         // entity.fsh clone plus the ocular screen-space mask branch at the top of main().
         builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
@@ -554,6 +555,7 @@ public final class ScopeRenderTypes {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
                 Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_late_etched_reticle"));
+        builder.withShaderDefine("EMISSIVE");
         builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_mask"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);
@@ -610,6 +612,7 @@ public final class ScopeRenderTypes {
         RenderPipeline.Builder builder = clonePipeline(
                 RenderPipelines.ENTITY_CUTOUT,
                 Identifier.fromNamespaceAndPath(GunMod.MOD_ID, "pipeline/scope_final_etched_reticle"));
+        builder.withShaderDefine("EMISSIVE");
         builder.withFragmentShader(Identifier.fromNamespaceAndPath(
                 GunMod.MOD_ID, "core/scope_reticle_final"));
         builder.withSampler(ScopeDepthCopyState.MASK_WORLD_SAMPLER_UNIFORM);

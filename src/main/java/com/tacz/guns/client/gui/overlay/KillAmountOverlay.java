@@ -10,6 +10,8 @@ import com.tacz.guns.config.client.RenderConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix3x2fStack;
@@ -41,6 +43,9 @@ import org.joml.Matrix3x2fStack;
  * </ul>
  */
 public class KillAmountOverlay {
+    private static final Identifier KILL_ICON =
+            Identifier.fromNamespaceAndPath("minecraft", "textures/item/wooden_sword.png");
+    private static final int ICON_SIZE = 16;
     private static long killTimestamp = -1L;
     private static int killAmount = 0;
 
@@ -71,11 +76,12 @@ public class KillAmountOverlay {
 
         String text;
         if (killAmount < 10) {
-            text = "\u2620 x 0" + killAmount;
+            text = " x 0" + killAmount;
         } else {
-            text = "\u2620 x " + killAmount;
+            text = " x " + killAmount;
         }
-        int fontWith = mc.font.width(text);
+        int textWidth = mc.font.width(text);
+        int totalWidth = ICON_SIZE + textWidth;
         // 前 2/3 时间保持不透明，最后 1/3 才开始淡出。
         double fadeOutTime = timeout / 3.0 * 2;
         float hue = (1 - Math.min((killAmount / colorCount), 1)) * 0.15f;
@@ -91,7 +97,13 @@ public class KillAmountOverlay {
             // 先缩放再用 2 倍坐标定位 —— 与上游逐字一致：
             // 缩放 0.5 后，屏幕像素 (x, y) 对应的绘制坐标是 (2x, 2y)。
             poseStack.scale(0.5f, 0.5f);
-            graphics.drawString(mc.font, text, (int) (width - fontWith / 2.0f), (height - 45) * 2 - 1, color, false);
+            int x = (int) (width - totalWidth / 2.0f);
+            int y = (height - 75) * 2 - 1;
+            int iconColor = (color & 0xFF000000) | 0x00FFFFFF;
+            int textY = y + (ICON_SIZE - mc.font.lineHeight) / 2;
+            graphics.blit(RenderPipelines.GUI_TEXTURED, KILL_ICON, x, y,
+                    0, 0, ICON_SIZE, ICON_SIZE, ICON_SIZE, ICON_SIZE, iconColor);
+            graphics.drawString(mc.font, text, x + ICON_SIZE, textY, color, false);
         }
         poseStack.popMatrix();
     }

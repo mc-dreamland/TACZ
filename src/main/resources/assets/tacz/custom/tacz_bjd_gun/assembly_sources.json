@@ -1,0 +1,166 @@
+{
+  "format": 1,
+  "guns": [
+    "ar_01",
+    "ar_02",
+    "hg_01",
+    "hg_03",
+    "sg_01",
+    "sg_02",
+    "sr_01",
+    "sr_02",
+    "sr_03",
+    "sr_04"
+  ],
+  "ammo": [
+    "ammo_ar",
+    "ammo_hg",
+    "ammo_sg",
+    "ammo_sr"
+  ],
+  "input_sha256": {
+    "weapons/ar_01/shoot.ogg": "f038deb20b0af7f9f80563e92194c5a0cdc21a92dfbb346dea9a914db75a50a8",
+    "weapons/ar_01/equip.ogg": "617e13b275612e0c85caa1fb8685464eb4576bb7b8838287e374aaf6628fde7a",
+    "weapons/ar_01/headshot.ogg": "304adf8ed953460706c049c2aa3ceb27afdac2c4cfdd00f0772209a5c63f14d6",
+    "weapons/ar_01/hit.ogg": "dbd96084f0767c6b349d13e11abeb1ee0cc90e599ffd451d2ff709ed5af35198",
+    "weapons/ar_01/reload.ogg": "934684e45f615f1fba2761f8fa4370810bd39f87b960fbbf8111976cf75c7826",
+    "weapons/ar_02/equip.ogg": "e28bb6cc4f1e6b76383aa2577d212166f7e0f1cc33b48f2dfe4a99be8b8e5f9d",
+    "weapons/ar_02/headshot.ogg": "e333e19fa4433a6952b39fa4150ba40597af48170ce4efec4b9671a5e06c3546",
+    "weapons/ar_02/hit.ogg": "b248dcda591324e6adae78392cca8b8430ca782fa7cfbd65087fbded9b6e272b",
+    "weapons/ar_02/reload.ogg": "b26f5479e563253eb1f83f6cae3be3cbbd620f726e412e59679dc6e09bc78095",
+    "weapons/ar_02/shoot.ogg": "570970e2c071a38f353565860b5908e21fcab853bcb25d3ee8cf12fde4d532ac",
+    "weapons/hg_01/equip.ogg": "3044afb85609c5b57c05e6a3b783db19e336e04e632947501cfb28012d911ccf",
+    "weapons/hg_01/headshot.ogg": "8cc258cc070cd0ac478c2b950a2c8239f6c9451436bb67553ba08c5d49a4b049",
+    "weapons/hg_01/hit.ogg": "ec372ec492ba1e50db5fad2af4b5ca8f54c0364f0027fbd14a3decc578cf94f0",
+    "weapons/hg_01/reload.ogg": "84f3208a2e4e212439f391b3654d6036ee305334d545bfe61fb872b989b8828d",
+    "weapons/hg_01/reload_timed.ogg": "b1bda69b48bead1b34481259733ac664d346ab310fb426ac884dbd4d5a2b68a4",
+    "weapons/hg_01/shoot.ogg": "ac79ab0d4c0e0b1511d700ca22b986d83620944a5d9daa6ef748853c9e0713cd",
+    "weapons/sg_01/equip.ogg": "ff48e988e97136c96c089fa942411d859f8e44c4d7abb7bdd021d620ac95852c",
+    "weapons/sg_01/headshot.ogg": "20c2924cd579cdd19f106e20c7336560dc49957e1d5af050e284bb6d6b07d972",
+    "weapons/sg_01/hit.ogg": "be69374b0ddb0121767a2e2198f46131d65d9c04b573ae51c2c0cbfc1aa943ac",
+    "weapons/sg_01/reload.ogg": "b1b5be2baa2b3a2be3b558fc3db381ca7e1f3563c54d1e6abca3b13fa792c083",
+    "weapons/sg_01/reload_timed.ogg": "21d3f745e0ccddc7adb9ffd1dda2cc2cb27bbaf0997b0edb7ba63bb39af058ae",
+    "weapons/sg_01/shoot.ogg": "ccc2bc790bcefbef0422bc045168fb0ebba3fc769ae23ea3fa85323972b1e8a2",
+    "weapons/sg_02/equip.ogg": "0f4bbf335ff6f3efb631408db49af2eb83d7799c1dfe8f0cf9d90ae65a87926e",
+    "weapons/sg_02/headshot.ogg": "684f4d454aff641e5e525eb5ddf3cde838135520eb8123ed7737f5c816113787",
+    "weapons/sg_02/hit.ogg": "f7bb581d7d7950f36ab1357788c6efd1633835789e550194902611ea30332fb4",
+    "weapons/sg_02/reload.ogg": "d34031ce6ce25ab2b9d1034db3bde213d6d94e6548dc3267f4ce237fdfd17a52",
+    "weapons/sg_02/reload_shell.ogg": "ba8f307a9829804a4967b1723f4009b8f03b8ec015cb48c4b2ac90cf7d567bd4",
+    "weapons/sg_02/shoot.ogg": "c07e812e2e8506f4dc121155bf745b98800637cc6fa2480d9967f4abd9c5c469",
+    "weapons/sr_01/equip.ogg": "185e46b3f6dff51713b39b262096177bea650a0c5a3a0418c3aa975f84399786",
+    "weapons/sr_01/headshot.ogg": "dfa37944953e9a6c592e2299ecca0bd3c53c19a00fba0b9f00282cd440e1bcc3",
+    "weapons/sr_01/hit.ogg": "82602ca00d63eb78dd4a28e746ae61d04ad42d380cd2fdcbdddd9d0637cc260b",
+    "weapons/sr_01/reload.ogg": "889c7c6dbd337b5c9cff58aff6c04757bac020332e1ae44948c474ad9d583b3f",
+    "weapons/sr_01/shoot.ogg": "a6984840469caf80f5892bc0a9d8a70ecf4aa0183d903c689979ab0516c7782e",
+    "weapons/sr_02/equip.ogg": "f19ca10efc7fe25bf12fbbd331b68d04ca8c3de36a263a2e8e9dd50c0c98f20e",
+    "weapons/sr_02/headshot.ogg": "c8694b10c4f7d0aaea753dfdba59364d1731411fcc496a2ea24b4e6aa9cdae66",
+    "weapons/sr_02/hit.ogg": "27f620bd62491643d3d0411c7006750da7c0d5774e1756bcf3e72fdd6b9fd20f",
+    "weapons/sr_02/reload.ogg": "a7787c5d7f0eb8b0f8a864170f49e43d37239bcac556d01073a486de42324daa",
+    "weapons/sr_02/shoot.ogg": "f8079074605480f8241dc777ce08c9cab7563872fa0c545dadd6a7cb5ca13521",
+    "weapons/sr_03/equip.ogg": "264af561a9d0bd426e190ccc3124041858e1f1469fea61cfbc421d5296fa5511",
+    "weapons/sr_03/headshot.ogg": "25980ae8fed5acb7fed1dba93ad69d29908e27c4befbb656fb3a9ed8a1129e68",
+    "weapons/sr_03/hit.ogg": "93b93a8d9912a6c890fbec24f923bd338301beb62ba0a57c2f0d751d0b9b0b3f",
+    "weapons/sr_03/reload.ogg": "4a8c89727e562e312f78c80ff6ba4cea9de5a67dc9f7b361c6f1a31d0be1f02a",
+    "weapons/sr_03/shoot.ogg": "24d42c153c268a9528af03dbabe38bdb9ded9f2a156ce08bf806ffb47da64541",
+    "weapons/sr_04/equip.ogg": "8378e7a06665da9069f7f3ddec663f43d65b688ff2934387e29641900ac11f1a",
+    "weapons/sr_04/headshot.ogg": "9071d1f2f5620ce77957053f03ee8a59c69ee8c75a14e5c5751aff9c02eefe0e",
+    "weapons/sr_04/hit.ogg": "291a8807619389f430bf0a18055248acfbc025357f6ba1ca97fe30502a7585f3",
+    "weapons/sr_04/reload.ogg": "a3a436abfe9b59bdad27cd74a33f96a7bd6f9a5d230e312f42d8ee46d8617f12",
+    "weapons/sr_04/shoot.ogg": "d9f319074868f5941568c0d62aab102b507daacba8b446c05a8f4a90a7135b87",
+    "子弹图标/ar_icon.png": "fbd5dadfdf8e25a31ac9d7c78f38346a1341650d282ea6491a38e12086d59e75",
+    "子弹图标/hg_icon.png": "372afa4a1b4ad9668612c5d845ccbf28548c75ff30bbe6f3a81e7bc86c51716e",
+    "子弹图标/sg_icon.png": "372afa4a1b4ad9668612c5d845ccbf28548c75ff30bbe6f3a81e7bc86c51716e",
+    "子弹图标/sr_icon.png": "a556375a67d77afc4938892c59fb72b600f47c8410c2193e5e8dc3d5ddf38d16",
+    "other/AR-01/AR-01.bbmodel": "1f2764931947972f168a2bd0ccef1b0ca66a1e960b19a4b80aeb17a10419fde9",
+    "枪图标/AR-01.png": "b58826fd4b663d02e3ecc1bf1bf62a581e5296b8d047b1418aa8e74b264c2c4a",
+    "枪动画/AR-01.animation.json": "850c6c67edcebd7bc1e0f826451e8876bb2f08510d73af3885b271c41e0094a9",
+    "other/AR-02/AR-02.bbmodel": "3feb3bef227ddf610196ee429cb4ac5f97f63b7703c5e8e4865041b23a7c066f",
+    "枪图标/AR-02.png": "53777866e3fde8334d33f223ae4712cadc37a37c18a83b25448d13524780dd98",
+    "枪动画/AR-02.animation.json": "fc858680d39f0b34006c9ac6ccdfb2c33fa92d51f180c3b66a457f9912810e46",
+    "other/HG-01/HG-01.bbmodel": "f8eb08fb16812804a56140bfb688725bfd050b1f3910a9268b0b85b6fd889f0f",
+    "枪图标/HG-01.png": "f6091f55497938b28890dbdd90e2c4ef92a0f215f396602a9cbada1ad2f18ca2",
+    "枪动画/HG-01.animation.json": "6d7fbd374aad7c1e300440d93ac2d12556a8ae659950f803e61fc001bcd50e06",
+    "other/HG-3/HG--3.bbmodel": "b39b5ac3b963bb69936d931e743d80ef04d88358dd0be48241001ae1081f76f5",
+    "枪图标/HG-03.png": "b3a8dc4da9b75425f89e3bf364cfdec53be92ee6cab2b96b6574bd01735bb95b",
+    "枪动画/HG-03.animation.json": "c4c4bb07041c49b46443ef38c8a2ac755348a38f4e385424319ff6043e39103c",
+    "other/SG-01/SG-01.bbmodel": "d0eb55c945c05635f0920b7d6be349f7946e31c05cd15699a4aa591bf4d81280",
+    "枪图标/SG-01.png": "dc9eeb0b19d7e3e8aecc50b4a2ffa3cb604a1563d0b34a5ab676943f65912329",
+    "枪动画/SG-01.animation.json": "b1eb6b76bac90fff1877376ec7d4d32bbab72de03172e871b7c0adca03b50a6c",
+    "other/SG-02/SG-02.bbmodel": "3bcdf57ca1895a79e82658f9e94a6a71691ec72c95fdea34a381e34a43db0871",
+    "枪图标/SG-02.png": "6feaa61daab6b31c683fb916acc0c3b70038604f67ff23fc59e11a122fc13d24",
+    "枪动画/SG-02.animation.json": "e87e8b01c655a6b0c04614dbcb534c98b144ad324c83e45a76e603ce32c3be63",
+    "other/SR-01/SR-01.bbmodel": "a9212ffe2c2b3f4eaebe58aa1a460e646f9b6c02fc00fa5fecc274c08614ddc0",
+    "枪图标/SR-01.png": "00c1ed65ceb8701d37c7dd386d158a99c15a05c7d6f2a2afd8678c7464bd3bdf",
+    "枪动画/SR-01.animation.json": "be2ed9f69c1290378efbef28b031f04f3db487d9437ec05be3eede6a1d6e9b37",
+    "other/SR-02/SR-02.bbmodel": "8ade36c399c54c88db5d17ee437eb4688cbcfd26c089924f4335f15ca7622e39",
+    "枪图标/SR-02.png": "e9814261af23f2b996c2dc840c0004c0cc281c780598a5b36bb3150dcf2d64fa",
+    "枪动画/SR-02.animation.json": "f2403ed4a5f921fb1a18ee74ea7bcebca370c1169a3dd2aa0ee67c0b7ef3365d",
+    "other/SR-03/SR-03.bbmodel": "483d42c92b3d91acf1fc91df2c615a15c7ad859650682024e260968a7d742eb1",
+    "枪图标/SR-03.png": "142ebec3e0d85c8043ba557243ad595d1c72346c8f0d47dc0b1ca19765d50aaf",
+    "枪动画/SR-03.animation.json": "761292b049e7adf945bcf2927461221fa8bfc01be3c912b1af9309f62d12e1e3",
+    "other/SR-04/SR-04.bbmodel": "2943d5430cb35883db3acd92b05ac60ee4e2f49b203b1edf5bab13b93450efe9",
+    "枪图标/SR-04.png": "b7cfe51319fd0dcdecdacb7c4494a07cdb50c77bb967c2b0895d2efa017dc15a",
+    "枪动画/SR-04.animation.json": "0b3040e69f76d66bc7501a815485b895a351cbb901e2277a77da0de7cc7365f6",
+    "other/AR-02/AR-02-jing.bbmodel": "22b36ad9e7dfe596a10e5b50acd12d6128ca287c3a65c28f2eeff07b8e6126f4",
+    "other/SR-02/SR-02-jing.bbmodel": "029776c985dce06cf244539b91f4d77ebbbeae57246c3ee1e5d33ba736c4615e",
+    "other/SR-02/sr_02jing_icon.png": "8c8f29a22994540c0244696b429d073168e6ae2685d75731abcd80f465ff62c6",
+    "other/SR-03/SR-03-jing.bbmodel": "5b27aec2aa6804b6e55a0fceb2c3a1c271acc065f1a289db286151413d9c45d2",
+    "other/SR-03/sr_03jing_icon.png": "7572e2048604ef30d663beafa1c6e1e9b1b7dd6dc71ab9814df9e7303b53e832",
+    "other/SR-04/SR-04-jing.bbmodel": "355a07b6d3071cfb127e2996d97b4d8cbf499b999a14f26202ec1fbfdfab2aef",
+    "other/SR-04/sr_04jing_icon.png": "74b859a874801c719281ca460e86ebd52484417e223dca519b1d9c00bb7be5e4"
+  },
+  "parameter_baseline": {
+    "ar_01": {
+      "sha256": "11cbfec42d9adf25286cd97c144606b4f7ac271cd13e75665fd28199e5a3eef1",
+      "normalized_sha256": "11cbfec42d9adf25286cd97c144606b4f7ac271cd13e75665fd28199e5a3eef1"
+    },
+    "ar_02": {
+      "sha256": "1119c251ed6f696194e0a15b9e395dcd94df667be64724770bb92fb628f2914b",
+      "normalized_sha256": "f1cfcfa84c6c147043ebae7bc440f8fd9c42c4bfa8e984a80b0a448b692a142a"
+    },
+    "hg_01": {
+      "sha256": "7fe7373076f2eee3e1f4464cdbbf403b25ca48a3b247153dd776921e3b998956",
+      "normalized_sha256": "7fe7373076f2eee3e1f4464cdbbf403b25ca48a3b247153dd776921e3b998956"
+    },
+    "hg_03": {
+      "sha256": "e092312e560bfcebc0b6d3d44473bd911e1128646d7e24a70d290628171fe39c",
+      "normalized_sha256": "e092312e560bfcebc0b6d3d44473bd911e1128646d7e24a70d290628171fe39c"
+    },
+    "sg_01": {
+      "sha256": "d4f662de9396981e9904f2eb2f9f89e924d35eb625e9c0d4460ae5b877b5c9ff",
+      "normalized_sha256": "d4f662de9396981e9904f2eb2f9f89e924d35eb625e9c0d4460ae5b877b5c9ff"
+    },
+    "sg_02": {
+      "sha256": "c8a0363a6684e37f3c9ae7e8b832527b1e5c78f000776b1c84186f96dfb80a21",
+      "normalized_sha256": "c8a0363a6684e37f3c9ae7e8b832527b1e5c78f000776b1c84186f96dfb80a21"
+    },
+    "sr_01": {
+      "sha256": "ec757626aba7336d8601fafc0b5cd319ec1e3c1ee8c3a4e6a6e1b543ffa4f9b8",
+      "normalized_sha256": "ec757626aba7336d8601fafc0b5cd319ec1e3c1ee8c3a4e6a6e1b543ffa4f9b8"
+    },
+    "sr_02": {
+      "sha256": "f653c7120e99f2ddf89bb5ce2c94fb2bff19133b047249f2311434e5450a5eaa",
+      "normalized_sha256": "cc6e5db07646e55fe8791018e204a04597fa5018c99fcafb7431364b7541c5f7"
+    },
+    "sr_03": {
+      "sha256": "3da4e8105d702a962f16da20666ccd5e0e19184fa235f01825191a3e7e89f0dd",
+      "normalized_sha256": "a9b6a29456c19cf7839d3094fe2fb2243cd449df7683ec53514f1b4a458b8789"
+    },
+    "sr_04": {
+      "sha256": "676f714ed521fc0e920ad6e01c3910aaf89ff2c69ef59203c3011eb86294fd9a",
+      "normalized_sha256": "747be88445735482c9c90816b6672ac6576fb04b45d3b9937888893abe2f673b"
+    }
+  },
+  "engine_support_sha256": {
+    "assets/tacz/animations/pistol_default.animation.json": "7e5d6e533257b79ed90d179b5d9500743aa4e379fd45c839d5f51a3536117f39",
+    "assets/tacz/animations/rifle_default.animation.json": "eabeee37fdb3720176dfa7ba1e21a1998bf10b4c5f6e31aca260524cc7a99134",
+    "assets/tacz/shaders/core/scope_depth_cleanup.fsh": "830bb1d4850e4845eb210f45bb98bd8f08e788c1e6ce70599b9e9ae7d1d323e0",
+    "assets/tacz/shaders/core/scope_reticle_mask.fsh": "d505a2cf26be5e7f7e5c1ec25141d2e160a95a7f94949562dff621e6a800df39",
+    "assets/tacz/shaders/core/scope_reticle_final.fsh": "79d8f348f0e8fab2235f0d9e29100d5ba7baf7ad84935323c95cef441d29ca77",
+    "assets/tacz/shaders/core/scope_ring_final.fsh": "e56733c219038036d5d2e2f758331da733b6b804fdf7151c69e7728076f0f5ec",
+    "assets/tacz/shaders/core/scope_flash_clip.fsh": "1b6e7df1c145facc2e31dba95201d38c429a0cdf6510d977baffd2124628af44"
+  },
+  "temporary_audio_aliases": {
+    "hg_03": "hg_01"
+  }
+}

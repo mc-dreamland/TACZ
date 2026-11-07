@@ -421,7 +421,8 @@ public final class PaperGunService implements Listener {
     private void finishProgressive(Session s, long now) { s.feedIndex = s.reload.feeds().size(); s.reloadEnd = Math.min(s.reloadEnd, now + s.reload.ending()); }
 
     private void bolt(Player player, Session s, Equipped e, long now) {
-        if (busy(s, now) || now < s.nextShot || flag(e.state, "chamber", false) || !text(e.gun, "bolt", "open_bolt").equals("manual_action")) return;
+        // The firing deadline constrains the next shot, not when its bolt may cycle.
+        if (busy(s, now) || now < s.meleeUntil || flag(e.state, "chamber", false) || !text(e.gun, "bolt", "open_bolt").equals("manual_action")) return;
         if (integer(e.state, "ammo", 0) <= 0 && !text(object(e.gun, "reload"), "type", "magazine").equals("inventory")) return;
         JsonObject params = object(e.gun, "script_param");
         if (Sg01Reload.matches(e.gun)) {

@@ -1,6 +1,7 @@
 package com.tacz.guns.util;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.tacz.guns.client.render.scope.ScopeHandCollector;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
@@ -25,10 +26,11 @@ public final class RenderHelper {
         }
         boolean slim = player.getSkin().model() == PlayerModelType.SLIM;
         var texture = player.getSkin().body().texturePath();
+        SubmitNodeCollector handCollector = ScopeHandCollector.forSkin(collector, texture);
         if (arm == HumanoidArm.RIGHT) {
-            avatar.renderRightHand(poseStack, collector, light, texture, slim, player);
+            avatar.renderRightHand(poseStack, handCollector, light, texture, slim, player);
         } else {
-            avatar.renderLeftHand(poseStack, collector, light, texture, slim, player);
+            avatar.renderLeftHand(poseStack, handCollector, light, texture, slim, player);
         }
     }
 

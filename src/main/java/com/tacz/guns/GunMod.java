@@ -30,7 +30,7 @@ import net.neoforged.fml.config.ModConfig;
 public class GunMod {
     public static final String MOD_ID = "tacz";
     public static final Logger LOGGER = LogUtils.getLogger();
-    public static final String DEFAULT_GUN_PACK_NAME = "tacz_default_gun";
+    public static final String DEFAULT_GUN_PACK_NAME = "tacz_bjd_gun";
 
     public static net.neoforged.fml.ModContainer container;
 

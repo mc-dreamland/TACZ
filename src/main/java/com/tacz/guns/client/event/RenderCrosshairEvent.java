@@ -6,6 +6,7 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import net.neoforged.neoforge.client.event.RenderFrameEvent;
 import com.mojang.blaze3d.platform.Window;
 import com.tacz.guns.GunMod;
+import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateContext;
 import com.tacz.guns.api.client.animation.statemachine.AnimationStateMachine;
@@ -13,6 +14,7 @@ import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
 import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.entity.ReloadState;
 import com.tacz.guns.api.item.IGun;
+import com.tacz.guns.api.item.attachment.AttachmentType;
 import com.tacz.guns.client.gui.GunRefitScreen;
 import com.tacz.guns.client.renderer.crosshair.CrosshairType;
 import com.tacz.guns.compat.shouldersurfing.ShoulderSurfingCompat;
@@ -61,22 +63,22 @@ public class RenderCrosshairEvent {
         }
         // 播放的动画需要隐藏准心时，取消准心渲染
         ItemStack stack = player.getMainHandItem();
-        if (!(ItemBehavior.of(stack) instanceof IGun)) {
+        if (!(ItemBehavior.of(stack) instanceof IGun iGun)) {
             return;
         }
 
         IClientPlayerGunOperator playerGunOperator = IClientPlayerGunOperator.fromLocalPlayer(player);
         TimelessAPI.getGunDisplay(stack).ifPresent(gunIndex -> {
-            // 瞄准快要完成时，取消准心渲染
-            if (playerGunOperator.getClientAimingProgress(Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true)) > 0.9) {
-                // 枪包可以强制显示准星
-                boolean forceShow = gunIndex.isShowCrosshair();
-                // 越肩视角可以强制显示准星
-                boolean shoulderSurfingForceShow = ShoulderSurfingCompat.showCrosshair();
-                // 两个强制都没有时，那么才允许隐藏
-                if (!forceShow && !shoulderSurfingForceShow) {
-                    return;
-                }
+            float aimingProgress = playerGunOperator.getClientAimingProgress(
+                    Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(true));
+            boolean forceShow = gunIndex.isShowCrosshair() || ShoulderSurfingCompat.showCrosshair();
+            Identifier scopeId = iGun.getAttachmentId(stack, AttachmentType.SCOPE);
+            if (scopeId.equals(DefaultAssets.EMPTY_ATTACHMENT_ID)) {
+                scopeId = iGun.getBuiltInAttachmentId(stack, AttachmentType.SCOPE);
+            }
+            boolean scoped = !DefaultAssets.isEmptyAttachmentId(scopeId);
+            if (!forceShow && aimingProgress > (scoped ? 0.35f : 0.9f)) {
+                return;
             }
 
             AnimationStateMachine<?> animationStateMachine = gunIndex.getAnimationStateMachine();

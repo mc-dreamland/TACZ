@@ -1,0 +1,33 @@
+{
+  "model": "bujidao:gun/ar_02_geo",
+  "texture": "bujidao:gun/uv/ar_02",
+  "animation": "bujidao:ar_02",
+  "state_machine": "bujidao:gun_state_machine",
+  "default_animation": "tacz:rifle_default",
+  "slot": "bujidao:gun/slot/ar_02",
+  "hud": "bujidao:gun/slot/ar_02",
+  "show_crosshair": false,
+  "muzzle_flash": {"texture": "bujidao:flash/muzzle_flash", "scale": 0.55},
+  "state_machine_param": {
+    "static_idle": 0.0,
+    "put_away": 0.5,
+    "draw": 0.68,
+    "reload_tactical": 2.65,
+    "reload_empty": 3.2,
+    "bolt": 1.15,
+    "inspect": 3.5,
+    "inspect_empty": 3.7,
+    "shoot": 0.2,
+    "shell_reload": false,
+    "integrated_pump": false
+  },
+  "sounds": {
+    "shoot": "bujidao:ar_02/shoot",
+    "shoot_3p": "bujidao:ar_02/shoot",
+    "draw": "bujidao:ar_02/equip",
+    "reload_empty": "bujidao:ar_02/reload",
+    "reload_tactical": "bujidao:ar_02/reload",
+    "flesh_hit": "bujidao:ar_02/hit",
+    "head_hit": "bujidao:ar_02/headshot"
+  }
+}

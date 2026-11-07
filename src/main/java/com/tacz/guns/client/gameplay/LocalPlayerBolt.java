@@ -30,11 +30,7 @@ public class LocalPlayerBolt {
         if (!NetworkHandler.canSendToServer(ClientMessagePlayerBoltGun.TYPE)) {
             return;
         }
-        // 检查状态锁
-        if (data.clientStateLock) {
-            return;
-        }
-        if (data.isBolting) {
+        if (!canStartBoltAction(data, IGunOperator.fromLivingEntity(player))) {
             return;
         }
         ItemStack mainHandItem = player.getMainHandItem();
@@ -48,6 +44,18 @@ public class LocalPlayerBolt {
 
         TimelessAPI.getGunDisplay(mainHandItem)
                 .ifPresent(display -> boltWithDisplay(iGun, mainHandItem, gunData, display));
+    }
+
+    static boolean canStartBoltAction(LocalPlayerDataHolder data, IGunOperator operator) {
+        // Cycling the bolt may overlap the firing interval, but must not replace a
+        // pending reload/draw/melee/bolt request or a shot still waiting to be sent.
+        if (data.clientStateLock && data.lockedCondition != null
+                && data.lockedCondition != LocalPlayerShoot.SHOOT_LOCKED_CONDITION) {
+            return false;
+        }
+        return data.isShootRecorded && !data.isBolting && !operator.getSynIsBolting()
+                && !operator.getSynReloadState().getStateType().isReloading()
+                && operator.getSynDrawCoolDown() == 0 && operator.getSynMeleeCoolDown() == 0;
     }
 
     /**

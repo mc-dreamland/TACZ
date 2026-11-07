@@ -488,7 +488,9 @@ public final class PaperClientGameplay {
     public static boolean crawling() { return crawling; }
 
     private static boolean shouldRequestBolt(GunResolver.ResolvedGun gun) {
-        if (SHOT_SCHEDULE.pending() || cooldown() > 0 || PaperShotPresentation.hasUnconfirmedShots(gun.instance())) return false;
+        // A confirmed shot can cycle its bolt during the firing interval. Keep
+        // pending/unconfirmed protection so this intent cannot cancel a queued shot.
+        if (SHOT_SCHEDULE.pending() || PaperShotPresentation.hasUnconfirmedShots(gun.instance())) return false;
         // The cosmetic shot clears the displayed chamber before Paper may have fired its
         // queued trigger. A bolt intent based on that overlay would cancel the real shot.
         ItemStack authority = GunResolver.authoritativeStack(gun.realStack()).copy();
@@ -589,7 +591,7 @@ public final class PaperClientGameplay {
         } else if (gun != null) {
             IGunOperator operator = IGunOperator.fromLivingEntity(player);
             if (!operator.getSynReloadState().getStateType().isReloading() && !operator.getSynIsBolting()
-                    && operator.getSynDrawCoolDown() <= 0 && shouldRequestBolt(gun)) {
+                    && operator.getSynDrawCoolDown() <= 0 && operator.getSynMeleeCoolDown() <= 0 && shouldRequestBolt(gun)) {
                 TimelessAPI.getCommonGunIndex(gun.data().getGunId(gun.realStack())).ifPresent(index -> {
                     if (index.getGunData().getBolt() == Bolt.MANUAL_ACTION) action("bolt");
                 });

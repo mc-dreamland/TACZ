@@ -1,0 +1,7 @@
+{
+  "name": "bujidao.ammo.ammo_sg.name",
+  "tooltip": "bujidao.ammo.ammo_sg.desc",
+  "display": "bujidao:ammo_sg_display",
+  "stack_size": 64,
+  "sort": 2
+}

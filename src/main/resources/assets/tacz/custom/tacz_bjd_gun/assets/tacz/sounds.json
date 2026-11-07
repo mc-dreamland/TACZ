@@ -1,0 +1,10 @@
+{
+  "gun": {
+    "sounds": [
+      {
+        "name": "bujidao:gun_template",
+        "stream": false
+      }
+    ]
+  }
+}

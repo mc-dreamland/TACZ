@@ -28,7 +28,7 @@ sourceSets.main { java.srcDir("../shared/src/main/java") }
 sourceSets.test { java.srcDir("../shared/src/test/java") }
 
 val defaultGunPack by tasks.registering(Zip::class) {
-    from("../src/main/resources/assets/tacz/custom/tacz_default_gun") {
+    from("../src/main/resources/assets/tacz/custom/tacz_bjd_gun") {
         include("data/**", "gunpack.meta.json", "assets/*/display/attachments/**/*.json", "assets/*/display/guns/**/*.json")
     }
     archiveFileName = "default-pack.zip"

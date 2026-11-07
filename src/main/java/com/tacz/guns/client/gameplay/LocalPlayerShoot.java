@@ -40,7 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 public class LocalPlayerShoot {
-    private static final Predicate<IGunOperator> SHOOT_LOCKED_CONDITION = LocalPlayerShoot::isShootLockActive;
+    static final Predicate<IGunOperator> SHOOT_LOCKED_CONDITION = LocalPlayerShoot::isShootLockActive;
     private final LocalPlayerDataHolder data;
     private final LocalPlayer player;
 

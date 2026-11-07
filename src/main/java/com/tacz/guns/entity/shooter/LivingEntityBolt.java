@@ -41,10 +41,8 @@ public class LivingEntityBolt {
      * Stable server-side manual-bolt hook after the gun index has been resolved.
      */
     protected void boltWithIndex(AbstractGunItem iGun, ItemStack currentGunItem, CommonGunIndex gunIndex) {
-        // 判断是否正在射击冷却
-        if (shoot.getShootCoolDown() != 0) {
-            return;
-        }
+        // Bolt cycling overlaps the firing interval. Shooting still enforces its
+        // own cooldown and cannot fire while the bolt action is in progress.
         // 检查是否正在换弹
         if (data.reloadStateType.isReloading()) {
             return;
@@ -58,6 +56,9 @@ public class LivingEntityBolt {
             return;
         }
         IGunOperator gunOperator = IGunOperator.fromLivingEntity(shooter);
+        if (gunOperator.getSynMeleeCoolDown() != 0) {
+            return;
+        }
         // 检查 bolt 类型是否是 manual action
         Bolt boltType = gunIndex.getGunData().getBolt();
         // 是否为背包直读

@@ -1,0 +1,36 @@
+{
+  "model": "bujidao:gun/sg_01_geo",
+  "texture": "bujidao:gun/uv/sg_01",
+  "animation": "bujidao:sg_01",
+  "state_machine": "bujidao:gun_state_machine",
+  "default_animation": "tacz:rifle_default",
+  "slot": "bujidao:gun/slot/sg_01",
+  "hud": "bujidao:gun/slot/sg_01",
+  "show_crosshair": false,
+  "muzzle_flash": {"texture": "bujidao:flash/muzzle_flash", "scale": 0.7},
+  "state_machine_param": {
+    "static_idle": 0.0,
+    "put_away": 0.5,
+    "draw": 0.68,
+    "reload_tactical": 3.2,
+    "reload_empty": 4.6,
+    "bolt": 1.15,
+    "inspect": 3.5,
+    "shoot": 0.6838,
+    "reload_intro": 0.72,
+    "reload_intro_empty": 2.0,
+    "reload_loop": 0.675,
+    "reload_end": 0.74,
+    "shell_reload": true,
+    "integrated_pump": true
+  },
+  "sounds": {
+    "shoot": "bujidao:sg_01/shoot",
+    "shoot_3p": "bujidao:sg_01/shoot",
+    "draw": "bujidao:sg_01/equip",
+    "reload_empty": "bujidao:sg_01/reload_timed",
+    "reload_tactical": "bujidao:sg_01/reload_timed",
+    "flesh_hit": "bujidao:sg_01/hit",
+    "head_hit": "bujidao:sg_01/headshot"
+  }
+}
