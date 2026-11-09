@@ -1,4 +1,5 @@
 -- BJD animation driver, authored against AnimationStateContext's public API.
+-- Sprint overrides are isolated from the original holding and gun-action tracks.
 -- states() creates per-display closures: the loaded module has no mutable gun state.
 local driver = {}
 
@@ -22,6 +23,7 @@ function driver.states()
 
     local function action(ctx, clip)
         ctx:stopAnimation(s.shot)
+        if s.moving == 'run' then ctx:resumeAnimation(s.motion) end
         ctx:stopAnimation(s.motion)
         s.moving = nil
         if play(ctx, clip, s.main, false, 0) then
@@ -103,6 +105,12 @@ function driver.states()
             return nil
         elseif input == 'shoot' then
             if s.reload or ctx:getReloadStateType() ~= 0 then return nil end
+            if s.moving == 'run' or s.moving == 'run_start' or s.moving == 'run_end' then
+                ctx:resumeAnimation(s.motion)
+                ctx:stopAnimation(s.motion)
+                s.moving = nil
+                s.requested_motion = 'idle'
+            end
             clear_action(ctx)
             play(ctx, 'shoot', s.shot, true, 1, 0)
             if ctx:getStateMachineParams().integrated_pump then
@@ -165,11 +173,45 @@ function driver.states()
 
         if reload_type ~= 0 or s.reload or s.action
                 or (s.shot_until and now < s.shot_until) or ctx:getAimingProgress() > 0.05 then
+            if s.moving == 'run' then ctx:resumeAnimation(s.motion) end
             ctx:stopAnimation(s.motion)
             s.moving = nil
             return
         end
         local motion = s.requested_motion or 'idle'
+        -- Only the retained sprint clips use an absolute, self-contained pose.
+        -- Normal holding, walking and gun actions keep the original tracks above.
+        if ctx:hasAnimationPrototype('run_start') and ctx:hasAnimationPrototype('run_end') then
+            local params = ctx:getStateMachineParams()
+            if motion == 'run' then
+                if s.moving ~= 'run' and s.moving ~= 'run_start' then
+                    play(ctx, 'run_start', s.motion, false, 0, 0)
+                    s.moving = 'run_start'
+                    s.motion_until = now + (tonumber(params.run_enter) or 0.18)
+                elseif s.moving == 'run_start' and now >= s.motion_until then
+                    play(ctx, 'run', s.motion, false, 2, 0)
+                    s.moving = 'run'
+                    s.walk_anchor = ctx:getWalkDist()
+                end
+                if s.moving == 'run' then
+                    ctx:pauseAnimation(s.motion)
+                    local distance = math.max(0, ctx:getWalkDist() - s.walk_anchor)
+                    ctx:setAnimationProgress(s.motion, (distance / (tonumber(params.run_stride) or 2.35)) % 1, true)
+                end
+                return
+            elseif s.moving == 'run' or s.moving == 'run_start' then
+                play(ctx, 'run_end', s.motion, false, 0, 0)
+                s.moving = 'run_end'
+                s.motion_until = now + (tonumber(params.run_exit) or 0.16)
+                return
+            elseif s.moving == 'run_end' then
+                if now < s.motion_until then return end
+                -- Absolute sprint endpoints already match static_idle. Replace directly
+                -- before returning to additive idle/walk, avoiding a doubled base pose.
+                if play(ctx, motion, s.motion, true, 2, 0) then s.moving = motion end
+                return
+            end
+        end
         if motion ~= s.moving then
             if play(ctx, motion, s.motion, true, 2, 0.12) then s.moving = motion end
         end

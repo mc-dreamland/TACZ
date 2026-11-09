@@ -3,7 +3,7 @@
   "texture": "bujidao:gun/uv/hg_03",
   "animation": "bujidao:hg_03",
   "state_machine": "bujidao:gun_state_machine",
-  "default_animation": "tacz:pistol_default",
+  "default_animation": "bujidao:hg_03_run",
   "slot": "bujidao:gun/slot/hg_03",
   "hud": "bujidao:gun/slot/hg_03",
   "show_crosshair": false,
@@ -18,7 +18,10 @@
     "inspect": 3.5,
     "shoot": 0.3337,
     "shell_reload": false,
-    "integrated_pump": false
+    "integrated_pump": false,
+    "run_enter": 0.17,
+    "run_exit": 0.15,
+    "run_stride": 2.25
   },
   "sounds": {
     "shoot": "bujidao:hg_01/shoot",

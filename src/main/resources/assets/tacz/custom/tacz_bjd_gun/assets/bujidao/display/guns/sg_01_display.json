@@ -3,7 +3,7 @@
   "texture": "bujidao:gun/uv/sg_01",
   "animation": "bujidao:sg_01",
   "state_machine": "bujidao:gun_state_machine",
-  "default_animation": "tacz:rifle_default",
+  "default_animation": "bujidao:sg_01_run",
   "slot": "bujidao:gun/slot/sg_01",
   "hud": "bujidao:gun/slot/sg_01",
   "show_crosshair": false,
@@ -22,7 +22,10 @@
     "reload_loop": 0.675,
     "reload_end": 0.74,
     "shell_reload": true,
-    "integrated_pump": true
+    "integrated_pump": true,
+    "run_enter": 0.22,
+    "run_exit": 0.2,
+    "run_stride": 2.65
   },
   "sounds": {
     "shoot": "bujidao:sg_01/shoot",
