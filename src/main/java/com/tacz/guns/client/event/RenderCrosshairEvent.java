@@ -125,8 +125,14 @@ public class RenderCrosshairEvent {
 
         float x = width / 2f - 8;
         float y = height / 2f - 8;
-        // 26.2: Blending now handled by RenderPipeline; color via last int param (ARGB)
-        graphics.blit(RenderPipelines.GUI_TEXTURED, location, (int) x, (int) y, 0, 0, 16, 16, 16, 16, 0xE6FFFFFF);
+        var pose = graphics.pose();
+        pose.pushMatrix();
+        try {
+            pose.identity();
+            graphics.blit(RenderPipelines.GUI_TEXTURED, location, (int) x, (int) y, 0, 0, 16, 16, 16, 16, 0xE6FFFFFF);
+        } finally {
+            pose.popMatrix();
+        }
     }
 
     private static void renderHitMarker(GuiGraphics graphics, Window window) {
