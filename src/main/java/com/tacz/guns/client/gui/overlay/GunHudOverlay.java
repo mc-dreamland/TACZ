@@ -18,6 +18,7 @@ import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.resource.pojo.data.gun.Bolt;
 import com.tacz.guns.resource.pojo.data.gun.GunData;
 import com.tacz.guns.util.AttachmentDataUtils;
+import net.minecraft.network.chat.Component;
 import net.neoforged.fml.ModList;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
@@ -124,6 +125,9 @@ public class GunHudOverlay {
 
         Font font = mc.font;
         Matrix3x2fStack poseStack = graphics.pose();
+        // Move the existing HUD as one block toward the bottom-right screen edge.
+        poseStack.pushMatrix();
+        poseStack.translate(-1, 17);
 
         // 竖线分隔符
         graphics.fill(width - 75, height - 43, width - 74, height - 25, 0xFFFFFFFF);
@@ -155,7 +159,7 @@ public class GunHudOverlay {
         // 这里不截断（版本号被截掉反而不利于反馈问题），改为按可用宽度自适应缩小字号：
         // 以 0.5 为上限，必要时等比缩小，下限 0.25 以免小到看不清。
         // 可用宽度取 70 - 2 的安全边距，与竖线/弹药数那一列的左边界对齐。
-        String versionLine = versionText();
+        String versionLine = gunNameText(gunId);
         final int versionAvailable = 70 - 2;
         int versionRawWidth = font.width(versionLine);
         float versionScale = 0.5f;
@@ -190,7 +194,11 @@ public class GunHudOverlay {
             }
             if (hudTexture != null) {
                 graphics.blit(RenderPipelines.GUI_TEXTURED, hudTexture,
-                        width - 117, height - 44, 0.0F, 0.0F, 39, 13, 39, 13, hudTint);
+                        width - 107, height - 47,
+                        0.0F, 0.0F,
+                        26, 26,
+                        26, 26,
+                        hudTint);
             }
         }
 
@@ -203,6 +211,7 @@ public class GunHudOverlay {
         graphics.blit(RenderPipelines.GUI_TEXTURED, fireModeTexture,
                 (int) (width - 68.5 + font.width(currentAmmoCountText) * 1.5), height - 38,
                 0.0F, 0.0F, 10, 10, 10, 10);
+        poseStack.popMatrix();
     }
 
     /** 版本信息文本，格式与上游一致：{@code <MC版本>-<模组版本>}。 */
@@ -215,6 +224,12 @@ public class GunHudOverlay {
             cachedVersionText = mcVersion + "-" + modVersion;
         }
         return cachedVersionText;
+    }
+
+    private static String gunNameText(Identifier gunId) {
+        return TimelessAPI.getClientGunIndex(gunId)
+                .map(index -> Component.translatable(index.getName()).getString())
+                .orElse(gunId.toString());
     }
 
     private static void handleCacheCount(LocalPlayer player, ItemStack stack, GunData gunData, IGun iGun, boolean useInventoryAmmo) {

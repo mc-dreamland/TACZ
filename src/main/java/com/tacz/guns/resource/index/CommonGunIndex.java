@@ -64,13 +64,21 @@ public class CommonGunIndex {
         index.gunData = data;
     }
 
-    private static void checkInaccuracy(GunData data) {
+    static void checkInaccuracy(GunData data) {
         Map<InaccuracyType, Float> defaultInaccuracy = InaccuracyType.getDefaultInaccuracy();
         Map<InaccuracyType, Float> readInaccuracy = data.getInaccuracy();
         if (readInaccuracy == null || readInaccuracy.isEmpty()) {
             data.setInaccuracy(defaultInaccuracy);
         } else {
-            defaultInaccuracy.forEach(readInaccuracy::putIfAbsent);
+            readInaccuracy.forEach((type, value) -> Preconditions.checkArgument(type != null && value != null
+                    && Float.isFinite(value) && value >= 0, "invalid inaccuracy value for " + type));
+            defaultInaccuracy.forEach((type, value) -> {
+                if (!type.isAirborne()) readInaccuracy.putIfAbsent(type, value);
+            });
+            // Legacy packs inherit their own ground accuracy before mode/attachment modifiers.
+            readInaccuracy.putIfAbsent(InaccuracyType.AIRBORNE, readInaccuracy.get(InaccuracyType.STAND));
+            readInaccuracy.putIfAbsent(InaccuracyType.AIRBORNE_MOVE, readInaccuracy.get(InaccuracyType.MOVE));
+            readInaccuracy.putIfAbsent(InaccuracyType.AIRBORNE_AIM, readInaccuracy.get(InaccuracyType.AIM));
         }
     }
 

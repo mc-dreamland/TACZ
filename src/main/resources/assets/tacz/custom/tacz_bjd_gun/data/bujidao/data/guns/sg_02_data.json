@@ -134,9 +134,12 @@
   "inaccuracy": {
     "stand": 4.5,
     "move": 4.75,
-    "sneak": 4,
-    "lie": 4,
-    "aim": 4
+    "sneak": 4.2,
+    "lie": 4.1,
+    "aim": 4,
+    "airborne": 6.5,
+    "airborne_move": 8,
+    "airborne_aim": 4.4
   },
   "melee": {
     "distance": 1,

@@ -7,6 +7,7 @@ import com.tacz.guns.util.HitboxHelper;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Map;
 
@@ -35,7 +36,23 @@ public enum InaccuracyType {
      * 瞄准状态
      */
     @SerializedName("aim")
-    AIM;
+    AIM,
+
+    /**
+     * 离地腰射，无水平移动
+     */
+    @SerializedName("airborne")
+    AIRBORNE,
+    /**
+     * 离地腰射，有水平移动
+     */
+    @SerializedName("airborne_move")
+    AIRBORNE_MOVE,
+    /**
+     * 离地瞄准
+     */
+    @SerializedName("airborne_aim")
+    AIRBORNE_AIM;
 
     /**
      * 获取当前的不准确度状态
@@ -45,7 +62,11 @@ public enum InaccuracyType {
      */
     public static InaccuracyType getInaccuracyType(LivingEntity livingEntity) {
         float aimingProgress = IGunOperator.fromLivingEntity(livingEntity).getSynAimingProgress();
-        // 瞄准优先级最高
+        // 离地优先于地面姿态；竖直起跳和下落不计入水平移动。
+        if (!livingEntity.onGround()) {
+            return getAirborneType(livingEntity.getKnownMovement(), aimingProgress);
+        }
+        // 地面瞄准优先级最高
         if (aimingProgress == 1.0f) {
             return InaccuracyType.AIM;
         }
@@ -62,6 +83,25 @@ public enum InaccuracyType {
         return InaccuracyType.STAND;
     }
 
+    static InaccuracyType getAirborneType(Vec3 movement, float aimingProgress) {
+        if (aimingProgress == 1.0f) return AIRBORNE_AIM;
+        return movement.horizontalDistance() > 0.05f ? AIRBORNE_MOVE : AIRBORNE;
+    }
+
+    /** Only airborne ADS interpolates here; ground selection retains its existing priority. */
+    public float resolveInaccuracy(Map<InaccuracyType, Float> values, float aimingProgress) {
+        float base = values.get(this);
+        if (this == AIRBORNE || this == AIRBORNE_MOVE) {
+            float progress = Math.max(0, Math.min(1, aimingProgress));
+            return base + (values.get(AIRBORNE_AIM) - base) * progress;
+        }
+        return base;
+    }
+
+    public boolean isAirborne() {
+        return this == AIRBORNE || this == AIRBORNE_MOVE || this == AIRBORNE_AIM;
+    }
+
     public static Map<InaccuracyType, Float> getDefaultInaccuracy() {
         Map<InaccuracyType, Float> inaccuracy = Maps.newHashMap();
         inaccuracy.put(InaccuracyType.STAND, 5f);
@@ -69,6 +109,9 @@ public enum InaccuracyType {
         inaccuracy.put(InaccuracyType.SNEAK, 3.5f);
         inaccuracy.put(InaccuracyType.LIE, 2.5f);
         inaccuracy.put(InaccuracyType.AIM, 0.15f);
+        inaccuracy.put(InaccuracyType.AIRBORNE, inaccuracy.get(InaccuracyType.STAND));
+        inaccuracy.put(InaccuracyType.AIRBORNE_MOVE, inaccuracy.get(InaccuracyType.MOVE));
+        inaccuracy.put(InaccuracyType.AIRBORNE_AIM, inaccuracy.get(InaccuracyType.AIM));
         return inaccuracy;
     }
 
@@ -90,6 +133,6 @@ public enum InaccuracyType {
     }
 
     public boolean isAim() {
-        return this == AIM;
+        return this == AIM || this == AIRBORNE_AIM;
     }
 }

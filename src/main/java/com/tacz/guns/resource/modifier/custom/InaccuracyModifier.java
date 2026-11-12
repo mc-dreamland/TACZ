@@ -63,11 +63,11 @@ public class InaccuracyModifier implements IAttachmentModifier<Map<InaccuracyTyp
             inaccuracy = new Modifier();
             inaccuracy.setAddend(inaccuracyAddendTime);
         }
-        // inaccuracy会影响除了aim(开镜)和sneak(战术姿态)之外的所有类型
+        // 地面和离地开镜共用 aim_inaccuracy；离地腰射使用普通 inaccuracy。
         Map<InaccuracyType, Modifier> jsonProperties = Maps.newHashMap();
         for (InaccuracyType type : InaccuracyType.values()) {
             switch (type) {
-                case AIM -> {
+                case AIM, AIRBORNE_AIM -> {
                     if (aimInaccuracy != null) jsonProperties.put(type, aimInaccuracy);
                 }
                 case SNEAK -> {
@@ -91,7 +91,7 @@ public class InaccuracyModifier implements IAttachmentModifier<Map<InaccuracyTyp
             float inaccuracyAddend = 0;
             GunFireModeAdjustData fireModeAdjustData = gunData.getFireModeAdjustData(fireMode);
             if (fireModeAdjustData != null) {
-                if (type == InaccuracyType.AIM) {
+                if (type.isAim()) {
                     inaccuracyAddend = fireModeAdjustData.getAimInaccuracy();
                 } else {
                     inaccuracyAddend = fireModeAdjustData.getOtherInaccuracy();

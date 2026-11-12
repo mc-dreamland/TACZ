@@ -5,6 +5,7 @@ import com.tacz.guns.paper.network.BridgePeer;
 import org.bukkit.*;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Waterlogged;
+import org.bukkit.craftbukkit.entity.CraftPlayer;
 import org.bukkit.damage.DamageSource;
 import org.bukkit.damage.DamageType;
 import org.bukkit.entity.*;
@@ -43,9 +44,13 @@ final class PaperBallistics implements Listener {
         int pellets = (int) clamp(integer(data, "bullet_amount", 1), 1, 128);
         double speed = clamp(number(data, "speed", 5) / 20, .01, 100);
         JsonObject inaccuracies = object(gun, "inaccuracy");
-        String posture = crawling ? "lie" : shooter.isSneaking() ? "sneak" : shooter.getVelocity().lengthSquared() > .003 ? "move" : "stand";
-        double spread = clamp(number(inaccuracies, posture, 1), 0, 90);
-        spread += (number(inaccuracies, "aim", spread) - spread) * clamp(aimingProgress, 0, 1);
+        Vector velocity = shooter.getVelocity();
+        boolean grounded = shooter.isOnGround();
+        double horizontalSpeed = shooter instanceof CraftPlayer craft
+                ? craft.getHandle().getKnownMovement().horizontalDistance()
+                : Math.hypot(velocity.getX(), velocity.getZ());
+        boolean moving = grounded ? velocity.lengthSquared() > .003 : horizontalSpeed > .05f;
+        double spread = inaccuracy(inaccuracies, grounded, moving, crawling, shooter.isSneaking(), aimingProgress);
         JsonObject heat = object(gun, "heat");
         double ratio = clamp(number(state, "heat", 0) / Math.max(1, number(heat, "max", 100)), 0, 1);
         spread *= number(heat, "min_inaccuracy", 1) + ratio * (number(heat, "max_inaccuracy", 1) - number(heat, "min_inaccuracy", 1));

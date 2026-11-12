@@ -126,10 +126,8 @@ public class ModernKineticGunScriptAPI {
             heatInaccuracy *= Mth.lerp(heatPercentage, heatData.getMinInaccuracy(), heatData.getMaxInaccuracy());
         }
 
-        // 散射影响
-        InaccuracyType inaccuracyType = InaccuracyType.getInaccuracyType(shooter);
-        final float unmodifiedInaccuracy = cacheProperty.getCache(GunProperties.INACCURACY).get(inaccuracyType) * heatInaccuracy;
-        final float inaccuracy = Math.max(0, modifyProperty(GunProperties.INACCURACY, Float.class, unmodifiedInaccuracy));
+        // Preserve the existing heat snapshot, but resolve posture at each actual burst cycle.
+        final float heatInaccuracySnapshot = heatInaccuracy;
 
         // 消音器影响
         // 使用消音这个选项对于射手来说是在客户端处理的，脚本改了没用，所以干脆不让改了
@@ -151,9 +149,26 @@ public class ModernKineticGunScriptAPI {
         long period = modifyProperty(GunProperties.RuntimeOnly.BURST_SHOOT_INTERVAL, Long.class, fireMode == FireMode.BURST ? gunData.getBurstShootInterval() : 1);
 
         CycleTaskHelper.addCycleTask(
-                () -> runShootCycle(consumeAmmo, gunData, bulletData, gunOperator, shotDamageMultiplier,
-                        inaccuracy, soundDistance, useSilenceSound, processedSpeed, bulletAmount),
+                () -> runScheduledShootCycle(consumeAmmo, gunData, bulletData, gunOperator, shotDamageMultiplier,
+                        cacheProperty, heatInaccuracySnapshot, soundDistance, useSilenceSound, processedSpeed, bulletAmount),
                 period, cycles);
+    }
+
+    protected boolean runScheduledShootCycle(boolean consumeAmmo, GunData gunData, BulletData bulletData,
+                                             IGunOperator gunOperator, float shotDamageMultiplier,
+                                             AttachmentCacheProperty cacheProperty, float heatInaccuracy,
+                                             int soundDistance, boolean useSilenceSound, float processedSpeed, int bulletAmount) {
+        if (!canContinueShootCycle()) return false;
+        float inaccuracy = calculateShotInaccuracy(cacheProperty, heatInaccuracy);
+        return runShootCycle(consumeAmmo, gunData, bulletData, gunOperator, shotDamageMultiplier,
+                inaccuracy, soundDistance, useSilenceSound, processedSpeed, bulletAmount);
+    }
+
+    protected float calculateShotInaccuracy(AttachmentCacheProperty cacheProperty, float heatInaccuracy) {
+        InaccuracyType type = InaccuracyType.getInaccuracyType(shooter);
+        float aimingProgress = IGunOperator.fromLivingEntity(shooter).getSynAimingProgress();
+        float base = type.resolveInaccuracy(cacheProperty.getCache(GunProperties.INACCURACY), aimingProgress);
+        return Math.max(0, modifyProperty(GunProperties.INACCURACY, Float.class, base * heatInaccuracy));
     }
 
     /**

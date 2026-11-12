@@ -73,9 +73,14 @@ public final class AttachmentModifiers {
             if (first.has("distance") && first.get("distance").getAsJsonPrimitive().isNumber()) modify(first, "distance", 0, attachments, "effective_range", null);
         }
         JsonObject accuracy = object(gun, "inaccuracy");
-        for (String stance : List.of("stand", "move", "sneak", "lie", "aim")) {
-            if (accuracy.has(stance)) accuracy.addProperty(stance, number(accuracy, stance, 0) + number(adjust, stance.equals("aim") ? "aim_inaccuracy" : "other_inaccuracy", 0));
-            String key = switch (stance) { case "aim", "sneak", "lie" -> stance + "_inaccuracy"; default -> "inaccuracy"; };
+        // Fill missing airborne values before applying mode/attachment modifiers to avoid applying them twice.
+        for (String[] pair : new String[][]{{"airborne", "stand"}, {"airborne_move", "move"}, {"airborne_aim", "aim"}}) {
+            if (!accuracy.has(pair[0])) accuracy.addProperty(pair[0], number(accuracy, pair[1], 1));
+        }
+        for (String stance : List.of("stand", "move", "sneak", "lie", "aim", "airborne", "airborne_move", "airborne_aim")) {
+            boolean aiming = stance.equals("aim") || stance.equals("airborne_aim");
+            if (accuracy.has(stance)) accuracy.addProperty(stance, number(accuracy, stance, 0) + number(adjust, aiming ? "aim_inaccuracy" : "other_inaccuracy", 0));
+            String key = switch (stance) { case "airborne_aim" -> "aim_inaccuracy"; case "aim", "sneak", "lie" -> stance + "_inaccuracy"; default -> "inaccuracy"; };
             modify(accuracy, stance, 0, attachments, key, key.equals("inaccuracy") ? "inaccuracy_addend" : null);
         }
         for (String axis : List.of("pitch", "yaw")) {

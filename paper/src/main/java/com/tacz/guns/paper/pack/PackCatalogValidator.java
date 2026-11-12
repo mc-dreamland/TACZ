@@ -133,6 +133,11 @@ public final class PackCatalogValidator {
         }
         for (String timing : Set.of("draw_time", "put_away_time", "aim_time", "sprint_time", "bolt_action_time"))
             optionalNumber(data, timing, 0, Double.MAX_VALUE);
+        if (data.has("inaccuracy")) {
+            JsonObject accuracy = object(data.get("inaccuracy"), "inaccuracy");
+            for (String stance : Set.of("stand", "move", "sneak", "lie", "aim", "airborne", "airborne_move", "airborne_aim"))
+                optionalNumber(accuracy, stance, 0, 90);
+        }
         if (data.has("bullet")) bullet(object(data.get("bullet"), "bullet"));
         if (data.has("recoil")) {
             JsonObject recoil = object(data.get("recoil"), "recoil");

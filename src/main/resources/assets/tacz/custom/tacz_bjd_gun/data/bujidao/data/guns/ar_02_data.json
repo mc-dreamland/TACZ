@@ -125,7 +125,10 @@
     "move": 5.5,
     "sneak": 2.75,
     "lie": 1.5,
-    "aim": 0.1
+    "aim": 0.1,
+    "airborne": 7,
+    "airborne_move": 8.5,
+    "airborne_aim": 3.5
   },
   "melee": {
     "distance": 1,

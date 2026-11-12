@@ -21,6 +21,16 @@ public final class GunMath {
     static int integer(JsonObject o, String key, int fallback) { return (int) number(o, key, fallback); }
     static double clamp(double v, double min, double max) { return Math.max(min, Math.min(max, v)); }
 
+    static double inaccuracy(JsonObject accuracy, boolean grounded, boolean moving,
+                              boolean crawling, boolean sneaking, double aimingProgress) {
+        String posture = grounded ? crawling ? "lie" : sneaking ? "sneak" : moving ? "move" : "stand"
+                : moving ? "airborne_move" : "airborne";
+        double fallback = grounded ? 1 : number(accuracy, moving ? "move" : "stand", 1);
+        double base = clamp(number(accuracy, posture, fallback), 0, 90);
+        double aim = number(accuracy, grounded ? "aim" : "airborne_aim", number(accuracy, "aim", base));
+        return Math.max(0, base + (aim - base) * clamp(aimingProgress, 0, 1));
+    }
+
     public static double damageAt(JsonObject bullet, double distance, int pellets) {
         JsonObject extra = object(bullet, "extra_damage");
         double damage = number(bullet, "damage", 5);
