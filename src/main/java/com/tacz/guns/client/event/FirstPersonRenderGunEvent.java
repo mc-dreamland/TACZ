@@ -98,7 +98,7 @@ public class FirstPersonRenderGunEvent {
                 // 记录开火时间戳，用于后坐力程序动画
                 shootTimeStamp = System.currentTimeMillis();
                 // 记录枪口火焰数据
-                MuzzleFlashRender.onShoot();
+                MuzzleFlashRender.onShoot(iGun.getGunId(mainHandItem));
             });
         }
     }

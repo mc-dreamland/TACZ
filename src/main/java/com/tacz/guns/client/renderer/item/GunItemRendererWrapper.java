@@ -23,6 +23,7 @@ import com.tacz.guns.client.model.bedrock.BedrockPart;
 import com.tacz.guns.client.model.functional.MuzzleFlashRender;
 import com.tacz.guns.client.model.functional.ShellRender;
 import com.tacz.guns.client.render.scope.ScopeRenderTypes;
+import com.tacz.guns.client.renderer.entity.ShotMuzzleSnapshot;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.pojo.TransformScale;
 import com.tacz.guns.compat.iris.IrisCompat;
@@ -40,6 +41,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.phys.HitResult;
 import org.apache.commons.lang3.tuple.Pair;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -277,10 +280,10 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
             RenderType renderType = display.enablesTransparency()
                     ? RenderTypes.entityTranslucent(display.getModelTexture())
                     : RenderTypes.entityCutout(display.getModelTexture());
+            // Sample before functional effects so a shot's flash and pellets share the same muzzle.
+            cacheMuzzlePosition(poseStack, gunModel, stack);
             gunModel.submit(poseStack, stack, ctx, collector, renderType,
                     display.getModelTexture(), light, OverlayTexture.NO_OVERLAY);
-            // 缓存枪口位置，为第一人称曳光弹渲染作准备
-            cacheMuzzlePosition(poseStack, gunModel);
             // 恢复手臂渲染
             gunModel.setRenderHand(renderHand);
             // 渲染完成后，将动画数据从模型中清除，不对其他视角下的模型渲染产生影响
@@ -292,7 +295,7 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
         });
     }
 
-    private static void cacheMuzzlePosition(PoseStack poseStack, BedrockGunModel gunModel) {
+    private static void cacheMuzzlePosition(PoseStack poseStack, BedrockGunModel gunModel, ItemStack stack) {
         if (gunModel.getMuzzleFlashPosPath() != null) {
             // 计算出枪口相对于摄像机中心的坐标
             poseStack.pushPose();
@@ -318,6 +321,21 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
             double fovScale = Math.tan(itemRenderFov / 2 * Math.PI / 180)
                     / Math.tan(levelRenderFov / 2 * Math.PI / 180);
             muzzleRenderOffset.set(viewX, viewY, (float) (viewZ * fovScale));
+            Minecraft mc = Minecraft.getInstance();
+            if (mc.level != null && Double.isFinite(fovScale) && fovScale > 0
+                    && ItemBehavior.of(stack) instanceof IGun gun) {
+                var camera = mc.gameRenderer.getMainCamera();
+                var snapshot = new ShotMuzzleSnapshot.Snapshot(pose, handCameraRotation,
+                        camera.position(), camera.rotation(), fovScale);
+                // A viewmodel can extend into a wall; keep both visual effects on the visible side.
+                var hit = mc.level.clip(new ClipContext(camera.position(), snapshot.origin(),
+                        ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mc.player));
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    var safe = hit.getLocation().add(camera.position().subtract(hit.getLocation()).normalize().scale(.001));
+                    snapshot = snapshot.withOrigin(safe);
+                }
+                ShotMuzzleSnapshot.sample(mc.level, gun.getGunId(stack), System.nanoTime(), snapshot);
+            }
         }
     }
 

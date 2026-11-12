@@ -5,13 +5,10 @@ import com.mojang.math.Axis;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.client.model.BedrockAmmoModel;
 import com.tacz.guns.client.model.bedrock.BedrockModel;
-import com.tacz.guns.client.renderer.item.GunItemRendererWrapper;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.InternalAssetLoader;
 import com.tacz.guns.config.client.RenderConfig;
 import com.tacz.guns.entity.EntityKineticBullet;
-import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -27,10 +24,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ClipContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3f;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -80,9 +78,9 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
             BedrockAmmoModel ammoEntityModel = ammoIndex.getAmmoEntityModel();
             Identifier textureLocation = ammoIndex.getAmmoEntityTextureLocation();
             if (ammoEntityModel != null && textureLocation != null) {
+                poseStack.pushPose();
                 poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTicks, bullet.yRotO, bullet.getYRot()) - 180.0F));
                 poseStack.mulPose(Axis.XP.rotationDegrees(Mth.lerp(partialTicks, bullet.xRotO, bullet.getXRot())));
-                poseStack.pushPose();
                 poseStack.translate(0, 1.5, 0);
                 poseStack.scale(-1, -1, 1);
                 ammoEntityModel.submit(poseStack, ItemDisplayContext.GROUND, collector, getRenderType(textureLocation), state.lightCoords, OverlayTexture.NO_OVERLAY);
@@ -112,57 +110,46 @@ public class EntityBulletRenderer extends EntityRenderer<EntityKineticBullet, En
             if (isFirstPerson && !RenderConfig.FIRST_PERSON_BULLET_TRACER_ENABLE.get()) {
                 return;
             }
-            poseStack.pushPose();
-            {
-                float width = 0.005f;
-                Vec3 bulletPosition = bullet.getPosition(partialTicks);
-                double trailLength = 0.85 * bullet.getDeltaMovement().length();
-                // A Paper observer can see a projectile before its distant owner is tracked.
-                Vec3 source = shooter == null ? this.entityRenderDispatcher.camera.position() : shooter.getEyePosition(partialTicks);
-                double disToEye = bulletPosition.distanceTo(source);
-                trailLength = Math.min(trailLength, disToEye * 0.8);
+            Vec3 bulletPosition = bullet.getPosition(partialTicks);
+            Vec3 source = shooter == null ? this.entityRenderDispatcher.camera.position() : shooter.getEyePosition(partialTicks);
+            double disToEye = bulletPosition.distanceTo(source);
+            if (bullet.tickCount < 5 && disToEye <= 2) return;
 
-                if (isFirstPerson) {
-                    // 实体提交栈只含 entityPos-cameraPos 的世界轴平移；相机旋转由后续
-                    // world->view 绘制链统一施加。枪口缓存则经 GunItemRendererWrapper
-                    // 归一化为纯视图空间，因此必须用 camera.rotation()（view->world）
-                    // 旋到世界轴后再平移。直接使用视图向量会产生随 yaw 呈正弦变化的侧偏。
-                    Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-                    Vector3f viewOffset = new Vector3f(GunItemRendererWrapper.muzzleRenderOffset);
-                    if (bullet.getFirstPersonRenderOffset() == null) {
-                        // 保留精确出生帧的诊断快照；定位实际使用当帧枪口，避免转头后
-                        // 长时间沿用旧相机朝向下的缓存。
-                        bullet.setFirstPersonRenderOffset(new Vector3f(viewOffset));
-                        bullet.setCameraXRot(camera.xRot());
-                        bullet.setCameraYRot(camera.yRot());
-                    }
-                    Vector3f worldOffset = viewOffset.rotate(camera.rotation());
-                    // 近端从枪口发出，随后平滑收敛到服务器的真实弹道。
-                    double offsetReducer = Math.max(0, (50.0 - disToEye)) / 50.0;
-                    poseStack.translate(worldOffset.x() * offsetReducer,
-                            worldOffset.y() * offsetReducer,
-                            worldOffset.z() * offsetReducer);
-                }
-                // 说是 override 其实默认值是 1
-                // 所以这里直接乘也没关系
-                width *= bullet.getTracerSizeOverride();
-                width *= (float) Math.max(1.0, disToEye / 3.5);
-                poseStack.mulPose(Axis.YP.rotationDegrees(Mth.lerp(partialTicks, bullet.yRotO, bullet.getYRot()) - 180.0F));
-                poseStack.mulPose(Axis.XP.rotationDegrees(Mth.lerp(partialTicks, bullet.xRotO, bullet.getXRot())));
-                poseStack.translate(0, isFirstPerson ? 0 : -0.2, trailLength / 2.0);
-                poseStack.scale(width, width, (float) trailLength);
-                // 距离两格外才渲染，只在前 5 tick 判定
-                double bulletDistance = bulletPosition.distanceTo(source);
-                if (bullet.tickCount >= 5 || bulletDistance > 2) {
-                    // 上游使用 energySwirl 渲染曳光弹；26.2 的 RenderTypes 仍提供该封装
-                    // （同类调用已在 MuzzleFlashRender 中使用）。entityTranslucent 会把这条
-                    // 拉伸后的方体当普通半透明实体画，视觉上更像“歪掉的实体块”而不是曳光。
-                    RenderType type = RenderTypes.energySwirl(InternalAssetLoader.DEFAULT_BULLET_TEXTURE, 15, 15);
-                    model.submit(poseStack, ItemDisplayContext.NONE, collector, type, packedLight, OverlayTexture.NO_OVERLAY,
-                            tracerColor[0], tracerColor[1], tracerColor[2], 1);
-                }
+            Vec3 muzzle = null;
+            if (isFirstPerson && bullet.getFirstPersonShot() != null) {
+                var snapshot = bullet.getFirstPersonShot().snapshot();
+                if (snapshot == null) return; // Wait for the same shot's first hand sample.
+                muzzle = snapshot.origin();
             }
-            poseStack.popPose();
+            Vec3 head = bullet.isClientVisualEnded() ? bullet.position() : bulletPosition;
+            double trailLength = Math.min(0.85 * bullet.getDeltaMovement().length(), head.distanceTo(bullet.getStartPos()) * 0.8);
+            TracerSegment segment = TracerSegment.create(bullet.getStartPos(), head, bullet.getDeltaMovement(),
+                    trailLength, muzzle, bullet.isClientVisualEnded());
+            Vec3 start = segment.start(), end = segment.end();
+            if (isFirstPerson && muzzle != null) {
+                var hit = bullet.level().clip(new ClipContext(start, end, ClipContext.Block.COLLIDER,
+                        ClipContext.Fluid.NONE, bullet));
+                if (hit.getType() == HitResult.Type.BLOCK) end = hit.getLocation();
+            }
+            Vec3 direction = end.subtract(start);
+            double length = direction.length();
+            if (length < 1.0e-6) return;
+            Vec3 centerOffset = start.add(end).scale(0.5).subtract(bulletPosition);
+            float width = 0.005f * bullet.getTracerSizeOverride() * (float) Math.max(1.0, disToEye / 3.5);
+
+            poseStack.pushPose();
+            try {
+                poseStack.translate(centerOffset.x, centerOffset.y, centerOffset.z);
+                poseStack.mulPose(Axis.YP.rotationDegrees((float) Math.toDegrees(Math.atan2(direction.x, direction.z)) - 180));
+                poseStack.mulPose(Axis.XP.rotationDegrees((float) Math.toDegrees(Math.atan2(direction.y, direction.horizontalDistance()))));
+                if (!isFirstPerson) poseStack.translate(0, -0.2, 0);
+                poseStack.scale(width, width, (float) length);
+                RenderType type = RenderTypes.energySwirl(InternalAssetLoader.DEFAULT_BULLET_TEXTURE, 15, 15);
+                model.submit(poseStack, ItemDisplayContext.NONE, collector, type, packedLight, OverlayTexture.NO_OVERLAY,
+                        tracerColor[0], tracerColor[1], tracerColor[2], 1);
+            } finally {
+                poseStack.popPose();
+            }
         });
     }
 

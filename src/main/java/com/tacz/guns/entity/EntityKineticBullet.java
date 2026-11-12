@@ -16,6 +16,7 @@ import com.tacz.guns.api.event.server.AmmoHitBlockEvent;
 import com.tacz.guns.api.item.gun.AbstractGunItem;
 import com.tacz.guns.client.particle.AmmoParticleSpawner;
 import com.tacz.guns.client.particle.ClientBulletTrail;
+import com.tacz.guns.client.renderer.entity.ShotMuzzleSnapshot;
 import com.tacz.guns.config.common.AmmoConfig;
 import com.tacz.guns.config.sync.SyncConfig;
 import com.tacz.guns.entity.shooter.ShooterDataHolder;
@@ -139,7 +140,9 @@ public class EntityKineticBullet extends Projectile implements IEntityWithComple
     // 曳光弹
     private boolean isTracerAmmo;
     private boolean clientVisual;
+    private boolean clientVisualEnded;
     private ClientBulletTrail clientTrail;
+    private ShotMuzzleSnapshot.Shot firstPersonShot;
     // 以下几个是只对客户端有用的曳光弹数据
     private float cameraXRot;
     private float cameraYRot;
@@ -209,6 +212,7 @@ public class EntityKineticBullet extends Projectile implements IEntityWithComple
     @ApiStatus.Internal
     public void finishClientTrail(Vec3 end) {
         if (!level().isClientSide()) return;
+        clientVisualEnded = true;
         if (clientTrail == null) clientTrail = new ClientBulletTrail();
         clientTrail.emitTo(this, end, true);
     }
@@ -699,6 +703,10 @@ public class EntityKineticBullet extends Projectile implements IEntityWithComple
         this.isTracerAmmo = additionalData.readBoolean();
         this.gunId = additionalData.readIdentifier();
         this.gunDisplayId = additionalData.readIdentifier();
+        this.startPos = this.position();
+        if (entity instanceof net.minecraft.client.player.LocalPlayer) {
+            this.firstPersonShot = ShotMuzzleSnapshot.current(level(), gunId, System.nanoTime());
+        }
     }
 
     public Identifier getAmmoId() {
@@ -708,6 +716,14 @@ public class EntityKineticBullet extends Projectile implements IEntityWithComple
     public Identifier getGunId() {
         return gunId;
     }
+
+    public Vec3 getStartPos() { return startPos == null ? position() : startPos; }
+
+    public boolean isClientVisualEnded() { return clientVisualEnded; }
+
+    public @Nullable ShotMuzzleSnapshot.Shot getFirstPersonShot() { return firstPersonShot; }
+
+    public void setFirstPersonShot(@Nullable ShotMuzzleSnapshot.Shot shot) { firstPersonShot = shot; }
 
     public Identifier getGunDisplayId() {
         return gunDisplayId;

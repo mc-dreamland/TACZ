@@ -9,6 +9,7 @@ import com.tacz.guns.api.event.common.EntityKillByGunEvent;
 import com.tacz.guns.bridge.BallisticsBatch;
 import com.tacz.guns.client.event.RenderCrosshairEvent;
 import com.tacz.guns.client.sound.SoundPlayManager;
+import com.tacz.guns.client.renderer.entity.ShotMuzzleSnapshot;
 import com.tacz.guns.entity.EntityKineticBullet;
 import com.tacz.guns.particles.BulletHoleOption;
 import net.minecraft.client.Minecraft;
@@ -127,6 +128,9 @@ public final class PaperClientBallistics {
         Entity owner = trackedEntity(level, record, "entity", "ownerUuid");
         EntityKineticBullet bullet = EntityKineticBullet.createClientVisual(level, owner, ammo, gun, display,
                 position, velocity, gravity, friction, life, age, bool(record, "tracer", false));
+        if (owner == Minecraft.getInstance().player && age == 0) {
+            bullet.setFirstPersonShot(ShotMuzzleSnapshot.current(level, gun, System.nanoTime()));
+        }
         // The entity is deliberately NOT inserted into ClientLevel. Its ID cannot replace a
         // real network entity, even if another mod or the server uses the same negative ID.
         bullet.setId(nextLocalId--);

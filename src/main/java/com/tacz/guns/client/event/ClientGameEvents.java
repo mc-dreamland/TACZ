@@ -20,6 +20,7 @@ import com.tacz.guns.client.input.ReloadKey;
 import com.tacz.guns.client.input.ShootKey;
 import com.tacz.guns.client.input.ZoomKey;
 import com.tacz.guns.client.sound.SoundPlayManager;
+import com.tacz.guns.client.renderer.entity.ShotMuzzleSnapshot;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -165,6 +166,7 @@ public final class ClientGameEvents {
 
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        ShotMuzzleSnapshot.clear();
         InventoryEvent.onPlayerLoggedOut(event);
         CommonNetworkCacheEvent.onClientPlayerLoggingOut(event);
     }

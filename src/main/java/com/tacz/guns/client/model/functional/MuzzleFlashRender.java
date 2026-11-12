@@ -4,19 +4,27 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.item.IAttachment;
+import com.tacz.guns.api.item.IGun;
+import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.item.attachment.AttachmentType;
 import com.tacz.guns.client.model.BedrockGunModel;
 import com.tacz.guns.client.model.IFunctionalSubmitter;
 import com.tacz.guns.client.model.SlotModel;
+import com.tacz.guns.client.event.CameraSetupEvent;
 import com.tacz.guns.client.render.scope.ScopeRenderTypes;
+import com.tacz.guns.client.renderer.entity.ShotMuzzleSnapshot;
+import com.tacz.guns.client.renderer.item.GunItemRendererWrapper;
 import com.tacz.guns.client.resource.GunDisplayInstance;
 import com.tacz.guns.client.resource.pojo.display.gun.MuzzleFlash;
 import com.tacz.guns.compat.iris.IrisCompat;
 import com.tacz.guns.resource.modifier.custom.SilenceModifier;
 import it.unimi.dsi.fastutil.Pair;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
+import org.joml.Matrix3f;
 
 public class MuzzleFlashRender implements IFunctionalSubmitter {
     private static final SlotModel MUZZLE_FLASH_MODEL = new SlotModel(true);
@@ -27,6 +35,7 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
     public static boolean isSelf = false;
     private static long shootTimeStamp = -1;
     private static final ShotPose MUZZLE_FLASH_POSE = new ShotPose();
+    private static ShotMuzzleSnapshot.Shot muzzleShot;
     private static float muzzleFlashRandomRotate = 0;
 
     private final BedrockGunModel bedrockGunModel;
@@ -36,10 +45,17 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
     }
 
     public static void onShoot() {
+        var player = Minecraft.getInstance().player;
+        IGun gun = player == null ? null : IGun.getIGunOrNull(player.getMainHandItem());
+        onShoot(gun == null ? DefaultAssets.EMPTY_GUN_ID : gun.getGunId(player.getMainHandItem()));
+    }
+
+    public static void onShoot(Identifier gunId) {
         // 记录开火时间戳
         shootTimeStamp = System.currentTimeMillis();
-        // 每发火焰固定在首次渲染的枪口姿态，后续后坐力不能继续旋转这片火焰。
+        // 火焰和弹丸共用这一发的枪口快照，后续后坐力不能移动它们的起点。
         MUZZLE_FLASH_POSE.reset();
+        muzzleShot = ShotMuzzleSnapshot.begin(Minecraft.getInstance().level, gunId, System.nanoTime());
         // 随机给予枪口火焰的旋转
         muzzleFlashRandomRotate = (float) (Math.random() * 360);
     }
@@ -60,6 +76,9 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
         if (display == null || display.getMuzzleFlash() == null) {
             return;
         }
+        IGun gun = IGun.getIGunOrNull(currentGunItem);
+        if (gun == null || muzzleShot != ShotMuzzleSnapshot.current(Minecraft.getInstance().level,
+                gun.getGunId(currentGunItem), System.nanoTime())) return;
 
         ItemStack muzzleAttachment = bedrockGunModel.getCurrentAttachmentItem().get(AttachmentType.MUZZLE);
         IAttachment iAttachment = IAttachment.getIAttachmentOrNull(muzzleAttachment);
@@ -83,7 +102,18 @@ public class MuzzleFlashRender implements IFunctionalSubmitter {
         }
         float frozenScale = scale;
         float frozenRotation = muzzleFlashRandomRotate;
-        PoseStack frozenPose = MUZZLE_FLASH_POSE.snapshot(context.poseStack());
+        PoseStack frozenPose;
+        var snapshot = muzzleShot == null ? null : muzzleShot.snapshot();
+        double fovScale = Math.tan(Math.toRadians(CameraSetupEvent.ITEM_MODEL_FOV_DYNAMICS.get()) / 2)
+                / Math.tan(Math.toRadians(CameraSetupEvent.WORLD_FOV_DYNAMICS.get()) / 2);
+        if (snapshot != null && Double.isFinite(fovScale) && fovScale > 0) {
+            var camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+            Matrix3f cameraBasis = new Matrix3f();
+            GunItemRendererWrapper.copyHandCameraRotation(cameraBasis);
+            frozenPose = snapshot.pose(camera.position(), camera.rotation(), cameraBasis, fovScale);
+        } else {
+            frozenPose = MUZZLE_FLASH_POSE.snapshot(context.poseStack());
+        }
         int light = context.light();
         int overlay = context.overlay();
 
