@@ -44,7 +44,7 @@ import org.joml.Matrix3x2fStack;
  */
 public class KillAmountOverlay {
     private static final Identifier KILL_ICON =
-            Identifier.fromNamespaceAndPath("minecraft", "textures/item/wooden_sword.png");
+            Identifier.fromNamespaceAndPath("tacz", "textures/hud/kill_icon.png");
     private static final int ICON_SIZE = 16;
     private static long killTimestamp = -1L;
     private static int killAmount = 0;
