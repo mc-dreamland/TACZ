@@ -2,6 +2,9 @@ package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.TimelessAPI;
+import com.tacz.guns.api.client.other.KeepingItemRenderer;
+import com.tacz.guns.api.item.IAnimationItem;
+import com.tacz.guns.api.item.ItemBehavior;
 import com.tacz.guns.api.event.common.GunDrawEvent;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
@@ -20,6 +23,7 @@ public class LocalPlayerDraw {
     private final LocalPlayerDataHolder data;
     private final LocalPlayer player;
     public boolean readyToDraw = false;
+    private long drawSequence;
 
     public LocalPlayerDraw(LocalPlayerDataHolder data, LocalPlayer player) {
         this.data = data;
@@ -32,6 +36,11 @@ public class LocalPlayerDraw {
         }
         // 重置各种参数
         this.resetData();
+        long sequence = ++drawSequence;
+        if (data.drawFuture != null) {
+            data.drawFuture.cancel(false);
+            data.drawFuture = null;
+        }
 
         // 获取各种数据
         ItemStack currentItem = player.getMainHandItem();
@@ -53,27 +62,30 @@ public class LocalPlayerDraw {
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(new GunDrawEvent(player, lastItem, currentItem, LogicalSide.CLIENT));
 
         // 不处于收枪状态时才能收枪
-        if (drawTime >= 0) {
+        boolean startOutgoing = KeepingItemRenderer.getRenderer().beginSwitch(lastItem, putAwayTime);
+        if (drawTime >= 0 && startOutgoing) {
             doPutAway(lastItem, putAwayTime);
         }
 
         // 异步放映抬枪动画
         if (currentGun != null) {
-            doDraw(currentItem, putAwayTime);
+            doDraw(currentItem, putAwayTime, sequence);
             // 刷新配件数据
             AttachmentPropertyManager.postChangeEvent(player, currentItem);
         }
     }
 
-    private void doDraw(ItemStack currentItem, long putAwayTime) {
+    private void doDraw(ItemStack currentItem, long putAwayTime, long sequence) {
         TimelessAPI.getGunDisplay(currentItem).ifPresent(display -> {
-            // 取消预定中的 draw 行为
-            if (data.drawFuture != null) {
-                data.drawFuture.cancel(false);
-            }
+            int selectedSlot = player.getInventory().getSelectedSlot();
+            ItemStack requested = currentItem.copy();
             // 根据 put away time 预定 draw 行为（仅播放音效，状态机的初始化为了保证一致性已经移动）
             data.drawFuture = LocalPlayerDataHolder.SCHEDULED_EXECUTOR_SERVICE.schedule(() -> {
                 Minecraft.getInstance().submit(() -> {
+                    if (sequence != drawSequence || Minecraft.getInstance().player != player
+                            || player.getInventory().getSelectedSlot() != selectedSlot) return;
+                    if (!(ItemBehavior.of(player.getMainHandItem()) instanceof IAnimationItem item)
+                            || !item.isSame(requested, player.getMainHandItem())) return;
                     SoundPlayManager.stopPlayGunSound();
                     SoundPlayManager.playDrawSound(player, display);
                 });

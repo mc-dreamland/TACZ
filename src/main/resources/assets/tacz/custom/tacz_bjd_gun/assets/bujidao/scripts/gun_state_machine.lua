@@ -21,14 +21,21 @@ function driver.states()
         return true
     end
 
-    local function action(ctx, clip)
+    local function action(ctx, clip, remaining)
         ctx:stopAnimation(s.shot)
         if s.moving == 'run' then ctx:resumeAnimation(s.motion) end
         ctx:stopAnimation(s.motion)
         s.moving = nil
-        if play(ctx, clip, s.main, false, 0) then
+        local blend = remaining and math.min(0.08, remaining / 2) or nil
+        if play(ctx, clip, s.main, false, 0, blend) then
+            -- A draw interrupted halfway only needs the matching tail of the
+            -- put-away clip. Keep its remaining playback inside the handover.
+            local length = duration(ctx, clip)
+            if remaining and remaining < length then
+                ctx:setAnimationProgress(s.main, length - remaining, false)
+            end
             s.action = clip
-            s.until_time = clock(ctx) + duration(ctx, clip)
+            s.until_time = clock(ctx) + (remaining or length)
         else
             s.action = nil
         end
@@ -92,7 +99,8 @@ function driver.states()
         if input == 'put_away' then
             clear_pump_cycle()
             s.reload = nil
-            action(ctx, 'put_away')
+            local remaining = tonumber(ctx:getPutAwayTime()) or 0
+            action(ctx, 'put_away', remaining > 0 and remaining or nil)
         elseif input == 'draw' then
             clear_pump_cycle()
             s.reload = nil

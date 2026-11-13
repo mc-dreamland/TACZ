@@ -131,11 +131,12 @@ public class GunItemRendererWrapper extends AnimateGeoItemRenderer<BedrockGunMod
         }
         stateMachine.processContextIfExist(context -> {
             context.setPutAwayTime(putAwayTime / 1000F);
-            context.setCurrentGunItem(stack);
+            context.setCurrentGunItem(stack.copy());
         });
         if (stateMachine.isInitialized()) {
             stateMachine.trigger(GunAnimationConstant.INPUT_PUT_AWAY);
-//            KeepingItemRenderer.getRenderer().keep(stack, putAwayTime);
+            // LocalPlayerDraw retains the outgoing snapshot. Its handover starts
+            // the incoming draw explicitly, including two guns sharing this display.
             stateMachine.exit();
             stateMachine.setExitingTime(putAwayTime + 50);
         }

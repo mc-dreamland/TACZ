@@ -15,6 +15,22 @@ public interface KeepingItemRenderer {
      */
     void keep(ItemStack itemStack, long timeMs);
 
+    /** Start/retarget a local selection change. True means start the outgoing animation. */
+    default boolean beginSwitch(ItemStack previous, long timeMs) {
+        keep(previous, timeMs);
+        return true;
+    }
+
+    /** Whether this submission still belongs to the outgoing snapshot. */
+    default boolean isKeepingItem() {
+        return false;
+    }
+
+    /** Consume the incoming draw exactly once, after the retained snapshot is released. */
+    default boolean takePendingDraw() {
+        return false;
+    }
+
     /**
      * 获取当前主手正在渲染的物品
      */

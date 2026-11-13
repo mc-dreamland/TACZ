@@ -6,6 +6,9 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.tacz.guns.api.client.event.BeforeRenderHandEvent;
 import com.tacz.guns.api.client.other.KeepingItemRenderer;
 import com.tacz.guns.client.renderer.item.AnimateGeoItemRenderer;
+import com.tacz.guns.client.renderer.item.ItemSwitchState;
+import com.tacz.guns.api.item.IAnimationItem;
+import com.tacz.guns.api.item.ItemBehavior;
 import com.tacz.guns.compat.firstperson.FirstPersonAnimationCompat;
 import com.tacz.guns.compat.shader.ShaderCompat;
 import net.minecraft.client.Minecraft;
@@ -24,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.lang.ref.WeakReference;
+
 @Mixin(ItemInHandRenderer.class)
 public class ItemInHandRendererMixin implements KeepingItemRenderer {
     @Shadow
@@ -33,11 +38,13 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
     @Shadow
     private ItemStack mainHandItem;
     @Unique
-    private ItemStack tacz$KeepItem;
+    private final ItemSwitchState<ItemStack> tacz$switchState = new ItemSwitchState<>(ItemStack::copy);
     @Unique
-    private long tacz$KeepTimeMs;
+    private WeakReference<LocalPlayer> tacz$switchPlayer = new WeakReference<>(null);
     @Unique
-    private long tacz$KeepTimestamp;
+    private int tacz$requestedSlot = -1;
+    @Unique
+    private ItemStack tacz$requestedItem = ItemStack.EMPTY;
 
     /**
      * 26.1.2 兼容: renderHandsWithItems 在 26.2 被重命名为 submitHandsWithItems
@@ -104,6 +111,7 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
             return;
         }
 
+        boolean managedHandover = tacz$switchState.isManaged();
         ItemStack mainRenderStack = FirstPersonAnimationCompat.getMainRenderStack(localPlayer);
         boolean mainHandOwnedByTacz = FirstPersonAnimationCompat.isTaczViewmodel(mainRenderStack);
 
@@ -116,7 +124,7 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
                 .get(renderStack.getItem());
         if (!(renderer instanceof AnimateGeoItemRenderer<?, ?> geoRenderer)
                 || geoRenderer.getModel(renderStack) == null) {
-            original.call(instance, player, frameInterp, xRot, hand, attack, itemStack,
+            original.call(instance, player, frameInterp, xRot, hand, attack, managedHandover ? renderStack : itemStack,
                     inverseArmHeight, poseStack, collector, lightCoords);
             return;
         }
@@ -132,7 +140,7 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
         ItemDisplayContext context = player.getMainArm() == HumanoidArm.RIGHT
                 ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
                 : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
-        if (geoRenderer.needReInit(renderStack)) {
+        if (!isKeepingItem() && (takePendingDraw() || geoRenderer.needReInit(renderStack))) {
             geoRenderer.tryInit(renderStack, localPlayer, frameInterp);
         }
         poseStack.pushPose();
@@ -144,28 +152,62 @@ public class ItemInHandRendererMixin implements KeepingItemRenderer {
     @Unique
     @Override
     public void keep(ItemStack itemStack, long timeMs) {
-        long time = System.currentTimeMillis() - tacz$KeepTimestamp;
-        if (time < tacz$KeepTimeMs) {
-            return;
+        tacz$syncSwitchPlayer();
+        tacz$switchState.request(itemStack, itemStack.isEmpty() ? 0 : Math.max(0, timeMs), System.currentTimeMillis());
+    }
+
+    @Override
+    public boolean beginSwitch(ItemStack previous, long timeMs) {
+        LocalPlayer player = tacz$syncSwitchPlayer();
+        if (player == null) return false;
+        ItemStack selected = player.getMainHandItem();
+        if (!tacz$switchState.isManaged() && !tacz$isAnimated(previous) && !tacz$isAnimated(selected)) return false;
+        int slot = player.getInventory().getSelectedSlot();
+        boolean sameItem = ItemBehavior.of(selected) instanceof IAnimationItem animated
+                ? animated.isSame(tacz$requestedItem, selected) : ItemStack.matches(tacz$requestedItem, selected);
+        // Rejoin/reload draw(EMPTY) refreshes server state; do not restart an
+        // already visible identical selection just because its ammo was updated.
+        if (slot == tacz$requestedSlot && sameItem && previous.isEmpty()) return false;
+        tacz$requestedSlot = slot;
+        tacz$requestedItem = selected.copy();
+        return tacz$switchState.request(previous, previous.isEmpty() ? 0 : Math.max(0, timeMs), System.currentTimeMillis());
+    }
+
+    @Override
+    public boolean isKeepingItem() {
+        return tacz$switchState.isKeeping();
+    }
+
+    @Override
+    public boolean takePendingDraw() {
+        return tacz$switchState.takePendingDraw();
+    }
+
+    @Unique
+    private static boolean tacz$isAnimated(ItemStack stack) {
+        return com.tacz.guns.client.renderer.item.BuiltinItemRendererRegistry.INSTANCE.get(stack.getItem()) instanceof AnimateGeoItemRenderer<?, ?>;
+    }
+
+    @Unique
+    private LocalPlayer tacz$syncSwitchPlayer() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != tacz$switchPlayer.get() || player == null) {
+            tacz$switchState.clear();
+            tacz$requestedSlot = -1;
+            tacz$requestedItem = ItemStack.EMPTY;
+            tacz$switchPlayer = new WeakReference<>(player);
         }
-        this.tacz$KeepTimeMs = timeMs;
-        this.tacz$KeepTimestamp = System.currentTimeMillis();
-        this.tacz$KeepItem = itemStack;
-        this.mainHandItem = itemStack;
+        return player;
     }
 
     @Override
     public ItemStack getCurrentItem() {
-        if (Minecraft.getInstance().player == null) {
-            return mainHandItem;
-        }
-        if (tacz$KeepItem != null) {
-            long time = System.currentTimeMillis() - tacz$KeepTimestamp;
-            if (time < tacz$KeepTimeMs) {
-                return tacz$KeepItem;
-            } else {
-                tacz$KeepItem = null;
-            }
+        LocalPlayer player = tacz$syncSwitchPlayer();
+        if (player != null && tacz$switchState.isManaged()) {
+            ItemStack visible = tacz$switchState.resolve(player.getMainHandItem(), System.currentTimeMillis());
+            mainHandItem = visible;
+            if (!tacz$switchState.isKeeping() && !tacz$isAnimated(visible)) tacz$switchState.clear();
+            return visible;
         }
         return mainHandItem;
     }
