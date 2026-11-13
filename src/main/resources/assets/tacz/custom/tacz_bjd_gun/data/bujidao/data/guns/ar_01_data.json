@@ -145,6 +145,7 @@
     }
   },
   "allow_attachment_types": [
-    "extended_mag"
+    "extended_mag",
+    "scope"
   ]
 }

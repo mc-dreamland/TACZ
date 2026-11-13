@@ -139,8 +139,5 @@
   "allow_attachment_types": [
     "extended_mag",
     "scope"
-  ],
-  "builtin_attachments": {
-    "scope": "bujidao:sr_02_scope"
-  }
+  ]
 }

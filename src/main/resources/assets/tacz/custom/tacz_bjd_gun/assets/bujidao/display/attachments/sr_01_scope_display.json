@@ -1,0 +1,9 @@
+{
+  "model": "bujidao:attachment/sr_01_scope_geo",
+  "texture": "bujidao:gun/uv/sr_01",
+  "slot": "minecraft:item/wooden_sword",
+  "sight": true,
+  "zoom": [1.0],
+  "fov": 70,
+  "show_mount": false
+}

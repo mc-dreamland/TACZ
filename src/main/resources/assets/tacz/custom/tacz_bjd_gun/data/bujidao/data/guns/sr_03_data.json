@@ -196,8 +196,5 @@
     "scope"
   ],
   "can_crawl": true,
-  "bolt_feed_time": 0.602,
-  "builtin_attachments": {
-    "scope": "bujidao:sr_03_scope"
-  }
+  "bolt_feed_time": 0.602
 }

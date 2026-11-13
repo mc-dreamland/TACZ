@@ -146,8 +146,5 @@
     "extended_mag",
     "scope"
   ],
-  "can_crawl": true,
-  "builtin_attachments": {
-    "scope": "bujidao:ar_02_scope"
-  }
+  "can_crawl": true
 }

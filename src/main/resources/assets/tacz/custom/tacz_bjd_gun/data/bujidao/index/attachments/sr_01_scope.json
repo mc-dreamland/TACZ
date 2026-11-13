@@ -1,0 +1,7 @@
+{
+  "name": "bujidao.attachment.sr_01_scope.name",
+  "display": "bujidao:sr_01_scope_display",
+  "data": "bujidao:sr_01_scope_data",
+  "type": "scope",
+  "sort": 6
+}

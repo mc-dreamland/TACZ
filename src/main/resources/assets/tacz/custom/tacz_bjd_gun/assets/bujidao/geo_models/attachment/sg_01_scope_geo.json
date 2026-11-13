@@ -1,0 +1,130 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.bujidao.sg_01_scope",
+        "texture_width": 128,
+        "texture_height": 128,
+        "visible_bounds_width": 8,
+        "visible_bounds_height": 8,
+        "visible_bounds_offset": [
+          0,
+          1,
+          0
+        ]
+      },
+      "bones": [
+        {
+          "name": "scope_body",
+          "pivot": [
+            0,
+            0,
+            0
+          ],
+          "cubes": [
+            {
+              "origin": [
+                -4.039999999999999,
+                13.49314,
+                -0.3099999999999985
+              ],
+              "size": [
+                0,
+                0.5650000000000048,
+                0.6200000000000001
+              ],
+              "uv": {
+                "north": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    0,
+                    2.5
+                  ]
+                },
+                "east": {
+                  "uv": [
+                    0,
+                    57
+                  ],
+                  "uv_size": [
+                    2.5,
+                    2.5
+                  ]
+                },
+                "south": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    0,
+                    2.5
+                  ]
+                },
+                "west": {
+                  "uv": [
+                    3,
+                    57
+                  ],
+                  "uv_size": [
+                    2.5,
+                    2.5
+                  ]
+                },
+                "up": {
+                  "uv": [
+                    0,
+                    0
+                  ],
+                  "uv_size": [
+                    0,
+                    2.5
+                  ]
+                },
+                "down": {
+                  "uv": [
+                    0,
+                    2.5
+                  ],
+                  "uv_size": [
+                    0,
+                    -2.5
+                  ]
+                }
+              },
+              "pivot": [
+                -4.039999999999999,
+                13.775640000000003,
+                1.5543122344752192e-15
+              ],
+              "rotation": [
+                -3.5083546492674384e-15,
+                7.016709298534877e-15,
+                -3.5083546492674384e-15
+              ],
+              "mirror": false
+            }
+          ]
+        },
+        {
+          "name": "scope_view",
+          "parent": "scope_body",
+          "pivot": [
+            7.053469722,
+            13.774335344,
+            -0.017125785
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ]
+        }
+      ]
+    }
+  ]
+}

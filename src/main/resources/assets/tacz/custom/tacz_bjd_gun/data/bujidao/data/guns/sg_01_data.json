@@ -170,7 +170,8 @@
   },
   "can_slide": false,
   "allow_attachment_types": [
-    "extended_mag"
+    "extended_mag",
+    "scope"
   ],
   "can_crawl": true,
   "script": "bujidao:sg_01_gun_logic",
