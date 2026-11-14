@@ -38,6 +38,7 @@
     "silence_multiplier": 1.0
   },
   "reload": {
+    "unit": "magazine",
     "type": "magazine",
     "infinite": false,
     "feed": {

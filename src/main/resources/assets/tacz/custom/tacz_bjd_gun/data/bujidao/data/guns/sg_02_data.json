@@ -34,6 +34,7 @@
   "ammo_amount": 2,
   "bolt": "closed_bolt",
   "reload": {
+    "unit": "shell",
     "type": "magazine",
     "infinite": false,
     "feed": {
@@ -158,5 +159,15 @@
     4,
     5
   ],
-  "can_crawl": true
+  "can_crawl": true,
+  "script": "bujidao:sg_02_gun_logic",
+  "script_param": {
+    "intro": 1.55,
+    "intro_feed": 1.48,
+    "intro_empty": 1.54,
+    "intro_empty_feed": 1.48,
+    "loop": 0.79,
+    "loop_feed": 0.71,
+    "ending": 0.67
+  }
 }

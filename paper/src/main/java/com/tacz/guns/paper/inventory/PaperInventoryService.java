@@ -139,7 +139,7 @@ public final class PaperInventoryService {
                 JsonObject row = entry(id, id, "attachment", type); row.addProperty("slot", inventorySlot); row.addProperty("type", type); entries.add(row);
             }
             for (Map.Entry<String, JsonElement> attachment : state.getAsJsonObject("attachments").entrySet()) { JsonObject row = entry(attachment.getValue().getAsString(), attachment.getValue().getAsString(), "installed", "卸下 " + attachment.getKey()); row.addProperty("type", attachment.getKey()); entries.add(row); }
-            entries.add(entry("unload_ammo", "卸下枪内弹药", "unload", "退还弹匣与膛内弹药"));
+            entries.add(entry("unload_ammo", "丢弃枪内弹药", "unload", "清空弹匣与膛内弹药，不返还物品"));
         } else {
             String storedId = string(state, "boxAmmoId", "");
             for (String id : pack.ammoIndexes().keySet()) if (looseAmmo(player, id) > 0 || storedId.equals(id)) {
@@ -195,21 +195,22 @@ public final class PaperInventoryService {
         applyColors(state, request);
         ItemStack old = oldId.isEmpty() ? null : detachedAttachment(oldId, state, type);
         replaceAttachmentColor(state, type, attachment.has("laserColor") ? attachment.get("laserColor") : null);
-        installed.addProperty(type, id); int excess = Math.max(0, integer(state, "ammo", 0) - items.capacity(state)); state.addProperty("ammo", integer(state, "ammo", 0) - excess);
+        installed.addProperty(type, id);
+        if (type.equals("extended_mag") && !oldId.isEmpty()) discardAmmo(state);
         attachmentStack.setAmount(attachmentStack.getAmount() - 1); player.getInventory().setItem(sourceSlot, attachmentStack.getAmount() == 0 ? null : attachmentStack); items.write(gunStack, state); player.getInventory().setItem(session.slot, gunStack);
-        if (old != null) items.give(player, old); refund(player, state, excess);
+        if (old != null) items.give(player, old);
     }
     private void unload(Player player, Session session, JsonObject request) {
-        ItemStack stack = player.getInventory().getItem(session.slot); JsonObject state = items.read(stack); require(state != null, "枪械不存在"); int refund;
+        ItemStack stack = player.getInventory().getItem(session.slot); JsonObject state = items.read(stack); require(state != null, "枪械不存在");
         String type = string(request, "type", ""); applyColors(state, request);
         ItemStack attachment = null;
-        if (type.isEmpty()) { refund = integer(state, "ammo", 0) + (state.get("chamber").getAsBoolean() ? 1 : 0); state.addProperty("ammo", 0); state.addProperty("chamber", false); }
+        if (type.isEmpty()) discardAmmo(state);
         else {
             JsonObject installed = state.getAsJsonObject("attachments"); require(installed.has(type), "该槽未安装配件"); attachment = detachedAttachment(installed.remove(type).getAsString(), state, type);
             replaceAttachmentColor(state, type, null);
-            refund = Math.max(0, integer(state, "ammo", 0) - items.capacity(state)); state.addProperty("ammo", integer(state, "ammo", 0) - refund);
+            if (type.equals("extended_mag")) discardAmmo(state);
         }
-        items.write(stack, state); player.getInventory().setItem(session.slot, stack); if (attachment != null) items.give(player, attachment); refund(player, state, refund);
+        items.write(stack, state); player.getInventory().setItem(session.slot, stack); if (attachment != null) items.give(player, attachment);
     }
     private void applyColors(JsonObject state, JsonObject request) {
         require(state != null && string(state, "kind", "").equals("gun"), "枪械不存在");
@@ -245,7 +246,7 @@ public final class PaperInventoryService {
         }
         return stack;
     }
-    private void refund(Player player, JsonObject state, int amount) { if (amount > 0) items.give(player, items.create("ammo", string(pack.gun(string(state, "id", "")), "ammo", ""), amount)); }
+    private static void discardAmmo(JsonObject state) { state.addProperty("ammo", 0); state.addProperty("chamber", false); }
     private int looseAmmo(Player player, String id) { int total = 0; for (int slot : storageSlots()) { ItemStack stack = player.getInventory().getItem(slot); JsonObject state = items.read(stack); if (state != null && string(state, "kind", "").equals("ammo") && string(state, "id", "").equals(id)) total += stack.getAmount(); } return total; }
     private void box(Player player, Session session, JsonObject request, boolean store) {
         ItemStack stack = player.getInventory().getItem(session.slot); JsonObject state = items.read(stack); require(state != null, "弹药箱不存在");

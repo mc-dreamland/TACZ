@@ -235,7 +235,7 @@ public final class PaperAmmoBoxScreen extends Screen {
         // Tooltips use window coordinates so vanilla edge-clamping still works on a scaled panel.
         if (inside(x, y, 8, 20, 118, 92)) graphics.setTooltipForNextFrame(font, boxPreview, mouseX, mouseY);
         else if (inside(x, y, 8, 122, 118, 58)) {
-            graphics.setComponentTooltipForNextFrame(font, List.of(Component.literal("箱内 " + storedCount() + " / " + capacity() + " 发"),
+            graphics.setComponentTooltipForNextFrame(font, List.of(Component.literal("箱内 " + storedCount() + " / " + capacity() + " 件"),
                     Component.literal(storedCount() > 0 ? "取空后可存入其它类型弹药" : "空箱可存入任意一种弹药")), mouseX, mouseY);
         } else {
             AmmoEntry hovered = rowButtons.stream().filter(button -> inside(x, y, button.getX(), button.getY(), button.getWidth(), button.getHeight()))

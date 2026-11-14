@@ -157,6 +157,10 @@ public class GunAnimationStateContext extends ItemAnimationStateContext {
         return processGunData((iGun, gunIndex) -> iGun.getCurrentAmmoCount(currentGunItem)).orElse(0);
     }
 
+    public boolean capacityIncludesChamber() {
+        return gunData != null && gunData.getReloadData().includesChamberInCapacity();
+    }
+
     /**
      * 获取枪械弹匣的最大备弹数。
      *

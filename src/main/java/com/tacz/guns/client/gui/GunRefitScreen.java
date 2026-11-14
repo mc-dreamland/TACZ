@@ -214,7 +214,7 @@ public class GunRefitScreen extends Screen {
                     Component.translatable("gui.tacz.gun_refit.property_diagrams.hide"), b -> switchHideButton()));
         }
         if (isPaperRefit()) addRenderableWidget(new FlatColorButton(11, height - 26, 80, 16,
-                Component.literal("卸下弹药"), ignored -> submitPaper("unload", new JsonObject(), ItemStack.EMPTY, "")));
+                Component.literal("丢弃枪内弹药"), ignored -> submitPaper("unload", new JsonObject(), ItemStack.EMPTY, "")));
         if (isPaperRefit() && paperPending) this.children().forEach(child -> {
             if (child instanceof AbstractWidget widget) widget.active = false;
         });

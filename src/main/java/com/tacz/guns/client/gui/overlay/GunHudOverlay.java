@@ -122,6 +122,8 @@ public class GunHudOverlay {
         if (!useInventoryAmmo && gunData.getReloadData().isInfinite()) {
             inventoryAmmoCountText = "\u221e";
         }
+        if (!useInventoryAmmo) inventoryAmmoCountText += Component.translatable(
+                gunData.getReloadData().usesMagazineItems() ? "hud.tacz.reserve.magazines" : "hud.tacz.reserve.rounds").getString();
 
         Font font = mc.font;
         Matrix3x2fStack poseStack = graphics.pose();

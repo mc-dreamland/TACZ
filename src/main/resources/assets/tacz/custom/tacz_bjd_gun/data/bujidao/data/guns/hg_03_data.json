@@ -43,6 +43,7 @@
   },
   "bolt": "closed_bolt",
   "reload": {
+    "unit": "magazine",
     "type": "magazine",
     "infinite": false,
     "feed": {

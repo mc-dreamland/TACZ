@@ -100,6 +100,7 @@ public final class GunPropertyDiagrams {
                 graphics.drawString(font, Component.literal("INV"), valueTextStartX, yOffset[0], fontColor, false);
             } else {
                 int barrelBulletAmount = (iGun.hasBulletInBarrel(gunItem) && index.getGunData().getBolt() != Bolt.OPEN_BOLT) ? 1 : 0;
+                if (gunData.getReloadData().includesChamberInCapacity()) barrelBulletAmount = 0;
                 int ammoAmount = gunData.getAmmoAmount() + barrelBulletAmount;
                 double ammoAmountPercent = Math.min(ammoAmount / 100.0, 1);
                 int ammoLength = (int) (barStartX + barMaxWidth * ammoAmountPercent);

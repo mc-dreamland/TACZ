@@ -25,7 +25,7 @@ public final class PaperGunService implements Listener {
     private static final long SHOT_EARLY_WINDOW = 50;
     private static final Set<String> CANCEL_QUEUED_SHOT = Set.of("reload", "bolt", "melee", "fire_select", "inspect", "draw");
     private static final Set<String> SCRIPTS = Set.of("", "tacz:xmag_reload_logic", "tacz:db_short_gun_logic", "tacz:devotion_lmg_logic", "tacz:hk_mk23_logic",
-            "tacz:kar98_gun_logic", "tacz:m1014_gun_logic", "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic", Sg01Reload.SCRIPT);
+            "tacz:kar98_gun_logic", "tacz:m1014_gun_logic", "tacz:m870_gun_logic", "tacz:spas_12_gun_logic", "tacz:sp_heat", "tacz:sp_spread_logic", Sg01Reload.SCRIPT, Sg01Reload.SG02_SCRIPT);
     private final JavaPlugin plugin;
     private final DefaultGunPack pack;
     private final PaperItemStore items;
@@ -357,7 +357,7 @@ public final class PaperGunService implements Listener {
     private void reload(Player player, Session s, Equipped e, long now) {
         if (busy(s, now) || now < s.nextShot || text(object(e.gun, "reload"), "type", "magazine").equals("inventory")) return;
         int capacity = items.capacity(e.state);
-        if (Sg01Reload.matches(e.gun) && Sg01Reload.needed(e.state, capacity) == 0) return;
+        if ((capacityIncludesChamber(e.gun) || Sg01Reload.supportsReload(e.gun)) && Sg01Reload.needed(e.state, capacity) == 0) return;
         if (integer(e.state, "ammo", 0) >= capacity && (text(e.gun, "bolt", "open_bolt").equals("open_bolt") || flag(e.state, "chamber", false))) return;
         if (!freeAmmo(player, e) && items.countAmmo(player, text(e.gun, "ammo", "")) == 0) return;
         int level = 0;
@@ -367,7 +367,7 @@ public final class PaperGunService implements Listener {
                 if (attachment != null) level = integer(attachment, "extended_mag_level", 0);
             }
         }
-        if (Sg01Reload.matches(e.gun)) {
+        if (Sg01Reload.supportsReload(e.gun)) {
             s.sgReload = new Sg01Reload(e.gun, flag(e.state, "chamber", false));
             s.sgShotAt = -1;
         } else {
@@ -395,6 +395,16 @@ public final class PaperGunService implements Listener {
         if (s.reload == null) return;
         while (s.feedIndex < s.reload.feeds().size() && now >= s.reloadStart + s.reload.feeds().get(s.feedIndex).time()) {
             ReloadPlan.Feed feed = s.reload.feeds().get(s.feedIndex++);
+            if (magazineItems(e.gun)) {
+                int capacity = items.capacity(e.state);
+                if (Sg01Reload.needed(e.state, capacity) > 0
+                        && (freeAmmo(player, e) || items.takeAmmo(player, text(e.gun, "ammo", ""), 1) == 1)) {
+                    e.state.addProperty("ammo", capacity);
+                    e.state.addProperty("chamber", false);
+                    if (capacity > 0 && !text(e.gun, "bolt", "open_bolt").equals("open_bolt")) chamber(e.state);
+                }
+                continue;
+            }
             int availableSpace = feed.chamber() ? (flag(e.state, "chamber", false) ? 0 : 1) : Math.max(0, items.capacity(e.state) - integer(e.state, "ammo", 0));
             int wanted = Math.min(feed.count(), availableSpace);
             int taken;

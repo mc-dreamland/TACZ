@@ -4921,7 +4921,7 @@
         }
       },
       "sound_effects": {
-        "1.776": {
+        "1.48": {
           "effect": "bujidao:sg_02/reload_shell"
         }
       }
@@ -10170,7 +10170,10 @@
         }
       },
       "sound_effects": {
-        "2.4": {
+        "1.48": {
+          "effect": "bujidao:sg_02/reload_shell"
+        },
+        "2.25": {
           "effect": "bujidao:sg_02/reload_shell"
         }
       }

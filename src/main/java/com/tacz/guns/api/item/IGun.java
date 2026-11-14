@@ -288,7 +288,7 @@ public interface IGun {
     }
 
     /**
-     * 取下枪内所有子弹。玩家的特殊方法，默认卸载弹药时使用
+     * 丢弃枪内全部弹药（含膛内弹），不返还弹药物品。拆换扩容弹匣时使用。
      */
     void dropAllAmmo(Player player, ItemStack gun);
 

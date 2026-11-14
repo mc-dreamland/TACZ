@@ -19,13 +19,13 @@ public record ReloadPlan(List<Feed> feeds, long duration, long ending, boolean p
         boolean tube = script.equals("tacz:m870_gun_logic") || script.equals("tacz:m1014_gun_logic") || script.equals("tacz:spas_12_gun_logic");
         List<Feed> feeds = new ArrayList<>();
         boolean scope = object(state, "attachments").entrySet().stream().anyMatch(e -> e.getKey().equalsIgnoreCase("scope") && !e.getValue().getAsString().equals("tacz:empty"));
-        if (kar && empty && !scope) {
+        if (!magazineItems(gun) && kar && empty && !scope) {
             long feed = millis(param, "clip_load_feed", 2.78);
             feeds.add(new Feed(feed, 1, true));
             feeds.add(new Feed(feed, missing, false));
             return new ReloadPlan(List.copyOf(feeds), Math.max(feed, millis(param, "clip_load", 3)), 0, false, true);
         }
-        if (tube || kar) {
+        if (!magazineItems(gun) && (tube || kar)) {
             boolean spasSemi = script.equals("tacz:spas_12_gun_logic") && mode.equals("burst");
             long intro = millis(param, empty ? (spasSemi ? "intro_empty_semi" : "intro_empty") : "intro", .5);
             long loop = Math.max(1, millis(param, "loop", .5));

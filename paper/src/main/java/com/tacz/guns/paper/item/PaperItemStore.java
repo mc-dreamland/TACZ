@@ -102,7 +102,8 @@ public final class PaperItemStore {
         meta.displayName(index != null && index.has("name") ? Component.translatable(index.get("name").getAsString()) : Component.text("TACZ " + id.substring(id.indexOf(':') + 1)));
         List<Component> lore = new ArrayList<>(); lore.add(Component.text(id));
         if (kind.equals("gun")) {
-            lore.add(Component.text(integer(state, "ammo", 0) + "/" + capacity(state) + " · " + string(state, "fireMode", "semi")));
+            int total = integer(state, "ammo", 0) + (state.has("chamber") && state.get("chamber").getAsBoolean() ? 1 : 0);
+            lore.add(Component.text(total + "/" + capacity(state) + " · " + string(state, "fireMode", "semi")));
             String ammoId = string(pack.gun(id), "ammo", "");
             JsonObject ammoIndex = pack.ammoIndexes().get(ammoId);
             Component ammoName = ammoIndex != null && ammoIndex.has("name")

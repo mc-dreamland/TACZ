@@ -544,7 +544,7 @@ public class ModernKineticGunScriptAPI {
      * @return 换弹是否需要消耗弹药
      */
     public boolean isReloadingNeedConsumeAmmo() {
-        return IGunOperator.fromLivingEntity(shooter).needCheckAmmo();
+        return IGunOperator.fromLivingEntity(shooter).needCheckAmmo() && !gunIndex.getGunData().getReloadData().isInfinite();
     }
 
     /**
@@ -555,7 +555,8 @@ public class ModernKineticGunScriptAPI {
     public int getNeededAmmoAmount() {
         int maxAmmoCount = AttachmentDataUtils.getAmmoCountWithAttachment(itemStack, gunIndex.getGunData());
         int currentAmmoCount = abstractGunItem.getCurrentAmmoCount(itemStack);
-        return maxAmmoCount - currentAmmoCount;
+        int chamber = gunIndex.getGunData().getReloadData().includesChamberInCapacity() && hasAmmoInBarrel() ? 1 : 0;
+        return Math.max(0, maxAmmoCount - currentAmmoCount - chamber);
     }
 
     /**
@@ -570,7 +571,7 @@ public class ModernKineticGunScriptAPI {
     /**
      * 获取枪械弹匣的最大备弹数。
      *
-     * @return 返回枪械弹匣的最大备弹数，不计算已在枪管中的弹药。
+     * @return 配置容量；reload.unit 为 magazine 或 shell 时包含膛内弹。
      */
     public int getMaxAmmoCount() {
         return AttachmentDataUtils.getAmmoCountWithAttachment(itemStack, gunIndex.getGunData());
@@ -602,6 +603,19 @@ public class ModernKineticGunScriptAPI {
         return AmmoSourceRegistry.consumeAmmo(shooter, itemStack, neededAmount);
     }
 
+    /** Commit a disposable magazine at the feed checkpoint, only after payment succeeds. */
+    public boolean reloadMagazine() {
+        GunData data = getGunIndex().getGunData();
+        int capacity = getMaxAmmoCount();
+        if (capacity <= 0 || getNeededAmmoAmount() == 0) return false;
+        if (isReloadingNeedConsumeAmmo() && !data.getReloadData().isInfinite() && consumeAmmoFromPlayer(1) != 1) return false;
+        setAmmoInBarrel(false);
+        removeAmmoFromMagazine(getAmmoCountInMagazine());
+        putAmmoInMagazine(capacity);
+        if (data.getBolt() != Bolt.OPEN_BOLT && removeAmmoFromMagazine(1) == 1) setAmmoInBarrel(true);
+        return true;
+    }
+
     /**
      * 检查玩家身上（或者虚拟备弹）是否有弹药可以消耗，通常用于循环换弹的打断。
      * 创造模式的玩家会直接返回 true
@@ -629,6 +643,7 @@ public class ModernKineticGunScriptAPI {
             return 0;
         }
         int maxAmmoCount = AttachmentDataUtils.getAmmoCountWithAttachment(itemStack, gunIndex.getGunData());
+        if (gunIndex.getGunData().getReloadData().includesChamberInCapacity() && hasAmmoInBarrel()) maxAmmoCount--;
         int currentAmmoCount = abstractGunItem.getCurrentAmmoCount(itemStack);
         int newAmmoCount = currentAmmoCount + amount;
         if (maxAmmoCount < newAmmoCount) {

@@ -6,6 +6,25 @@ public class GunReloadData {
     @SerializedName("type")
     private FeedType type = FeedType.MAGAZINE;
 
+    @SerializedName("unit")
+    private String unit = "round";
+
+    public boolean usesMagazineItems() {
+        return "magazine".equals(unit);
+    }
+
+    public boolean includesChamberInCapacity() {
+        return usesMagazineItems() || usesShellItems();
+    }
+
+    public boolean usesShellItems() {
+        return "shell".equals(unit);
+    }
+
+    public boolean hasValidUnit() {
+        return "round".equals(unit) || "magazine".equals(unit) || "shell".equals(unit);
+    }
+
     @SerializedName("infinite")
     private boolean infinite = false;
 

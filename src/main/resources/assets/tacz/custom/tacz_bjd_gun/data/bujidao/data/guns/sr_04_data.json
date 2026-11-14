@@ -39,6 +39,7 @@
     "pierce": 5
   },
   "reload": {
+    "unit": "magazine",
     "type": "magazine",
     "infinite": false,
     "feed": {

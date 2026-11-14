@@ -77,7 +77,9 @@ public class LivingEntityReload {
         NetworkHandler.sendToTrackingEntity(new ServerMessageGunReload(shooter.getId(), currentGunItem), shooter);
         Bolt boltType = gunIndex.getGunData().getBolt();
         int ammoCount = gunItem.getCurrentAmmoCount(currentGunItem) + (gunItem.hasBulletInBarrel(currentGunItem) && boltType != Bolt.OPEN_BOLT ? 1 : 0);
-        if (ammoCount <= 0) {
+        boolean empty = gunIndex.getGunData().getReloadData().usesShellItems()
+                ? !gunItem.hasBulletInBarrel(currentGunItem) : ammoCount <= 0;
+        if (empty) {
             // 初始化空仓换弹的 tick 的状态
             data.reloadStateType = ReloadState.StateType.EMPTY_RELOAD_FEEDING;
         } else {

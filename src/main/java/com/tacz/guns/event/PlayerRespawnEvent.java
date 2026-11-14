@@ -37,6 +37,11 @@ public class PlayerRespawnEvent {
                 return;
             }
 
+            if (gunIndex.getGunData().getReloadData().usesMagazineItems()) {
+                api.reloadMagazine();
+                return;
+            }
+
             // 针对燃料类型特殊处理
             var isFuel = reloadType == FeedType.FUEL;
             int needAmmoCount = api.getNeededAmmoAmount();

@@ -21,6 +21,12 @@ public final class GunMath {
     static int integer(JsonObject o, String key, int fallback) { return (int) number(o, key, fallback); }
     static double clamp(double v, double min, double max) { return Math.max(min, Math.min(max, v)); }
 
+    static boolean magazineItems(JsonObject gun) { return text(object(gun, "reload"), "unit", "round").equals("magazine"); }
+    static boolean capacityIncludesChamber(JsonObject gun) {
+        String unit = text(object(gun, "reload"), "unit", "round");
+        return unit.equals("magazine") || unit.equals("shell");
+    }
+
     static double inaccuracy(JsonObject accuracy, boolean grounded, boolean moving,
                               boolean crawling, boolean sneaking, double aimingProgress) {
         String posture = grounded ? crawling ? "lie" : sneaking ? "sneak" : moving ? "move" : "stand"

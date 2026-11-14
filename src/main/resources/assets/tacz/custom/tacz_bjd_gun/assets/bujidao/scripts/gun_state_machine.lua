@@ -45,6 +45,7 @@ function driver.states()
         ctx:stopAnimation(s.main)
         s.action = nil
         s.reload = nil
+        s.shell_clip_end = nil
     end
 
     local function clear_pump_cycle()
@@ -55,12 +56,32 @@ function driver.states()
     local function can_start_reload(ctx)
         local capacity = ctx:getMaxAmmoCount()
         local amount = ctx:getAmmoCount()
-        -- SG-01 includes the chamber in its nominal total capacity.
-        -- Other guns must have a free magazine slot even when the chamber is empty.
-        if ctx:getStateMachineParams().shell_reload and ctx:hasBulletInBarrel() then
+        if ctx:capacityIncludesChamber() and ctx:hasBulletInBarrel() then
             amount = amount + 1
         end
         return capacity > 0 and amount < capacity and ctx:hasAmmoToConsume()
+    end
+
+    local function shell_action(ctx, phase, empty, since)
+        local params = ctx:getStateMachineParams()
+        local name = phase == 'intro' and (empty and 'intro_empty' or 'intro') or phase
+        if params.shell_segments then
+            local segment = name == 'end' and s.shell_looped and 'end_loop' or name
+            local clip = params['shell_' .. segment .. '_clip']
+            local start = tonumber(params['shell_' .. segment .. '_start']) or 0
+            local length = duration(ctx, 'reload_' .. name)
+            since = since or clock(ctx)
+            -- Keep contiguous sections on the same runner: no restart, seek or blend.
+            if s.action ~= clip or not s.shell_clip_end or math.abs(s.shell_clip_end - start) > 0.0001 then
+                action(ctx, clip)
+                ctx:setAnimationProgress(s.main, start + math.min(length, math.max(0, clock(ctx) - since)), false)
+            end
+            s.shell_clip_end = start + length
+            s.until_time = since + length
+            if phase == 'loop' then s.shell_looped = true end
+        else
+            action(ctx, 'reload_' .. name)
+        end
     end
 
     local function begin_reload(ctx, reload_type)
@@ -73,7 +94,12 @@ function driver.states()
         local empty = reload_type == 1 or reload_type == 2
         if ctx:getStateMachineParams().shell_reload then
             s.reload = 'intro'
-            action(ctx, empty and 'reload_intro_empty' or 'reload_intro')
+            s.shell_clip_end = nil
+            s.shell_looped = false
+            s.shell_inserted = 0
+            s.shell_initial = ctx:getAmmoCount() + (ctx:hasBulletInBarrel() and 1 or 0)
+            s.shell_needed = math.max(0, ctx:getMaxAmmoCount() - s.shell_initial)
+            shell_action(ctx, 'intro', empty)
         else
             s.reload = 'magazine'
             action(ctx, empty and 'reload_empty' or 'reload_tactical')
@@ -82,7 +108,32 @@ function driver.states()
 
     local function finish_shell_reload(ctx)
         s.reload = 'ending'
-        action(ctx, 'reload_end')
+        shell_action(ctx, 'end')
+    end
+
+    local function update_shell_segments(ctx, reload_type, now)
+        -- Phase deadlines stay anchored to reload acceptance, even on slow frames.
+        for _ = 1, 32 do
+            if not s.reload or now < s.until_time then return end
+            if s.reload == 'ending' then
+                if reload_type == 0 then clear_action(ctx) end
+                return
+            end
+            s.shell_inserted = s.shell_inserted + 1
+            local since = s.until_time
+            local loaded = ctx:getAmmoCount() + (ctx:hasBulletInBarrel() and 1 or 0)
+            local target = s.shell_needed
+            if reload_type == 0 or reload_type == 2 or reload_type == 4 or not ctx:hasAmmoToConsume() then
+                target = math.min(target, math.max(0, loaded - s.shell_initial))
+            end
+            if s.shell_inserted >= target then
+                s.reload = 'ending'
+                shell_action(ctx, 'end', false, since)
+            else
+                s.reload = 'loop'
+                shell_action(ctx, 'loop', false, since)
+            end
+        end
     end
 
     function state.entry(_, ctx)
@@ -150,11 +201,14 @@ function driver.states()
     function state.update(_, ctx)
         local now = clock(ctx)
         local reload_type = ctx:getReloadStateType()
+        local segments = ctx:getStateMachineParams().shell_segments
         -- Recover the reload pose if its event was missed or the display was reinitialized.
         if reload_type ~= 0 and not s.reload and s.action ~= 'put_away' then
             begin_reload(ctx, reload_type)
         end
-        if s.reload then
+        if s.reload and segments then
+            update_shell_segments(ctx, reload_type, now)
+        elseif s.reload then
             if reload_type ~= 0 then s.saw_reload = true end
             if s.reload ~= 'ending' and ctx:getStateMachineParams().shell_reload
                     and (reload_type == 2 or reload_type == 4) then
@@ -165,14 +219,14 @@ function driver.states()
             end
         end
 
-        if s.action and now >= s.until_time then
+        if s.action and now >= s.until_time and not (s.reload and segments) then
             if s.reload and ctx:getStateMachineParams().shell_reload then
                 if s.reload == 'ending' then
                     -- Hold the last frame until the server also leaves the ending phase.
                     if reload_type == 0 then clear_action(ctx) end
                 else
                     s.reload = 'loop'
-                    action(ctx, 'reload_loop')
+                    shell_action(ctx, 'loop')
                 end
             elseif not s.reload or reload_type == 0 then
                 clear_action(ctx)

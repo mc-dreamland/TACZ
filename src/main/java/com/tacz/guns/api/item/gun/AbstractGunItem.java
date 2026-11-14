@@ -4,13 +4,12 @@ import com.tacz.guns.api.item.ItemBehavior;
 
 import com.tacz.guns.api.DefaultAssets;
 import net.neoforged.neoforge.items.IItemHandler;
-import net.neoforged.neoforge.items.ItemHandlerHelper;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.entity.ReloadState;
+import com.tacz.guns.api.entity.IGunOperator;
 import com.tacz.guns.api.item.*;
 import com.tacz.guns.api.item.ammo.AmmoSourceRegistry;
 import com.tacz.guns.api.item.attachment.AttachmentType;
-import com.tacz.guns.api.item.builder.AmmoItemBuilder;
 import com.tacz.guns.api.item.builder.GunItemBuilder;
 import com.tacz.guns.client.resource.index.ClientGunIndex;
 import com.tacz.guns.entity.shooter.ShooterDataHolder;
@@ -132,7 +131,8 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
 
         int currentAmmoCount = getCurrentAmmoCount(gunItem);
         int maxAmmoCount = AttachmentDataUtils.getAmmoCountWithAttachment(gunItem, gunIndex.getGunData());
-        if (currentAmmoCount >= maxAmmoCount) {
+        int chamber = gunIndex.getGunData().getReloadData().includesChamberInCapacity() && hasBulletInBarrel(gunItem) ? 1 : 0;
+        if (currentAmmoCount + chamber >= maxAmmoCount) {
             return false;
         }
         // 背包直读不进行换弹
@@ -152,60 +152,24 @@ public abstract class AbstractGunItem extends Item implements IGun, IAnimationIt
     }
 
     /**
-     * 将枪内的弹药全部退至背包（如果背包满了会丢到地上）。不会退枪膛内的弹药。
-     * 目前，仅更换弹匣配件时调用。
+     * 丢弃枪内全部弹药，包括膛内弹。不返还物品。
      *
      * @param player  玩家
      * @param gunItem 枪械物品
      */
     @Override
     public void dropAllAmmo(Player player, ItemStack gunItem) {
-        // 背包直读时不调用退弹
-        if (useInventoryAmmo(gunItem)) {
-            return;
+        if (useInventoryAmmo(gunItem)) return;
+        setCurrentAmmoCount(gunItem, 0);
+        setBulletInBarrel(gunItem, false);
+        ShooterDataHolder holder = IGunOperator.fromLivingEntity(player).getDataHolder();
+        if (holder.currentGunItem != null && holder.currentGunItem.get() == gunItem) {
+            holder.reloadTimestamp = -1;
+            holder.reloadStateType = ReloadState.StateType.NOT_RELOADING;
+            holder.boltTimestamp = -1;
+            holder.isBolting = false;
+            holder.scriptData = null;
         }
-        int ammoCount = getCurrentAmmoCount(gunItem);
-        if (ammoCount <= 0) {
-            return;
-        }
-        Identifier gunId = getGunId(gunItem);
-        TimelessAPI.getCommonGunIndex(gunId).ifPresent(index -> {
-            // 如果使用的是虚拟备弹，返还至虚拟备弹
-            if (useDummyAmmo(gunItem)) {
-                setCurrentAmmoCount(gunItem, 0);
-                // 燃料罐类型的换弹不返还
-                if (index.getGunData().getReloadData().getType().equals(FeedType.FUEL)) {
-                    return;
-                }
-                addDummyAmmoAmount(gunItem, ammoCount);
-                return;
-            }
-
-            Identifier ammoId = index.getGunData().getAmmoId();
-            // 创造模式类型的换弹，只填满子弹总数，不进行任何卸载弹药逻辑
-            if (player.isCreative()) {
-                int maxAmmCount = AttachmentDataUtils.getAmmoCountWithAttachment(gunItem, index.getGunData());
-                setCurrentAmmoCount(gunItem, maxAmmCount);
-                return;
-            }
-            // 燃料罐类型的只清空不返还
-            if (index.getGunData().getReloadData().getType().equals(FeedType.FUEL)) {
-                setCurrentAmmoCount(gunItem, 0);
-                return;
-            }
-            TimelessAPI.getCommonAmmoIndex(ammoId).ifPresent(ammoIndex -> {
-                int stackSize = ammoIndex.getStackSize();
-                int tmpAmmoCount = ammoCount;
-                int roundCount = tmpAmmoCount / (stackSize + 1);
-                for (int i = 0; i <= roundCount; i++) {
-                    int count = Math.min(tmpAmmoCount, stackSize);
-                    ItemStack ammoItem = AmmoItemBuilder.create().setId(ammoId).setCount(count).build();
-                    ItemHandlerHelper.giveItemToPlayer(player, ammoItem);
-                    tmpAmmoCount -= stackSize;
-                }
-                setCurrentAmmoCount(gunItem, 0);
-            });
-        });
     }
 
     /**

@@ -416,6 +416,10 @@ public class ModernKineticGunItem extends AbstractGunItem implements GunItemData
 
     protected void defaultReloadFinishing(ModernKineticGunScriptAPI api, boolean isTactical) {
         GunData data = api.getGunIndex().getGunData();
+        if (data.getReloadData().usesMagazineItems()) {
+            api.reloadMagazine();
+            return;
+        }
         int needAmmoCount = api.getNeededAmmoAmount();
         boolean needConsumeAmmo = api.isReloadingNeedConsumeAmmo();
         boolean infinite = data.getReloadData().isInfinite();

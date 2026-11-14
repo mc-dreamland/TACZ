@@ -70,7 +70,7 @@ public class ClientMessageRefitGun implements CustomPacketPayload {
             gun.installAttachment(gunItem, attachmentItem);
             AttachmentPropertyManager.postChangeEvent(player, gunItem);
             inventory.setItem(message.attachmentSlotIndex, oldAttachment);
-            if (realType == AttachmentType.EXTENDED_MAG) {
+            if (realType == AttachmentType.EXTENDED_MAG && !oldAttachment.isEmpty()) {
                 gun.dropAllAmmo(player, gunItem);
             }
             player.inventoryMenu.broadcastChanges();

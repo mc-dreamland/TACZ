@@ -130,7 +130,8 @@ public class ClientGunTooltip implements ClientTooltipComponent {
             this.maxWidth = Math.max(font.width(this.ammoName) + 22, this.maxWidth);
 
             int barrelBulletAmount = (iGun.hasBulletInBarrel(gun) && gunIndex.getGunData().getBolt() != Bolt.OPEN_BOLT) ? 1 : 0;
-            int maxAmmoCount = AttachmentDataUtils.getAmmoCountWithAttachment(gun, gunIndex.getGunData()) + barrelBulletAmount;
+            int maxAmmoCount = AttachmentDataUtils.getAmmoCountWithAttachment(gun, gunIndex.getGunData())
+                    + (gunData.getReloadData().includesChamberInCapacity() ? 0 : barrelBulletAmount);
             int currentAmmoCount = iGun.getCurrentAmmoCount(this.gun) + barrelBulletAmount;
 
             if (!iGun.useDummyAmmo(gun)) {

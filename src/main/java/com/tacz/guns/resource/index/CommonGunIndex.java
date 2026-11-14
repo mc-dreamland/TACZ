@@ -56,6 +56,7 @@ public class CommonGunIndex {
         Preconditions.checkArgument(data.getRoundsPerMinute() >= 1, "rpm count must >= 1");
         Preconditions.checkArgument(data.getBolt() != null, "bolt type is error");
         Preconditions.checkArgument(data.getReloadData().getType() != null, "reload type is error");
+        Preconditions.checkArgument(data.getReloadData().hasValidUnit(), "reload unit must be round, magazine or shell");
         Preconditions.checkArgument(!data.getFireModeSet().isEmpty(), "fire mode is empty");
         Preconditions.checkArgument(!data.getFireModeSet().contains(null) && !data.getFireModeSet().contains(FireMode.UNKNOWN), "fire mode is error");
         checkInaccuracy(data);

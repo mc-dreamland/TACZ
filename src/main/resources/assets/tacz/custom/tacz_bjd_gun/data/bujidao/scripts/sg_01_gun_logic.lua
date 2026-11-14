@@ -43,7 +43,7 @@ end
 
 function gun.start_reload(api)
     if loaded(api) >= api:getMaxAmmoCount() or not api:hasAmmoToConsume() then return false end
-    api:cacheScriptData({kind = 'reload', empty = loaded(api) == 0, phase = 'intro',
+    api:cacheScriptData({kind = 'reload', empty = not api:hasAmmoInBarrel(), phase = 'intro',
         since = api:getCurrentTimestamp(), inserted = false})
     return true
 end
