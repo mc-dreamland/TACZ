@@ -3,7 +3,6 @@
   "texture": "bujidao:gun/uv/ar_02",
   "animation": "bujidao:ar_02",
   "state_machine": "bujidao:gun_state_machine",
-  "default_animation": "bujidao:ar_02_run",
   "slot": "bujidao:gun/slot/ar_02",
   "hud": "bujidao:gun/slot/ar_02",
   "show_crosshair": false,

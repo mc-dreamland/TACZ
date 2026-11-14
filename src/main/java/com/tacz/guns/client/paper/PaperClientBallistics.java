@@ -64,19 +64,15 @@ public final class PaperClientBallistics {
 
     private static final class Visual {
         final EntityKineticBullet bullet;
-        final int life;
-        long expiresAt;
+        final PaperVisualLifetime lifetime;
         int serverAge;
-        long terminalAt = -1;
-        boolean renderedTerminal;
         boolean blocked;
         boolean renderedBlocked;
 
         Visual(EntityKineticBullet bullet, int life, int age) {
             this.bullet = bullet;
-            this.life = life;
+            this.lifetime = new PaperVisualLifetime(life, age, ticks);
             this.serverAge = age;
-            this.expiresAt = ticks + life - age + 2L;
         }
     }
 
@@ -146,13 +142,13 @@ public final class PaperClientBallistics {
 
     private static void update(long id, JsonObject record) {
         Visual visual = VISUALS.get(id);
-        if (visual == null || visual.terminalAt >= 0) return;
+        if (visual == null || visual.lifetime.hasImpact()) return;
         Vec3 position = position(record);
         Vec3 velocity = velocity(record);
-        int age = boundedInt(record, "age", 0, visual.life);
+        int age = boundedInt(record, "age", 0, visual.lifetime.life);
         if (age < visual.serverAge) return;
         visual.serverAge = age;
-        visual.expiresAt = ticks + visual.life - age + 2L;
+        visual.lifetime.synchronizeAge(age, ticks);
         visual.blocked = false;
         visual.renderedBlocked = false;
         EntityKineticBullet bullet = visual.bullet;
@@ -168,13 +164,19 @@ public final class PaperClientBallistics {
         // Interest loss is reversible: a later spawn can carry the same live bullet ID.
         if (!reason.equals("hidden")) remember(RETIRED, id);
         Visual visual = VISUALS.get(id);
-        if (visual == null || visual.terminalAt >= 0) return;
-        if (!reason.equals("hit") && !reason.equals("expired")) {
+        if (visual == null) return;
+        Vec3 end = null;
+        if (reason.equals("hit")) {
+            if (visual.lifetime.hasImpact()) return;
+            end = position(record);
+        }
+        boolean preserveImpact = visual.lifetime.end(reason, ticks);
+        if (visual.lifetime.isExpired(ticks)) {
             visual.bullet.discard();
             VISUALS.remove(id);
             return;
         }
-        Vec3 end = position(record);
+        if (!preserveImpact) return;
         EntityKineticBullet bullet = visual.bullet;
         bullet.finishClientTrail(end);
         // A spawn and impact can arrive in the same batch. Preserve their segment for one
@@ -192,7 +194,6 @@ public final class PaperClientBallistics {
         bullet.setPos(end);
         bullet.tickCount = Math.max(5, bullet.tickCount); // Keep the native near-muzzle filter from hiding an entire short shot.
         visual.blocked = false;
-        visual.terminalAt = ticks;
     }
 
     private static void blockHit(ClientLevel level, long id, JsonObject record) {
@@ -279,13 +280,12 @@ public final class PaperClientBallistics {
             var entry = iterator.next();
             Visual visual = entry.getValue();
             EntityKineticBullet bullet = visual.bullet;
-            boolean terminalExpired = visual.terminalAt >= 0 && (visual.renderedTerminal || ticks - visual.terminalAt > 4);
-            if (terminalExpired || bullet.isRemoved() || ticks > visual.expiresAt) {
+            if (visual.lifetime.isExpired(ticks) || bullet.isRemoved()) {
                 bullet.discard(); iterator.remove();
-            } else if (visual.terminalAt < 0) {
+            } else if (!visual.lifetime.hasImpact()) {
                 // The manager owns visual lifetime so a late valid server correction can
                 // rewind predicted age during the small expiry grace window.
-                if (visual.blocked || bullet.tickCount >= visual.life) continue;
+                if (visual.blocked || bullet.tickCount >= visual.lifetime.life) continue;
                 copyPrevious(bullet);
                 Vec3 start = bullet.position();
                 Vec3 end = start.add(bullet.getDeltaMovement());
@@ -315,10 +315,11 @@ public final class PaperClientBallistics {
         float partial = event.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         for (Visual visual : VISUALS.values()) {
             EntityKineticBullet bullet = visual.bullet;
-            if (bullet.isRemoved() || visual.blocked && visual.renderedBlocked
+            if (bullet.isRemoved() || !visual.lifetime.canRender(ticks, bullet.tickCount)
+                    || visual.blocked && visual.renderedBlocked
                     || !dispatcher.shouldRender(bullet, event.getFrustum(), camera.x, camera.y, camera.z)) continue;
             event.getRenderState().entityRenderStates.add(dispatcher.extractEntity(bullet, partial));
-            if (visual.terminalAt >= 0) visual.renderedTerminal = true;
+            visual.lifetime.markRendered();
             if (visual.blocked) visual.renderedBlocked = true;
         }
     }

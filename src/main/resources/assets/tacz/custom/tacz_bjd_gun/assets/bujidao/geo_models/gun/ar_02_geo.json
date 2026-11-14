@@ -552,7 +552,12 @@
             37.285,
             1.365
           ],
-          "parent": "motion_positioning2_positioning"
+          "parent": "motion_positioning2_positioning",
+          "rotation": [
+            -90,
+            0,
+            0
+          ]
         },
         {
           "name": "muzzle_pos",

@@ -505,6 +505,9 @@ public class GunRefitScreen extends Screen {
                 }
                 continue;
             }
+            if (!iGun.allowAttachmentType(player.getMainHandItem(), type)) {
+                continue;
+            }
             GunAttachmentSlot button = new GunAttachmentSlot(startX, startY, type, inventory.getSelectedSlot(), inventory, b -> {
                 AttachmentType buttonType = ((GunAttachmentSlot) b).getType();
                 // 如果这个槽位不允许安装配件，则默认退回概览，不选中槽位。
