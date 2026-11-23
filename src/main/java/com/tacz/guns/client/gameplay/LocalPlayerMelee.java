@@ -1,6 +1,7 @@
 package com.tacz.guns.client.gameplay;
 
 import com.tacz.guns.api.item.ItemBehavior;
+import com.tacz.guns.bridge.GunMeleePolicy;
 
 import com.tacz.guns.api.LogicalSide;
 import com.tacz.guns.api.DefaultAssets;
@@ -33,6 +34,7 @@ public class LocalPlayerMelee {
     }
 
     public void melee() {
+        if (!GunMeleePolicy.enabled()) return;
         if (!NetworkHandler.canSendToServer(ClientMessagePlayerMelee.TYPE)) {
             return;
         }

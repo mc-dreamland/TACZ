@@ -4,8 +4,8 @@
   "slot": "bujidao:attachment/slot/sr_03_scope",
   "scope": true,
   "zoom": [
-    4.0
+    6.0
   ],
-  "fov": 60,
+  "fov": 30,
   "show_mount": false
 }

@@ -7,6 +7,7 @@ import com.tacz.guns.api.entity.ShootResult;
 import com.tacz.guns.client.gameplay.*;
 import com.tacz.guns.client.paper.PaperClientBridge;
 import com.tacz.guns.client.paper.PaperClientGameplay;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
@@ -75,6 +76,7 @@ public abstract class LocalPlayerMixin implements IClientPlayerGunOperator {
 
     @Override
     public void melee() {
+        if (!GunMeleePolicy.enabled()) return;
         if (PaperClientBridge.active()) { PaperClientGameplay.action("melee"); return; }
         tac$melee.melee();
     }

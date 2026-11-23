@@ -1,6 +1,7 @@
 package com.tacz.guns.entity.shooter;
 
 import com.tacz.guns.api.LogicalSide;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import com.tacz.guns.api.DefaultAssets;
 import com.tacz.guns.api.TimelessAPI;
 import com.tacz.guns.api.event.common.GunMeleeEvent;
@@ -32,6 +33,7 @@ public class LivingEntityMelee {
     }
 
     public void melee() {
+        if (!GunMeleePolicy.enabled()) return;
         if (data.currentGunItem == null) {
             return;
         }
@@ -87,6 +89,10 @@ public class LivingEntityMelee {
     }
 
     public void scheduleTickMelee() {
+        if (!GunMeleePolicy.enabled()) {
+            data.meleePrepTickCount = -1;
+            return;
+        }
         if (this.data.meleePrepTickCount > 0) {
             this.data.meleePrepTickCount--;
             return;
@@ -104,6 +110,7 @@ public class LivingEntityMelee {
     }
 
     public long getMeleeCoolDown() {
+        if (!GunMeleePolicy.enabled()) return 0;
         if (data.currentGunItem == null) {
             return 0;
         }

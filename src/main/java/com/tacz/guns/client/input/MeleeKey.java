@@ -3,6 +3,7 @@ package com.tacz.guns.client.input;
 import net.neoforged.neoforge.client.event.InputEvent;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.tacz.guns.api.client.gameplay.IClientPlayerGunOperator;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -29,6 +30,7 @@ public class MeleeKey {
     }
 
     public static boolean onMeleeControllerPress(boolean isPress) {
+        if (!GunMeleePolicy.enabled()) return false;
         if (isInGame() && isPress) {
             LocalPlayer player = Minecraft.getInstance().player;
             if (player == null || player.isSpectator()) {
@@ -44,6 +46,7 @@ public class MeleeKey {
     }
 
     private static void doMeleeLogic() {
+        if (!GunMeleePolicy.enabled()) return;
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || player.isSpectator()) {
             return;

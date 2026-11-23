@@ -15,6 +15,7 @@ import com.tacz.guns.api.event.common.GunFireSelectEvent;
 import com.tacz.guns.api.item.IGun;
 import com.tacz.guns.api.item.gun.FireMode;
 import com.tacz.guns.bridge.ClientShotSchedule;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import com.tacz.guns.client.animation.statemachine.GunAnimationConstant;
 import com.tacz.guns.client.gameplay.LocalPlayerDataHolder;
 import com.tacz.guns.client.gui.GunRefitScreen;
@@ -150,6 +151,7 @@ public final class PaperClientGameplay {
         int entityId = integer(message, "entity", -1);
         long seq = sequence(message);
         String op = string(message, "op", "");
+        if (op.equals("melee") && !GunMeleePolicy.enabled()) return;
         String eventKey = entityId + ":" + string(message, "instance", "") + ":" + op;
         if (seq >= 0 && seq <= LAST_EVENTS.getOrDefault(eventKey, -1L)) return;
         if (seq >= 0) {
@@ -353,6 +355,7 @@ public final class PaperClientGameplay {
     }
 
     private static long action(String op, JsonObject args) {
+        if (op.equals("melee") && !GunMeleePolicy.enabled()) return -1;
         if (op.equals("reload") || op.equals("cancel_reload") || op.equals("bolt") || op.equals("draw")
                 || op.equals("fire_select") || op.equals("melee") || op.equals("inspect")) cancelScheduledShot();
         if (op.equals("fire_select")) {

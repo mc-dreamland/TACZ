@@ -1,6 +1,7 @@
 package com.tacz.guns.paper.gameplay;
 
 import com.google.gson.*;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import com.tacz.guns.paper.item.PaperItemStore;
 import com.tacz.guns.paper.network.BridgePeer;
 import com.tacz.guns.paper.pack.DefaultGunPack;
@@ -54,6 +55,8 @@ public final class PaperGunService implements Listener {
 
     public void handle(Player player, JsonObject action) {
         if (!Bukkit.isPrimaryThread()) throw new IllegalStateException("Gun actions must execute on the server thread");
+        // Ignore disabled melee before it can cancel a queued shot or alter action state.
+        if (text(action, "op", "").equals("melee") && !GunMeleePolicy.enabled()) return;
         if (!allowed(player)) return;
         long now = now();
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -500,6 +503,7 @@ public final class PaperGunService implements Listener {
     }
 
     private void performMelee(Player player, Session s, Equipped e) {
+        if (!GunMeleePolicy.enabled()) return;
         JsonObject data = meleeData(e);
         double reach = clamp(number(object(e.gun, "melee"), "distance", 1) + number(data, "distance", 1), 0, 8);
         double angle = Math.toRadians(clamp(number(data, "range_angle", 40) / 2, 0, 90));

@@ -1,6 +1,7 @@
 package com.tacz.guns.client.network;
 
 import com.tacz.guns.api.LogicalSide;
+import com.tacz.guns.bridge.GunMeleePolicy;
 import com.tacz.guns.api.client.event.SwapItemWithOffHand;
 import com.tacz.guns.api.event.common.EntityHurtByGunEvent;
 import com.tacz.guns.api.event.common.EntityKillByGunEvent;
@@ -92,6 +93,7 @@ public final class ClientPacketHandlers {
     }
 
     public static void onGunMelee(ServerMessageGunMelee message) {
+        if (!GunMeleePolicy.enabled()) return;
         LivingEntity living = living(message.shooterId);
         if (living != null) {
             NeoForge.EVENT_BUS.post(new GunMeleeEvent(living, message.gunItemStack, LogicalSide.CLIENT));
