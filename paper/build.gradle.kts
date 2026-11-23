@@ -53,6 +53,9 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.processResources {
     from(defaultGunPack)
+    from("../src/main/resources/assets/tacz/custom/tacz_bjd_gun/assets/bujidao/lang/zh_cn.json") {
+        rename { "default-item-names.json" }
+    }
     filteringCharset = "UTF-8"
     val pluginVersion = project.version.toString()
     inputs.property("version", pluginVersion)

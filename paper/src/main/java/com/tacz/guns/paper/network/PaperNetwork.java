@@ -7,7 +7,6 @@ import com.tacz.guns.bridge.PackTransfer;
 import com.tacz.guns.paper.pack.DefaultGunPack;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.craftbukkit.CraftWorld;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -278,6 +277,8 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         session.ready = false;
         session.ballistics = null;
         session.ballisticWorld = null;
+        session.visualWorld = null;
+        session.worldEpoch = 0;
         sessions.put(player.getUniqueId(), session);
         JsonObject welcome = new JsonObject();
         welcome.addProperty("nonce", session.nonce);
@@ -333,11 +334,14 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
             return;
         }
         Session session = sessions.get(player.getUniqueId());
-        if (type.equals("menu") && session != null && session.netease && neteaseMenus != null) {
+        // Refit has a NetEase model-preview screen; only the other menus use containers.
+        if (type.equals("menu") && session != null && session.netease && neteaseMenus != null
+                && Set.of("workbench", "box").contains(string(data, "menu"))) {
             neteaseMenus.accept(player, data);
             return;
         }
-        sendPacket(player, BridgeProtocol.encode(type, scoped(player, data)));
+        JsonObject payload = type.equals("state") ? worldScoped(player, data) : scoped(player, data);
+        sendPacket(player, BridgeProtocol.encode(type, payload));
     }
 
     private static String string(JsonObject data, String key) {
@@ -350,6 +354,24 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         JsonObject result = data.deepCopy();
         result.addProperty("connection", session.connection);
         result.addProperty("nonce", session.nonce);
+        return result;
+    }
+
+    /** NetEase dimension numbers cannot identify separate custom worlds. */
+    private JsonObject worldScoped(Player player, JsonObject data) {
+        JsonObject result = scoped(player, data);
+        Session session = sessions.get(player.getUniqueId());
+        if (session == null || !session.netease) return result;
+        UUID world = player.getWorld().getUID();
+        if (!world.equals(session.visualWorld)) {
+            session.visualWorld = world;
+            session.worldEpoch++;
+            // Also drop A's batch on A -> B -> A before the next flush.
+            session.ballistics = null;
+            session.ballisticWorld = null;
+        }
+        result.addProperty("worldId", world.toString());
+        result.addProperty("worldEpoch", session.worldEpoch);
         return result;
     }
 
@@ -372,9 +394,10 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         if (session == null || !session.ready || !observer.isOnline()) return;
         UUID world = observer.getWorld().getUID();
         if (session.ballistics == null || !world.equals(session.ballisticWorld)) {
+            JsonObject metadata = worldScoped(observer, new JsonObject());
             session.ballisticWorld = world;
-            String dimension = ((CraftWorld) observer.getWorld()).getHandle().dimension().identifier().toString();
-            session.ballistics = new BallisticsBatch(dimension, scoped(observer, new JsonObject()));
+            String dimension = observer.getWorld().getKey().toString();
+            session.ballistics = new BallisticsBatch(dimension, metadata);
         }
         if (!session.ballistics.offer(record)) {
             flushBallistics(observer, session);
@@ -435,6 +458,8 @@ public final class PaperNetwork implements BridgePeer, PluginMessageListener, Li
         private final Map<String, Long> diagnosticLogs = new HashMap<>();
         private BallisticsBatch ballistics;
         private UUID ballisticWorld;
+        private UUID visualWorld;
+        private long worldEpoch;
     }
 
     private static final class NeteaseConnection {

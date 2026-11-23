@@ -99,7 +99,7 @@ public final class PaperItemStore {
         meta.setMaxStackSize(kind.equals("gun") || kind.equals("box") ? 1 : kind.equals("ammo") ? Math.min(64, Math.max(1, integer(pack.ammoIndexes().get(id), "stack_size", 64))) : 64);
         meta.getPersistentDataContainer().set(BRIDGE_KEY, PersistentDataType.STRING, state.toString());
         JsonObject index = switch (kind) { case "gun" -> pack.gunIndexes().get(id); case "ammo" -> pack.ammoIndexes().get(id); case "attachment" -> pack.attachmentIndexes().get(id); default -> null; };
-        meta.displayName(index != null && index.has("name") ? Component.translatable(index.get("name").getAsString()) : Component.text("TACZ " + id.substring(id.indexOf(':') + 1)));
+        meta.displayName(index != null && index.has("name") ? PaperItemNames.name(index.get("name").getAsString(), id) : Component.text("TACZ " + id.substring(id.indexOf(':') + 1)));
         List<Component> lore = new ArrayList<>(); lore.add(Component.text(id));
         if (kind.equals("gun")) {
             int total = integer(state, "ammo", 0) + (state.has("chamber") && state.get("chamber").getAsBoolean() ? 1 : 0);
@@ -107,7 +107,7 @@ public final class PaperItemStore {
             String ammoId = string(pack.gun(id), "ammo", "");
             JsonObject ammoIndex = pack.ammoIndexes().get(ammoId);
             Component ammoName = ammoIndex != null && ammoIndex.has("name")
-                    ? Component.translatable(ammoIndex.get("name").getAsString()).fallback(ammoId)
+                    ? PaperItemNames.name(ammoIndex.get("name").getAsString(), ammoId)
                     : Component.text(ammoId);
             lore.add(Component.text("所需弹药：").append(ammoName));
         }

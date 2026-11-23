@@ -95,55 +95,37 @@
     ],
     "minecraft:paper": [
       {
-        "name": "tacz_12g",
+        "name": "bujidao_ammo_sg",
         "custom_model_data": 3001000,
-        "display_name": "§912 号口径霰弹",
-        "icon": "tacz_ammo_tacz_12g",
+        "display_name": "SG 系列霰弹",
+        "icon": "bujidao_ammo_sg",
         "texture_size": 32,
         "display_handheld": false,
         "allow_offhand": true
       },
       {
-        "name": "tacz_338",
+        "name": "bujidao_ammo_sr",
         "custom_model_data": 3001001,
-        "display_name": "§c.338 拉普马格南 狙击弹",
-        "icon": "tacz_ammo_tacz_338",
+        "display_name": "SR 系列弹匣",
+        "icon": "bujidao_ammo_sr",
         "texture_size": 32,
         "display_handheld": false,
         "allow_offhand": true
       },
       {
-        "name": "tacz_357mag",
+        "name": "bujidao_ammo_hg",
         "custom_model_data": 3001002,
-        "display_name": "§c.357 马格南 手枪弹",
-        "icon": "tacz_ammo_tacz_357mag",
+        "display_name": "HG 系列弹匣",
+        "icon": "bujidao_ammo_hg",
         "texture_size": 32,
         "display_handheld": false,
         "allow_offhand": true
       },
       {
-        "name": "tacz_50bmg",
-        "custom_model_data": 3001003,
-        "display_name": "§c.50 BMG 狙击弹",
-        "icon": "tacz_ammo_tacz_50bmg",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_556x45",
-        "custom_model_data": 3001004,
-        "display_name": "§e5.56x45mm 步枪弹",
-        "icon": "tacz_ammo_tacz_556x45",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_762x39",
+        "name": "bujidao_ammo_ar",
         "custom_model_data": 3001005,
-        "display_name": "§e7.62x39mm 步枪弹",
-        "icon": "tacz_ammo_tacz_762x39",
+        "display_name": "AR 系列弹匣",
+        "icon": "bujidao_ammo_ar",
         "texture_size": 32,
         "display_handheld": false,
         "allow_offhand": true
@@ -183,60 +165,6 @@
         "display_name": "sr04镜头",
         "icon": "tacz_attachment_bujidao_sr04",
         "texture_size": 128,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_ammo_mod_fmj",
-        "custom_model_data": 3002004,
-        "display_name": "§e全金属被甲弹",
-        "icon": "tacz_attachment_tacz_ammo_mod_fmj",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_ammo_mod_hp",
-        "custom_model_data": 3002005,
-        "display_name": "§e空尖弹",
-        "icon": "tacz_attachment_tacz_ammo_mod_hp",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_ammo_mod_i",
-        "custom_model_data": 3002006,
-        "display_name": "§e燃烧弹",
-        "icon": "tacz_attachment_tacz_ammo_mod_i",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_extended_mag_1",
-        "custom_model_data": 3002007,
-        "display_name": "重型弹药扩容弹匣",
-        "icon": "tacz_attachment_tacz_extended_mag_1",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_extended_mag_2",
-        "custom_model_data": 3002008,
-        "display_name": "§9重型弹药扩容弹匣",
-        "icon": "tacz_attachment_tacz_extended_mag_2",
-        "texture_size": 32,
-        "display_handheld": false,
-        "allow_offhand": true
-      },
-      {
-        "name": "tacz_extended_mag_3",
-        "custom_model_data": 3002009,
-        "display_name": "§d重型弹药扩容弹匣",
-        "icon": "tacz_attachment_tacz_extended_mag_3",
-        "texture_size": 32,
         "display_handheld": false,
         "allow_offhand": true
       }
